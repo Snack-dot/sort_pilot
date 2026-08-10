@@ -6,9 +6,9 @@ This work belongs on a feature branch rather than `main`. It turns the compact t
 
 ## Implemented layers
 
-`src/tidy/` contains configuration, data contracts, extraction, Tier 1 rules, Naive Bayes classification, learning, persistence, reconciliation, actions, and ONNX vision. `eval/` provides repeatable classifier metrics and decision-resource export. `tests/` covers token normalization, model learning and persistence, dry-run/collision safety, text extraction, and vision post-processing.
+`sort_pilot/tidy/` contains configuration, data contracts, extraction, Tier 1 rules, Naive Bayes classification, learning, persistence, reconciliation, actions, and ONNX vision. `eval/` provides repeatable classifier metrics and decision-resource export. `tests/` keeps the baseline application tests and adds classifier-pipeline coverage.
 
-The legacy application under `ai-file-organizer-team-mvp-fixed/` remains runnable. Its `classifier.py` imports the new pipeline and falls back to the original rules if initialization is unavailable.
+The root launcher and `sort_pilot/` application package retain the layout from `main`. `sort_pilot.classifier.LocalPipelineAnalyzer` adapts the new pipeline to the existing `FileSuggestion` contract and falls back to the original rules when the pipeline is unavailable or uncertain.
 
 ## Local model setup
 
@@ -24,4 +24,3 @@ Run:
 ```
 
 Accuracy and resource targets still require the private labelled corpus and reference Windows hardware described in the SRS. Do not claim those acceptance thresholds based solely on unit tests.
-

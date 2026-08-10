@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-from tidy.pipeline import Pipeline
+from sort_pilot.tidy.pipeline import Pipeline
 
 
 def main() -> None:
@@ -21,4 +19,3 @@ def main() -> None:
 
 
 if __name__ == "__main__": main()
-
