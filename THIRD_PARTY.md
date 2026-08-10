@@ -21,7 +21,7 @@
 
 | Artifact | Official source | SHA-256 |
 | --- | --- | --- |
-| `yolov8n.pt` | Ultralytics assets v8.4.0 | `F59B3D833E2FF32E194B5BB8E08D211DC7C5BDF144B90D2C8412C47CCFC83B36` |
+| `data/models/yolov8n.pt` | Ultralytics assets v8.4.0 | `F59B3D833E2FF32E194B5BB8E08D211DC7C5BDF144B90D2C8412C47CCFC83B36` |
 | `data/models/yolov8n.onnx` | Locally exported at 640 px, opset 17 | `4231E9DDD9B09C3850FD9EACF9E27CA3F08C37038287C4F2EA91E0557660DE3A` |
 
 Neural model files are not committed. Record their source, license, and checksum here before enabling a backend.

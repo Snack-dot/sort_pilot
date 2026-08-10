@@ -577,7 +577,7 @@ Undo restores the source path, reverses the model deltas, and marks the journal 
 
 ```
 tidy/
-├── AGENTS.md                    conventions for Claude Code
+├── docs/AGENTS.md               repository agent conventions
 ├── SRS.md
 ├── ARCHITECTURE.md
 ├── THIRD_PARTY.md
