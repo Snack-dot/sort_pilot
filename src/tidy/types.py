@@ -1,0 +1,56 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Protocol
+
+
+@dataclass(frozen=True)
+class Feature:
+    t: str
+    src: str
+    n: float = 1.0
+
+
+@dataclass
+class FeatureVector:
+    file_id: str
+    path: str
+    size: int
+    features: list[Feature] = field(default_factory=list)
+    partial: bool = False
+    route: str = "metadata"
+    extractor_ms: dict[str, float] = field(default_factory=dict)
+    peak_rss_mb: float = 0.0
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class Decision:
+    category: str | None
+    score: float
+    margin: float
+    n_eff: float
+    action: str
+    tier: str
+    explanation: list[dict] = field(default_factory=list)
+
+
+class Classifier(Protocol):
+    def classify(self, vector: FeatureVector, candidates: list[str]) -> Decision | None: ...
+
+
+class Tier3Stub:
+    def classify(self, vector: FeatureVector, candidates: list[str]) -> Decision | None:
+        return None
+
+
+def path_id(path: Path) -> str:
+    import hashlib
+
+    stat = path.stat()
+    value = f"{path.resolve()}\0{stat.st_mtime_ns}\0{stat.st_size}".encode("utf-8")
+    return "sha1:" + hashlib.sha1(value).hexdigest()
+

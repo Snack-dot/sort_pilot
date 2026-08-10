@@ -2,7 +2,27 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-*.db
-dist/
+.coverage
+htmlcov/
 build/
+dist/
+*.egg-info/
+
+# Local state and private user data
+*.db
+classifier_weights.json
+df_table.json
+eval/corpus/
+eval/labels.csv
+
+# Downloaded/generated model artifacts
+*.pt
+*.onnx
+data/models/
+
+# Platform/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
 
