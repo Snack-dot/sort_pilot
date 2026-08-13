@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-14 — Real-data recall/precision correction and semantic rescue
+
+- Fixed near-zero real-world topic coverage: rebalanced co-occurrence pair weight against base-word weight (`PAIR_WEIGHT_SCALE`) and scaled the small-batch discovery threshold to what real seed vocabulary actually achieves (`SMALL_BATCH_FLOOR_SCALE`), verified against real document pairs with the fix reverted and reapplied.
+- Fixed YOLO object detection being structurally unreachable for `.png` files without camera EXIF (the dominant real-world case); YOLO now runs whenever the model exists, and its confidence-weighted `pair:` co-occurrence features now reach topic matching.
+- Widened first-run calibration sampling from 3 to 20 files per family and added `min_cluster_size` filtering so only genuinely-connected clusters are surfaced for review; unmatched files stay unmarked and retry in a later round instead of forcing per-file review.
+- Replaced the four-word hardcoded stopword list with the `stop-words` package (BSD-3, static data, fully offline) after real English documents were found matching purely on function-word overlap.
+- Added a local semantic rescue layer (`classifier_engine/embeddings.py`) using pretrained fastText word vectors (Korean + English, ~112 MB, downloaded and bundled like the YOLO model): only fires when exact lexical/co-occurrence matching finds nothing. Uses greedy best-match word-vector pairing (a lightweight relaxed Word Mover's Distance) rather than averaging, after averaging was shown to blur "same topic" into "same broad domain."
+- Added bigram/trigram collocation extraction (`extract.py`) using pointwise mutual information over each document's own token stream, filtering incidental word adjacency from genuine fixed phrases; flows through the existing content-matching pipeline as additional `body`-source terms.
+- Fixed a clustering scaling defect found only at full real-corpus size (~760 files): single-linkage clustering chained unrelated files transitively into two mega-clusters (412 and 89 files). Replaced with complete-linkage clustering (every cross-pair must independently clear the threshold); confirmed max cluster size dropped to 31/24 with cluster count rising from 11 to 112 on an identical re-run.
+- Fixed calibration fallback topic names leaking raw internal feature-token syntax (e.g. `obj_person pair_dining_table+person`); added `humanize_term()` to prefer collocation phrases and humanize object labels.
+- Rewrote the optional local Gemma naming assistant (`local_tagger.py`) after end-to-end testing found it reliably failed in its original form (batched multi-cluster requests under a loose JSON hint produced malformed output and wrong topic names). Now issues one grammar-constrained (`json_schema`) request per cluster with humanized terms, and tolerates individual cluster failures instead of discarding the whole batch; verified 0/11 → 11/11 valid names against real cluster data.
+
 ## 2026-08-13 — Sample-first topic calibration
 
 - Added first-run and tray-triggered calibration using up to 3 randomized, extension-diverse files per type without moving samples; one- and two-file families remain eligible.

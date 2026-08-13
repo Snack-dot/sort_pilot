@@ -65,8 +65,8 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
 - User-created topic names, tags, enable/disable state, and learn-only example files.
-- First-run calibration samples up to 3 safe top-level files per type and still works with one or two. Approval immediately creates `<유형>/<주제>` folders and moves those seed files into them.
-- Adaptive TF-IDF grouping proposes topics; an optional local Google Gemma 3 1B model improves names and tag lists after explicit terms/download consent.
+- First-run calibration samples up to 20 safe top-level files per type and still works with one or two; only clusters of two or more genuinely connected files are surfaced for review, and unsurfaced files are retried with priority in a later round. Approval immediately creates `<유형>/<주제>` folders and moves those seed files into them.
+- Complete-linkage TF-IDF/co-occurrence clustering proposes topics, backed by PMI-filtered bigram/trigram collocation detection and a pretrained-word-vector semantic rescue for when exact term overlap isn't enough; an optional local Google Gemma 3 1B model improves names and tag lists, one cluster at a time under a schema-constrained request, after explicit terms/download consent.
 - The calibration board supports moving files between topics, renaming, editing tags, splitting, merging, and excluding samples.
 - The final batch review uses an editable topic selector. Confirmed predictions reinforce a profile; corrections reinforce the chosen profile and demote the rejected profile.
 - Profile data is version 3 and stores a broad bounded vocabulary: base-word weights plus up to 120 weighted within-file co-occurrence pairs per seed. It also stores independent negative correction evidence without raw contents or example paths.
@@ -74,8 +74,9 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable progress with no partial preview after cancellation.
-- Local document, archive, image, OCR, and optional ONNX object features.
-- Semantic topics use actual local contents only: TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, XLSX, ZIP entry names, and image OCR/object evidence. Filenames, extensions, and generic metadata may inform the lower-level engine decision but cannot create or select a topic. Up to 160 distinct body terms are retained per readable document.
+- Local document, archive, image, OCR, and optional ONNX object features; YOLO object detection runs on any eligible image once the local model is installed, independent of screenshot/photo routing.
+- Semantic topics use actual local contents only: TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, XLSX, ZIP entry names, and image OCR/object (including object-pair co-occurrence) evidence. Filenames, extensions, and generic metadata may inform the lower-level engine decision but cannot create or select a topic. Up to 160 distinct body terms are retained per readable document, plus statistically significant bigram/trigram phrases (filtered by pointwise mutual information, not just raw adjacency).
+- A local semantic rescue matches records against profiles by pretrained word-vector similarity only when exact term matching finds nothing, using greedy word-to-word pairing rather than averaging; it never replaces the exact-match path, only supplements it.
 - Calibration samples only formats with a bundled content extractor, and extraction-empty samples cannot create a profile. `.hwp` and `.hwpx` are excluded from collection while the content architecture is being validated; legacy binary DOC/XLS/PPT files are not calibration seeds.
 - Editable destination root and relative folder for every file.
 - Original filenames are preserved; collisions receive numeric suffixes.
@@ -122,4 +123,4 @@ docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migra
 
 Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles and hashed calibration history are stored locally; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-Model binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or inference fails, TF-IDF names keep calibration usable. The optional vision model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.
+Model binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or a given cluster's naming request fails, that cluster's deterministic collocation-aware name keeps calibration usable. The optional vision model belongs at `data/models/yolov8n.onnx`, and the optional semantic-rescue word vectors belong at `data/models/word_vectors.npz`; both are used automatically when present and skipped gracefully when absent. Provenance requirements are in `THIRD_PARTY.md`.

@@ -12,6 +12,7 @@
 | ONNX Runtime | 1.27.0 | MIT | CPU inference runtime |
 | RapidOCR | 3.5.0 | Apache-2.0 | Local OCR pipeline |
 | psutil | 7.0.0 | BSD-3-Clause | Resource and battery instrumentation |
+| stop-words | 2025.11.4 | BSD-3-Clause | Verified multilingual stopword lists for content tokenization |
 | pytest | 9.1.1 | MIT | Development tests |
 | Ultralytics | 8.4.56 | AGPL-3.0 | Development-only YOLO export |
 | ONNX | 1.22.0 | Apache-2.0 | Development-only ONNX export support |
@@ -24,5 +25,6 @@
 | `data/models/yolov8n.onnx` | Locally exported at 640 px, opset 17 | `4231E9DDD9B09C3850FD9EACF9E27CA3F08C37038287C4F2EA91E0557660DE3A` |
 | `gemma-3-1b-it-Q4_K_M.gguf` | `ggml-org/gemma-3-1b-it-GGUF` (Google Gemma terms) | `8CCC5CD1F1B3602548715AE25A66ED73FD5DC68A210412EEA643EB20EB75A135` |
 | `llama-b10405-bin-win-cpu-x64.zip` | `ggml-org/llama.cpp` release `b10405` (MIT) | `31F3BCC3F7645715B3ED8E845AB338D94659AA0E512B2211B8D94B9C8EB24758` |
+| `data/models/word_vectors.npz` | Locally built from Meta AI's official `fasttext` `cc.ko.300.vec.gz`/`cc.en.300.vec.gz` releases (CC BY-SA 3.0), top 150,000 words by frequency per language, float16-quantized | `AEE86795E9892825DA0A7D02C67D5AC7F66C4EA16360D642C9DDF1F58828B972` |
 
-Neural model and runtime files are not committed. Gemma and llama.cpp are downloaded only after explicit terms consent and are verified against the pinned digests above.
+Neural model and runtime files are not committed. Gemma and llama.cpp are downloaded only after explicit terms consent and are verified against the pinned digests above. `word_vectors.npz` is optional — the semantic rescue layer no-ops when it is absent.
