@@ -25,6 +25,8 @@ WINDOWS_INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 GENERIC_PREFIXES = ("image:", "aspect:", "color:", "n_person:", "n_objects:", "subject:")
 GENERIC_TERMS = {"needs_content", "kakao_export", "no_ext"}
 CONTEXT_PREFIX = "co:"
+PAIR_WEIGHT_SCALE = 0.1
+SMALL_BATCH_FLOOR_SCALE = 0.2
 
 
 def utc_now() -> str:
@@ -153,7 +155,7 @@ def contextual_terms(
         for right, right_weight in ranked[position + 1:]:
             first, second = sorted((left, right))
             pair = f"{CONTEXT_PREFIX}{first}|{second}"
-            pairs.append((math.sqrt(left_weight * right_weight) * 0.5, pair))
+            pairs.append((math.sqrt(left_weight * right_weight) * PAIR_WEIGHT_SCALE, pair))
     for weight, pair in sorted(pairs, key=lambda item: (-item[0], item[1]))[:max_pairs]:
         expanded[pair] = weight
     return dict(expanded)
@@ -472,7 +474,7 @@ class TopicClassifier:
         if not similarities:
             return 1.0
         if len(vectors) <= 3:
-            return floor
+            return floor * SMALL_BATCH_FLOOR_SCALE
         ordered = sorted(similarities)
         median = ordered[len(ordered) // 2]
         deviations = sorted(abs(value - median) for value in ordered)
