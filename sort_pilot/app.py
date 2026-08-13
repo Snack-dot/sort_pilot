@@ -82,16 +82,24 @@ class AppController(QObject):
         if self.history.migrated_legacy_batch:
             self.tray.notify("Sort Pilot", "기존 실행 취소 기록을 JSON 형식으로 이전했습니다.")
         if not self.profile_store.load():
+            self._pending_organize = (
+                [self._desktop_folder(), self.downloads_folder],
+                "바탕화면과 다운로드 폴더",
+            )
             QTimer.singleShot(0, self.calibrate_topics)
 
     def calibrate_topics(self) -> None:
         """Analyze a bounded random sample without moving files."""
         if self.analysis.busy:
             return
-        try:
-            paths = self.calibration_sampler.select(
-                [self._desktop_folder(), self.downloads_folder]
+        if self._pending_organize is None:
+            self._pending_organize = (
+                [self._desktop_folder(), self.downloads_folder],
+                "바탕화면과 다운로드 폴더",
             )
+        try:
+            roots = self._pending_organize[0]
+            paths = self.calibration_sampler.select(roots)
         except (OSError, NotADirectoryError) as exc:
             QMessageBox.critical(None, "표본 파일 읽기 실패", str(exc))
             return
@@ -262,16 +270,43 @@ class AppController(QObject):
             self._pending_organize = None
             return
         try:
-            self.calibration.save_draft(draft)
+            fingerprints = [self.calibration_sampler.fingerprint(record.source) for record in records]
+            profiles = self.calibration.profiles_from_draft(draft)
+            changes = self.calibration.seed_changes(
+                draft, self._desktop_folder(), self.downloads_folder
+            )
+            operations = [
+                build_operation(
+                    change,
+                    self._destination_root(change.destination_root, change.suggestion.source),
+                )
+                for change in changes
+            ]
+            completed = execute_batch(operations, self.history)
         except (OSError, ValueError, RuntimeError) as exc:
-            QMessageBox.critical(None, "주제 보정 저장 실패", str(exc))
+            QMessageBox.critical(None, "보정 시드 이동 실패", str(exc))
             self._pending_organize = None
             return
         try:
-            self.calibration_sampler.remember(record.source for record in records)
+            self.profile_store.save(profiles)
+        except (OSError, ValueError, RuntimeError) as exc:
+            if completed:
+                undo_latest(self.history)
+            QMessageBox.critical(
+                None,
+                "주제 보정 저장 실패",
+                f"시드 이동을 되돌렸습니다.\n{exc}",
+            )
+            self._pending_organize = None
+            return
+        try:
+            self.calibration_sampler.remember_fingerprints(fingerprints)
         except OSError:
             self.tray.notify("Sort Pilot", "주제는 저장했지만 표본 사용 기록을 저장하지 못했습니다.")
-        self.tray.notify("Sort Pilot", "확인한 표본으로 사용자 주제를 저장했습니다.")
+        self.tray.notify(
+            "Sort Pilot",
+            f"시드 {len(completed)}개를 주제 폴더로 이동하고 어휘 프로필을 저장했습니다.",
+        )
         pending = self._pending_organize
         self._pending_organize = None
         if pending is not None:

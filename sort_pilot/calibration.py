@@ -17,9 +17,11 @@ from .classifier_engine.topics import (
     TopicProfile,
     TopicProfileStore,
     TopicProposal,
+    contextual_terms,
     normalize_tag,
     validate_topic_name,
 )
+from .models import ApprovedFileMove, FileSuggestion
 from .scanner import collect_candidates
 
 
@@ -75,8 +77,12 @@ class CalibrationSampler:
 
     def remember(self, paths: Iterable[Path]) -> None:
         """Atomically record approved sample fingerprints for future reruns."""
+        self.remember_fingerprints(self.fingerprint(path) for path in paths)
+
+    def remember_fingerprints(self, fingerprints: Iterable[str]) -> None:
+        """Atomically record fingerprints captured before sample files were moved."""
         seen = self._load_seen()
-        seen.update(self.fingerprint(path) for path in paths)
+        seen.update(fingerprints)
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"version": 1, "seen": sorted(seen)}
         with tempfile.NamedTemporaryFile(
@@ -142,7 +148,19 @@ class CalibrationService:
             cluster_id = self.cluster_id(proposal)
             suggested = (suggestions or {}).get(cluster_id)
             topic = suggested[0] if suggested else self.fallback_topic(proposal)
-            tags = list(suggested[1]) if suggested else list(proposal.top_terms[:6])
+            vocabulary = [
+                term
+                for term, _ in sorted(
+                    proposal.aggregate_weights.items(), key=lambda item: (-item[1], item[0])
+                )[:60]
+            ]
+            vocabulary_keys = {normalize_tag(term) for term in vocabulary}
+            model_tags = [
+                tag
+                for tag in suggested[1]
+                if normalize_tag(tag) in vocabulary_keys
+            ] if suggested else []
+            tags = model_tags + vocabulary
             clusters.append(
                 CalibrationCluster(
                     id=cluster_id,
@@ -155,11 +173,16 @@ class CalibrationService:
         return CalibrationDraft(records, clusters)
 
     def save_draft(self, draft: CalibrationDraft) -> list[TopicProfile]:
-        """Replace matching profiles and create new profiles from approved groups."""
+        """Build and atomically persist profiles from the approved calibration draft."""
+        profiles = self.profiles_from_draft(draft)
+        self.store.save(profiles)
+        return profiles
+
+    def profiles_from_draft(self, draft: CalibrationDraft) -> list[TopicProfile]:
+        """Build profiles from a draft without mutating persistent state."""
         profiles = self.store.load()
         by_id = {profile.id: profile for profile in profiles}
         by_name = {(profile.family, profile.name.casefold()): profile for profile in profiles}
-        updated_ids: set[str] = set()
         for cluster in draft.clusters:
             if cluster.excluded or not cluster.record_indexes:
                 continue
@@ -188,10 +211,39 @@ class CalibrationService:
             profile = merge_profile_evidence(profile, examples)
             by_id[profile.id] = profile
             by_name[key] = profile
-            updated_ids.add(profile.id)
         final = [by_id.get(profile.id, profile) for profile in profiles]
-        self.store.save(final)
+        self.store._validate_profiles(final)
         return final
+
+    @staticmethod
+    def seed_changes(
+        draft: CalibrationDraft,
+        desktop_folder: Path,
+        downloads_folder: Path,
+    ) -> list[ApprovedFileMove]:
+        """Build immediate approved moves for every non-excluded calibration seed."""
+        changes: list[ApprovedFileMove] = []
+        desktop = desktop_folder.resolve()
+        downloads = downloads_folder.resolve()
+        for cluster in draft.clusters:
+            if cluster.excluded:
+                continue
+            topic = validate_topic_name(cluster.topic)
+            for index in cluster.record_indexes:
+                record = draft.records[index]
+                source = record.source.resolve()
+                destination_root = "desktop" if source.is_relative_to(desktop) else "downloads"
+                if not source.is_relative_to(desktop) and not source.is_relative_to(downloads):
+                    destination_root = "current"
+                suggestion = FileSuggestion(
+                    record.file_path,
+                    record.file_name,
+                    record.suggested_name,
+                    f"{cluster.family}/{topic}",
+                    f"보정 시드로 확인한 주제 '{topic}'",
+                )
+                changes.append(ApprovedFileMove(suggestion, destination_root, suggestion.folder, True))
+        return changes
 
     @staticmethod
     def cluster_id(proposal: TopicProposal) -> str:
@@ -219,7 +271,7 @@ def merge_profile_evidence(
     records = list(records)
     if not records:
         return profile
-    new_weights = TopicClassifier.aggregate_terms(record.terms for record in records)
+    new_weights = TopicClassifier.aggregate_terms(contextual_terms(record.terms) for record in records)
     old_weights = profile.negative_weights if negative else profile.example_weights
     old_count = profile.negative_count if negative else profile.example_count
     new_count = len(records)

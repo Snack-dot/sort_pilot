@@ -23,6 +23,7 @@ USER_ORIGINS = frozenset({"user", "discovered", "migration"})
 WINDOWS_INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 GENERIC_PREFIXES = ("image:", "aspect:", "color:", "n_person:", "n_objects:", "subject:")
 GENERIC_TERMS = {"needs_content", "kakao_export", "no_ext"}
+CONTEXT_PREFIX = "co:"
 
 
 def utc_now() -> str:
@@ -65,11 +66,11 @@ class TopicProfile:
     updated_at: str = field(default_factory=utc_now)
 
     def pseudo_terms(self) -> dict[str, float]:
-        """Combine learned example weights with five-times-weighted tag tokens."""
+        """Combine learned contextual evidence with moderately weighted tag tokens."""
         terms = Counter(self.example_weights)
         for tag in self.tags:
             for token in tag_tokens(tag):
-                terms[token] += 5.0
+                terms[token] += 1.5
         return dict(terms)
 
     def negative_terms(self) -> dict[str, float]:
@@ -132,6 +133,28 @@ def vector_terms(vector: FeatureVector, source_weights: dict[str, float]) -> dic
             continue
         terms[token] += float(feature.n) * float(source_weights.get(feature.src, 1.0))
     return dict(terms)
+
+
+def contextual_terms(
+    terms: dict[str, float],
+    max_terms: int = 40,
+    max_pairs: int = 120,
+) -> dict[str, float]:
+    """Expand bounded base words with weighted within-file co-occurrence pairs."""
+    ranked = [
+        (term, weight)
+        for term, weight in sorted(terms.items(), key=lambda item: (-item[1], item[0]))
+        if weight > 0 and not term.startswith(CONTEXT_PREFIX)
+    ][:max_terms]
+    expanded = Counter({term: weight for term, weight in ranked})
+    pairs: list[tuple[float, str]] = []
+    for position, (left, left_weight) in enumerate(ranked):
+        for right, right_weight in ranked[position + 1:]:
+            pair = f"{CONTEXT_PREFIX}{left}|{right}"
+            pairs.append((math.sqrt(left_weight * right_weight) * 0.5, pair))
+    for weight, pair in sorted(pairs, key=lambda item: (-item[0], item[1]))[:max_pairs]:
+        expanded[pair] = weight
+    return dict(expanded)
 
 
 class TopicProfileStore:
@@ -275,7 +298,8 @@ class TopicClassifier:
             family_profiles = [profile for profile in enabled if profile.family == family]
             if not family_records or not family_profiles:
                 continue
-            documents = [record.terms for record in family_records]
+            contextual_records = {id(record): contextual_terms(record.terms) for record in family_records}
+            documents = list(contextual_records.values())
             documents.extend(profile.pseudo_terms() for profile in family_profiles)
             documents.extend(
                 profile.negative_terms() for profile in family_profiles if profile.negative_weights
@@ -289,7 +313,7 @@ class TopicClassifier:
                 for profile in family_profiles
             }
             for record in family_records:
-                record_vector = self._tfidf(record.terms, idf)
+                record_vector = self._tfidf(contextual_records[id(record)], idf)
                 profile, score, tag_match = self._best_profile(
                     record, record_vector, family_profiles, profile_vectors, negative_vectors
                 )
@@ -309,8 +333,9 @@ class TopicClassifier:
             indexed = [(index, record) for index, record in enumerate(records) if record.family == family and not record.topic]
             if not indexed:
                 continue
-            idf = self._idf([record.terms for _, record in indexed])
-            vectors = {index: self._tfidf(record.terms, idf) for index, record in indexed}
+            expanded = {index: contextual_terms(record.terms) for index, record in indexed}
+            idf = self._idf(list(expanded.values()))
+            vectors = {index: self._tfidf(expanded[index], idf) for index, _ in indexed}
             clusters = self._stable_clusters(
                 indexed,
                 vectors,
@@ -323,7 +348,11 @@ class TopicClassifier:
                 aggregate = self.aggregate_terms(records[index].terms for index in indexes)
                 centroid = self._centroid([vectors[index] for index in indexes])
                 ranked = sorted(indexes, key=lambda index: (-self._cosine(vectors[index], centroid), records[index].file_path))
-                top_terms = tuple(term for term, _ in sorted(centroid.items(), key=lambda item: (-item[1], item[0]))[:8])
+                top_terms = tuple(
+                    term
+                    for term, _ in sorted(aggregate.items(), key=lambda item: (-item[1], item[0]))[:20]
+                    if not term.startswith(CONTEXT_PREFIX)
+                )
                 proposals.append(
                     TopicProposal(
                         family=family,

@@ -99,7 +99,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
-| `_read_text`, `_docx`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
+| `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
 | `_ocr_engine`, `_ocr` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
@@ -115,7 +115,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `TopicProfile`, `pseudo_terms`, `negative_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and expose boosted positive/tag and negative correction evidence. |
 | `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
 | `TopicProposal` | `classifier_engine/topics.py` | Carry an automatic sample cluster, evidence, membership, and aggregate weights into calibration and local label generation. |
-| `vector_terms` | `classifier_engine/topics.py` | Convert mandatory engine features into weighted semantic terms for user-owned topic matching. |
+| `vector_terms`, `contextual_terms` | `classifier_engine/topics.py` | Convert engine features into base terms and bounded weighted co-occurrence context pairs. |
 | `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
 | `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
 | `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
@@ -130,9 +130,10 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `CalibrationCluster`, `CalibrationDraft` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction. |
-| `CalibrationSampler.__init__`, `select`, `remember` | `sort_pilot/calibration.py` | Configure the per-family limit, choose source/extension-diverse samples, and atomically remember approved fingerprints. |
+| `CalibrationSampler.__init__`, `select`, `remember`, `remember_fingerprints` | `sort_pilot/calibration.py` | Configure the per-family limit, choose source/extension-diverse samples, and atomically remember fingerprints captured before seed moves. |
 | `CalibrationSampler._stratified`, `_load_seen`, `fingerprint` | `sort_pilot/calibration.py` | Round-robin randomized buckets, tolerate corrupt state, and hash path metadata without storing readable paths. |
-| `CalibrationService.__init__`, `build_draft`, `save_draft` | `sort_pilot/calibration.py` | Convert TF-IDF proposals into an editable draft and persist only the final confirmed groups. |
+| `CalibrationService.__init__`, `build_draft`, `save_draft`, `profiles_from_draft` | `sort_pilot/calibration.py` | Convert proposals into an editable draft, build rich profiles without side effects, and persist confirmed groups. |
+| `CalibrationService.seed_changes` | `sort_pilot/calibration.py` | Convert approved seed membership into immediate same-root hierarchical moves. |
 | `CalibrationService.cluster_id`, `fallback_topic` | `sort_pilot/calibration.py` | Share stable opaque IDs with model I/O and provide deterministic top-term names when the LLM is unavailable. |
 | `merge_profile_evidence`, `learn_correction` | `sort_pilot/calibration.py` | Merge positive/negative centroids and apply confirmation or A→B correction feedback. |
 | `CalibrationFileList` | `sort_pilot/calibration_dialog.py` | Move sample records between cards while retaining record-index identity. |

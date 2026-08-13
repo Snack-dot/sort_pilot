@@ -8,6 +8,9 @@
 - Upgraded topic profiles to version 3 with positive and negative evidence; successful confirmations reinforce the chosen topic and corrections demote the rejected topic.
 - Replaced the temporary unmatched-proposal step with one full-batch topic review and success-gated learning.
 - Added calibration, signed-feedback, model-response, download-integrity, and archive-safety tests.
+- Changed calibration into step one of a two-step move: approval immediately creates topic folders and transactionally moves seeds; only remaining top-level files reach the final review.
+- Expanded profiles with up to 40 base terms and 120 weighted word co-occurrence pairs per file, plus up to 60 visible vocabulary tags per seed cluster.
+- Increased readable document vocabulary retention from 30 to 160 terms, added ODT body extraction, and added real-file tests proving body words reach tags and contextual profile evidence.
 
 ## 2026-08-13 — Full classifier-engine wiring
 
