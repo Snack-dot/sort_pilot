@@ -8,8 +8,10 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QComboBox,
     QHeaderView,
+    QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -22,6 +24,8 @@ from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, route_ty
 class PreviewDialog(QDialog):
     """Review and edit classifier destinations before any file is moved."""
 
+    USER_TYPES = ("선생님", "학생", "직장인")
+
     DESTINATION_OPTIONS = (
         ("바탕화면", "desktop"),
         ("다운로드 폴더", "downloads"),
@@ -32,15 +36,50 @@ class PreviewDialog(QDialog):
         suggestions: list[FileSuggestion],
         desktop_folder: Path,
         downloads_folder: Path,
+        user_type: str | None = None,
         parent=None,
     ) -> None:
         """Build an editable move preview for a completed analysis batch."""
         super().__init__(parent)
-        self.suggestions = suggestions
+        self.suggestions = sorted(
+            suggestions,
+            key=lambda suggestion: (
+                suggestion.folder.casefold(),
+                suggestion.file_name.casefold(),
+            ),
+        )
         self.setWindowTitle("Sort Pilot - AI 추천 검토")
         self.resize(900, 460)
 
         layout = QVBoxLayout(self)
+        user_type_row = QHBoxLayout()
+        user_type_row.addWidget(QLabel("사용자 유형:"))
+        self.user_type_combo = QComboBox()
+        self.user_type_combo.addItem("유형 선택", None)
+        for option in self.USER_TYPES:
+            self.user_type_combo.addItem(option, option)
+        if user_type in self.USER_TYPES:
+            self.user_type_combo.setCurrentIndex(self.user_type_combo.findData(user_type))
+        self.confirmed_user_type = user_type if user_type in self.USER_TYPES else None
+        self.user_type_combo.currentIndexChanged.connect(self._reset_user_type_confirmation)
+        user_type_row.addWidget(self.user_type_combo)
+        self.user_type_button = QPushButton("확인")
+        self.user_type_button.clicked.connect(self._confirm_user_type)
+        user_type_row.addWidget(self.user_type_button)
+        self.user_type_status = QLabel(
+            f"{self.confirmed_user_type} 선택됨" if self.confirmed_user_type else ""
+        )
+        user_type_row.addWidget(self.user_type_status)
+        user_type_row.addSpacing(20)
+        user_type_row.addWidget(QLabel("폴더 위치:"))
+        self.bulk_location_combo = QComboBox()
+        self.bulk_location_combo.addItem("일괄 선택", None)
+        for label, value in self.DESTINATION_OPTIONS:
+            self.bulk_location_combo.addItem(label, value)
+        self.bulk_location_combo.currentIndexChanged.connect(self._apply_bulk_location)
+        user_type_row.addWidget(self.bulk_location_combo)
+        user_type_row.addStretch()
+        layout.addLayout(user_type_row)
         layout.addWidget(QLabel("파일별 기준 위치와 정리 폴더를 확인한 뒤 승인하세요."))
 
         self.table = QTableWidget(len(suggestions), 6)
@@ -56,7 +95,7 @@ class PreviewDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
-        for row, suggestion in enumerate(suggestions):
+        for row, suggestion in enumerate(self.suggestions):
             original_name = QTableWidgetItem(suggestion.file_name)
             original_name.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             self.table.setItem(row, 0, original_name)
@@ -123,6 +162,34 @@ class PreviewDialog(QDialog):
         family = self.table.item(row, 3).text()
         topic_path = self.table.item(row, 4).text().strip().replace("\\", "/")
         return f"{family}/{topic_path or UNSORTED_TOPIC}"
+
+    def selected_user_type(self) -> str | None:
+        """Return the user type explicitly confirmed in this preview."""
+        return self.confirmed_user_type
+
+    def _apply_bulk_location(self) -> None:
+        """Apply one destination root selection to every preview row."""
+        destination = self.bulk_location_combo.currentData()
+        if destination is None:
+            return
+        for row in range(self.table.rowCount()):
+            selector = self.table.cellWidget(row, 2)
+            if isinstance(selector, QComboBox):
+                index = selector.findData(destination)
+                if index >= 0:
+                    selector.setCurrentIndex(index)
+
+    def _reset_user_type_confirmation(self) -> None:
+        self.confirmed_user_type = None
+        self.user_type_status.clear()
+
+    def _confirm_user_type(self) -> None:
+        user_type = self.user_type_combo.currentData()
+        if user_type is None:
+            QMessageBox.information(self, "사용자 유형 선택", "사용자 유형을 선택해 주세요.")
+            return
+        self.confirmed_user_type = str(user_type)
+        self.user_type_status.setText(f"{user_type} 선택됨")
 
     def _confirm(self) -> None:
         """Require at least one move and explicit final confirmation."""

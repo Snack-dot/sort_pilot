@@ -43,6 +43,7 @@ class AppController(QObject):
         self.profile_store.install_test_template_if_empty()
         self.topic_classifier = TopicClassifier()
         self.downloads_folder = Path.home() / "Downloads"
+        self.selected_user_type: str | None = None
         self.analysis = BatchAnalysisController(self)
         self.analysis.progress.connect(self._update_progress)
         self.analysis.completed.connect(self._analysis_completed)
@@ -290,9 +291,15 @@ class AppController(QObject):
         learning_records: dict[str, AnalysisRecord] | None = None,
     ) -> None:
         """Show editable destinations, execute approved moves, and learn migrations."""
-        dialog = PreviewDialog(suggestions, self._desktop_folder(), self.downloads_folder)
+        dialog = PreviewDialog(
+            suggestions,
+            self._desktop_folder(),
+            self.downloads_folder,
+            self.selected_user_type,
+        )
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
             return
+        self.selected_user_type = dialog.selected_user_type()
         changes = dialog.approved_changes()
         operations = [
             build_operation(item, self._destination_root(item.destination_root, item.suggestion.source))
