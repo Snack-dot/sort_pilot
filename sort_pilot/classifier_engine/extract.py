@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import mimetypes
 import re
 import threading
@@ -17,6 +18,10 @@ IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
 STOP = frozenset(get_stop_words("en")) | frozenset(get_stop_words("ko")) | {"그리고", "합니다", "있는", "없는"}
 MAX_BODY_TERMS = 160
+MAX_COLLOCATIONS = 40
+MIN_COLLOCATION_COUNT = 2
+MIN_COLLOCATION_PMI = 2.0
+COLLOCATION_PREFIXES = {2: "bi:", 3: "tri:"}
 SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj", "pair"})
 CONTENT_ANALYSIS_SUFFIXES = frozenset({
     ".txt", ".md", ".csv", ".rtf", ".pdf", ".docx", ".odt", ".pptx", ".xlsx",
@@ -67,6 +72,28 @@ def tokenize(text: str) -> list[str]:
         if token not in STOP and (len(token) >= 2 or re.search(r"[가-힣]", token)):
             result.append(token)
     return result
+
+
+def collocations(tokens: list[str], n: int) -> Counter[str]:
+    """Extract adjacent n-grams whose joint frequency exceeds chance (pointwise mutual information)."""
+    if len(tokens) < n:
+        return Counter()
+    unigram_counts = Counter(tokens)
+    total = len(tokens)
+    ngram_counts = Counter(tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1))
+    total_ngrams = sum(ngram_counts.values())
+    kept: Counter[str] = Counter()
+    for ngram, count in ngram_counts.items():
+        if count < MIN_COLLOCATION_COUNT:
+            continue
+        joint = count / total_ngrams
+        independent = 1.0
+        for word in ngram:
+            independent *= unigram_counts[word] / total
+        pmi = math.log(joint / independent) if independent > 0 else 0.0
+        if pmi >= MIN_COLLOCATION_PMI:
+            kept[COLLOCATION_PREFIXES[n] + " ".join(ngram)] = count
+    return kept
 
 
 def _read_text(path: Path, limit: int) -> str:
@@ -179,8 +206,12 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             elif suffix == ".zip": text = _archive(path)
         except Exception:
             partial = True
-    for token, count in Counter(tokenize(text)).most_common(MAX_BODY_TERMS):
+    body_tokens = tokenize(text)
+    for token, count in Counter(body_tokens).most_common(MAX_BODY_TERMS):
         features.append(Feature(token, "body", float(count)))
+    for n in (2, 3):
+        for ngram, count in collocations(body_tokens, n).most_common(MAX_COLLOCATIONS):
+            features.append(Feature(ngram, "body", float(count)))
     mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     route = "text" if text else "metadata"
     if mime.startswith("image/"):

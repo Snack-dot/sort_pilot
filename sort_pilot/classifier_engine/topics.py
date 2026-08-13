@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+import numpy as np
+
+from .embeddings import SEMANTIC_MATCH_THRESHOLD, doc_vectors, load_vocab, semantic_similarity
 from .extract import SEMANTIC_FEATURE_SOURCES
 from .hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, hierarchical_folder
 from .types import FeatureVector
@@ -319,6 +322,15 @@ class TopicClassifier:
                 profile.id: self._tfidf(profile.negative_terms(), idf)
                 for profile in family_profiles
             }
+            vocab = load_vocab()
+            semantic_profile_vectors = (
+                {
+                    profile.id: doc_vectors(profile.pseudo_terms(), vocab, idf)
+                    for profile in family_profiles
+                }
+                if vocab
+                else {}
+            )
             for record in family_records:
                 record_vector = self._tfidf(contextual_records[id(record)], idf)
                 profile, score, tag_match = self._best_profile(
@@ -331,7 +343,36 @@ class TopicClassifier:
                         f"사용자 태그 '{profile.name}' 일치" if tag_match
                         else f"{profile.name} 주제 유사도 {score:.3f}"
                     )
+                elif vocab:
+                    profile, score = self._semantic_match(
+                        contextual_records[id(record)], family_profiles, semantic_profile_vectors, vocab, idf
+                    )
+                    if profile is not None:
+                        record.topic = profile.name
+                        record.score = score
+                        record.reason = f"{profile.name} 의미 유사도 {score:.3f} (사전학습 단어 벡터)"
         return records
+
+    @staticmethod
+    def _semantic_match(
+        raw_terms: dict[str, float],
+        profiles: list[TopicProfile],
+        semantic_profile_vectors: dict[str, list[np.ndarray]],
+        vocab: dict[str, np.ndarray],
+        idf: dict[str, float],
+    ) -> tuple[TopicProfile | None, float]:
+        """Rescue an unmatched record using pretrained word-vector similarity."""
+        record_vectors = doc_vectors(raw_terms, vocab, idf)
+        if not record_vectors:
+            return None, 0.0
+        scored = [
+            (semantic_similarity(record_vectors, semantic_profile_vectors.get(profile.id, [])), profile)
+            for profile in profiles
+        ]
+        if not scored:
+            return None, 0.0
+        score, profile = max(scored, key=lambda item: (item[0], item[1].name.casefold()))
+        return (profile, score) if score >= SEMANTIC_MATCH_THRESHOLD else (None, 0.0)
 
     def discover(self, records: list[AnalysisRecord]) -> list[TopicProposal]:
         """Propose every unmatched file, grouping similar documents and images."""
@@ -347,6 +388,10 @@ class TopicClassifier:
             expanded = {index: contextual_terms(record.terms) for index, record in indexed}
             idf = self._idf(list(expanded.values()))
             vectors = {index: self._tfidf(expanded[index], idf) for index, _ in indexed}
+            vocab = load_vocab()
+            semantic_vectors = (
+                {index: doc_vectors(expanded[index], vocab, idf) for index, _ in indexed} if vocab else {}
+            )
             clusters = self._stable_clusters(
                 indexed,
                 vectors,
@@ -354,6 +399,7 @@ class TopicClassifier:
                     vectors,
                     DISCOVERY_THRESHOLDS.get(family, OTHER_PROFILE_THRESHOLD),
                 ),
+                semantic_vectors,
             )
             for indexes in clusters:
                 aggregate = self.aggregate_terms(records[index].terms for index in indexes)
@@ -486,8 +532,15 @@ class TopicClassifier:
         indexed: list[tuple[int, AnalysisRecord]],
         vectors: dict[int, dict[str, float]],
         threshold: float,
+        semantic_vectors: dict[int, list[np.ndarray]] | None = None,
     ) -> list[list[int]]:
-        """Build deterministic similarity-connected clusters for user review."""
+        """Build deterministic similarity-connected clusters for user review.
+
+        Two records connect if either their lexical co-occurrence cosine clears
+        ``threshold`` or, when pretrained word vectors are loaded, their
+        distinctive-word embedding similarity clears ``SEMANTIC_MATCH_THRESHOLD``.
+        """
+        semantic_vectors = semantic_vectors or {}
         ordered = [index for index, _ in sorted(indexed, key=lambda item: item[1].file_path.casefold())]
         clusters: list[list[int]] = []
         remaining = set(ordered)
@@ -504,7 +557,13 @@ class TopicClassifier:
                     candidate
                     for candidate in ordered
                     if candidate in remaining
-                    and self._cosine(vectors[current], vectors[candidate]) >= threshold
+                    and (
+                        self._cosine(vectors[current], vectors[candidate]) >= threshold
+                        or semantic_similarity(
+                            semantic_vectors.get(current, []), semantic_vectors.get(candidate, [])
+                        )
+                        >= SEMANTIC_MATCH_THRESHOLD
+                    )
                 ]
                 for candidate in neighbors:
                     remaining.remove(candidate)

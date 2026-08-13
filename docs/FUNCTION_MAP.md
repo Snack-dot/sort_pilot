@@ -100,12 +100,14 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | --- | --- | --- |
 | `supports_content_analysis` | `classifier_engine/extract.py` | Gate calibration candidates to formats with a bundled semantic-content extractor. |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
+| `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
 | `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
 | `_ocr_engine`, `_ocr` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
+| `load_vocab`, `doc_vectors`, `semantic_similarity`, `_resolve` | `classifier_engine/embeddings.py` | Lazily load the bundled pretrained word-vector vocabulary, expand YOLO object labels into plain words, and greedily match each document's most distinctive words against their closest counterpart instead of averaging them. |
 
 ## Hierarchy, profiles, and TF-IDF
 
@@ -121,7 +123,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
 | `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
 | `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose content-backed unmatched records, TF-IDF-group related samples, and calculate persistent example centroids. |
-| `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce content-only tag matching, signed evidence, and threshold gating. |
+| `_best_profile`, `_tag_matches`, `TopicClassifier._semantic_match` | `classifier_engine/topics.py` | Enforce content-only tag matching, signed evidence, threshold gating, and a pretrained-embedding rescue when lexical matching finds nothing. |
 | `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Provide sparse TF-IDF math, conservative small-batch thresholds, and deterministic similarity-connected groups. |
 
 ## Topic and migration UI
