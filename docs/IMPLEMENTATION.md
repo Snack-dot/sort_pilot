@@ -12,6 +12,8 @@ The root launcher and `sort_pilot/` application package use the manual Desktop/D
 
 The manual app uses a two-thread Qt pool. Each pool thread retains its own analyzer, engine pipeline, SQLite connection, and RapidOCR instance. Progress and results cross back to the Qt main thread through signals. See `FUNCTION_MAP.md` for complete ownership and `INTEGRATION_PROCESS.md` for the branch integration record.
 
+Hierarchical classification routes each file into a fixed Korean type family before applying a family-specific topic profile. User profiles outrank built-ins, and unmatched document/image records can form dependency-free current-batch TF-IDF proposals that require naming and approval. See `HIERARCHICAL_TOPICS.md` for scoring, persistence, UI, and migration behavior.
+
 ## Local model setup
 
 The ONNX model is generated from the official Ultralytics YOLOv8n checkpoint at 640×640 with opset 17. Binary model files are excluded from Git. Copy `yolov8n.onnx` to `data/models/yolov8n.onnx`; the classifier discovers it automatically.

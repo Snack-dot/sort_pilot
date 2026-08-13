@@ -17,7 +17,7 @@ class CoreTests(unittest.TestCase):
             path = Path(directory) / "운영체제 과제.PDF"
             path.write_text("test", encoding="utf-8")
             result = RuleBasedAnalyzer().analyze(path)
-            self.assertEqual(result.folder, "학교")
+            self.assertEqual(result.folder, "문서/학교")
             self.assertEqual(result.suggested_name, "운영체제_과제.pdf")
             self.assertEqual(
                 set(result.to_dict()),

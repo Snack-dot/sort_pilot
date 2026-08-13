@@ -1,6 +1,6 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends destination folders using a fully local classifier, and moves only the files explicitly approved by the user.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user.
 
 ## Current workflow
 
@@ -8,6 +8,8 @@ Sort Pilot is a Windows system-tray application that analyzes safe files on the 
 Tray action (Desktop / Downloads / both)
 → safe top-level candidate collection
 → deduplicated two-worker classification queue
+→ fixed file type + saved topic matching
+→ optional current-batch TF-IDF topic proposal
 → cancellable progress dialog
 → editable destination preview
 → explicit user approval
@@ -26,7 +28,7 @@ Single file:
 ```python
 {
     "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
-    "folder": "학교"
+    "folder": "문서/학교"
 }
 ```
 
@@ -35,17 +37,22 @@ Multiple files:
 ```python
 {
     "results": [
-        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "학교"},
-        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "금융/영수증"}
+        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "문서/학교"},
+        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "이미지/금융"}
     ]
 }
 ```
 
-Use `analyze_json(path)` or `analyze_many_json(paths)`. The desktop app uses `analyze(path)`, which adapts the same engine result into `FileSuggestion` and falls back to filename/extension rules if the local engine cannot produce a category.
+Use `analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. The desktop batch UI can additionally propose new TF-IDF topics, but public non-interactive calls never persist an inferred folder without approval.
 
 ## Features and safety
 
 - Manual Desktop, Downloads, or combined organization.
+- Deterministic top-level type routing with independent topic profiles per type.
+- User-created topic names, tags, enable/disable state, and learn-only example files.
+- Current-batch TF-IDF topic suggestions for documents (minimum 5) and images (minimum 10).
+- Explicit topic naming/approval before a discovered profile is saved or applied.
+- Manual previewed migration from flat folders such as `학교` to `문서/학교` or `이미지/학교`.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable progress with no partial preview after cancellation.
@@ -80,14 +87,17 @@ sort_pilot/app.py                  tray workflow and UI coordination
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
 sort_pilot/classifier.py           public JSON API and app adapter
 sort_pilot/classifier_engine/      local extraction, scoring, persistence, learning, vision
+sort_pilot/topic_dialogs.py        topic profile and TF-IDF proposal UI
+sort_pilot/migration.py            safe flat-folder hierarchy migration planning
 sort_pilot/history.py              atomic JSON move history and SQLite migration
 sort_pilot/preview.py              destination review and approval
 sort_pilot/organizer.py            safe moves, rollback, collision handling, Undo
 tests/                             app, queue, contract, and engine tests
 docs/FUNCTION_MAP.md               complete function ownership and call-flow map
 docs/INTEGRATION_PROCESS.md        app-branch integration record
+docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migration
 ```
 
-Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
+Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles are stored atomically in `topic_profiles.json`; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
 Model binaries are not committed. An optional locally exported model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.

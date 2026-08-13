@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-13 — Hierarchical type/topic classification
+
+- Split flat categories into fixed Korean type roots and independent semantic topics.
+- Added atomically persisted user profiles with tags, enable/disable state, and learn-only examples.
+- Added dependency-free sparse TF-IDF/cosine topic matching and current-batch discovery.
+- Added approval UI for discovered topics and management UI for custom folders/tags.
+- Added a separate previewed migration from existing flat folders into the new hierarchy.
+- Preserved the public `filepath`/`folder` JSON keys with nested folder values.
+
 ## 2026-08-13 — App and classifier-engine integration
 
 - Integrated live `origin/app` behavior into `architecture-srs-implementation`.

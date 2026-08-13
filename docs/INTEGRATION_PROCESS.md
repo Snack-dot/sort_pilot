@@ -65,3 +65,11 @@ Cancellation invalidates the active session token, removes queued jobs, lets alr
 - Quit cancels queued jobs and waits for in-flight jobs so Qt does not destroy a live thread pool.
 - Per-file exceptions are collected and reported without discarding successful suggestions.
 - No model or dependency was downloaded during this integration.
+
+## Hierarchical classifier follow-up
+
+The flat application category was subsequently split into a fixed Korean file-type family and a family-specific semantic topic. Worker extraction now returns reusable records; the main-thread coordinator applies an immutable profile snapshot and current-batch TF-IDF discovery without rereading files. `topic_profiles.json` stores only normalized tags and aggregated example weights.
+
+New tray workflows manage custom folders/tags and run a separately approved flat-folder migration. Discovered topics, learn-only examples, and approved migration groups create or update profiles, but physical folders still appear only during approved moves. Full algorithm, thresholds, persistence, and migration rules are documented in `HIERARCHICAL_TOPICS.md`.
+
+Follow-up verification covered the hierarchical JSON contract, all six fixed type routes, independent same-name profiles per family, user-profile precedence, document/image discovery minimums, preserved migration subpaths, and documentation coverage. The complete suite now passes 24 tests; compilation, dependency consistency, and Git whitespace validation also pass.

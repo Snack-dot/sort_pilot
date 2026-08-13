@@ -4,32 +4,20 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from sort_pilot.classifier import LocalPipelineAnalyzer
+from sort_pilot.classifier import LocalPipelineAnalyzer, RuleBasedAnalyzer
+from sort_pilot.classifier_engine.topics import TopicClassifier, TopicProfileStore
 
 
 class ClassifierContractTests(unittest.TestCase):
     def _analyzer(self) -> LocalPipelineAnalyzer:
         analyzer = LocalPipelineAnalyzer.__new__(LocalPipelineAnalyzer)
-        analyzer.fallback = SimpleNamespace(
-            _clean_name=lambda path: path.name,
-            analyze=lambda path: SimpleNamespace(
-                file_path=str(path.resolve()),
-                file_name=path.name,
-                suggested_name=path.name,
-                folder="기타",
-                reason="fallback",
-            ),
-        )
-        analyzer.pipeline = SimpleNamespace(
-            safe_classify=lambda path: (
-                None,
-                SimpleNamespace(category="학교", tier="t1", action="auto", margin=1.0),
-                1,
-            )
-        )
+        analyzer.fallback = RuleBasedAnalyzer()
+        analyzer.pipeline = None
+        analyzer.topic_classifier = TopicClassifier()
+        analyzer.profile_store = SimpleNamespace(load=TopicProfileStore._default_profiles)
         return analyzer
 
-    def test_single_json_object_contract(self) -> None:
+    def test_single_json_object_contract_uses_nested_folder(self) -> None:
         result = self._analyzer().analyze_json(
             Path("C:/Users/user/Downloads/운영체제과제.pdf")
         )
@@ -37,20 +25,20 @@ class ClassifierContractTests(unittest.TestCase):
             result,
             {
                 "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
-                "folder": "학교",
+                "folder": "문서/학교",
             },
         )
 
     def test_many_json_object_contract_preserves_order(self) -> None:
         result = self._analyzer().analyze_many_json(
-            [Path("C:/Downloads/첫번째.pdf"), Path("C:/Downloads/second.pdf")]
+            [Path("C:/Downloads/assignment.pdf"), Path("C:/Downloads/second.pdf")]
         )
         self.assertEqual(
             result,
             {
                 "results": [
-                    {"filepath": "C:/Downloads/첫번째.pdf", "folder": "학교"},
-                    {"filepath": "C:/Downloads/second.pdf", "folder": "학교"},
+                    {"filepath": "C:/Downloads/assignment.pdf", "folder": "문서/학교"},
+                    {"filepath": "C:/Downloads/second.pdf", "folder": "문서/미분류"},
                 ]
             },
         )

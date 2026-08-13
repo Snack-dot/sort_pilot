@@ -27,6 +27,12 @@ class Pipeline:
         disk = [p.name for p in root.iterdir() if p.is_dir()] if root.exists() else []
         return sorted(set(disk) | set(self.model.categories))
 
+    def extract_vector(self, path: Path):
+        """Extract one feature vector without making a legacy flat-category decision."""
+        if not is_processable(path, self.config.exclusions):
+            raise ValueError(f"Excluded or incomplete file: {path}")
+        return extract(path, self.config.max_content_mb)
+
     def classify(self, path: Path) -> tuple[object, Decision, int]:
         """Classify a processable path and persist its decision."""
         if not is_processable(path, self.config.exclusions):
