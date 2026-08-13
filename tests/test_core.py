@@ -46,7 +46,7 @@ class CoreTests(unittest.TestCase):
             destination_root = root / "organized"
             destination_root.mkdir()
             suggestion = FileSuggestion(str(source), source.name, "과제안내서.pdf", "학교", "test")
-            change = ApprovedFileMove(suggestion, "학교", True)
+            change = ApprovedFileMove(suggestion, "current", "학교", True)
             operation = build_operation(change, destination_root)
             execute_batch([operation], history)
             self.assertFalse(source.exists())
@@ -70,7 +70,7 @@ class CoreTests(unittest.TestCase):
             move_suggestion = FileSuggestion(
                 str(move_source), move_source.name, "suggested.txt", "학교", "test"
             )
-            move_change = ApprovedFileMove(move_suggestion, "학교", True)
+            move_change = ApprovedFileMove(move_suggestion, "current", "학교", True)
             move_operation = build_operation(move_change, destination_root)
             self.assertEqual(move_operation.destination_path, destination_root / "학교" / "original.txt")
 
@@ -87,7 +87,7 @@ class CoreTests(unittest.TestCase):
             suggestion = FileSuggestion(
                 str(source), source.name, source.name, "학교", "test"
             )
-            change = ApprovedFileMove(suggestion, "학교", True)
+            change = ApprovedFileMove(suggestion, "current", "학교", True)
 
             execute_batch([build_operation(change, destination_root)], history)
             undo_latest(history)
@@ -107,7 +107,7 @@ class CoreTests(unittest.TestCase):
             suggestion = FileSuggestion(
                 str(source), source.name, "ignored-name.txt", "금융", "test"
             )
-            change = ApprovedFileMove(suggestion, "금융", True)
+            change = ApprovedFileMove(suggestion, "current", "금융", True)
 
             execute_batch([build_operation(change, destination_root)], HistoryStore(history_path))
             restored = undo_latest(HistoryStore(history_path))

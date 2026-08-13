@@ -25,6 +25,7 @@ class ApprovedFileMove:
     """User-approved folder move based on an analyzer suggestion."""
 
     suggestion: FileSuggestion
+    destination_root: str
     folder: str
     move_approved: bool
 

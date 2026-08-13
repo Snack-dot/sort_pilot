@@ -72,11 +72,11 @@ class AppController:
         self.app.quit()
 
     def _show_preview(self, suggestions) -> None:
-        dialog = PreviewDialog(suggestions)
+        dialog = PreviewDialog(suggestions, self._desktop_folder(), self.downloads_folder)
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
             return
         operations = [
-            build_operation(item, item.suggestion.source.parent)
+            build_operation(item, self._destination_root(item.destination_root, item.suggestion.source))
             for item in dialog.approved_changes()
         ]
         try:
@@ -85,6 +85,14 @@ class AppController:
             QMessageBox.critical(None, "정리 실패", str(exc))
             return
         QMessageBox.information(None, "정리 완료", f"{len(completed)}개 파일을 정리했습니다.")
+
+    def _destination_root(self, choice: str, source: Path) -> Path:
+        roots = {
+            "current": source.parent,
+            "desktop": self._desktop_folder(),
+            "downloads": self.downloads_folder,
+        }
+        return roots.get(choice, source.parent)
 
 
 def run() -> int:
