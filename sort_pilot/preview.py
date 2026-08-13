@@ -19,6 +19,8 @@ from .models import ApprovedFileMove, FileSuggestion
 
 
 class PreviewDialog(QDialog):
+    """Review and edit classifier destinations before any file is moved."""
+
     DESTINATION_OPTIONS = (
         ("바탕화면", "desktop"),
         ("다운로드 폴더", "downloads"),
@@ -31,6 +33,7 @@ class PreviewDialog(QDialog):
         downloads_folder: Path,
         parent=None,
     ) -> None:
+        """Build an editable move preview for a completed analysis batch."""
         super().__init__(parent)
         self.suggestions = suggestions
         self.setWindowTitle("Sort Pilot - AI 추천 검토")
@@ -40,9 +43,7 @@ class PreviewDialog(QDialog):
         layout.addWidget(QLabel("파일별 기준 위치와 정리 폴더를 확인한 뒤 승인하세요."))
 
         self.table = QTableWidget(len(suggestions), 5)
-        self.table.setHorizontalHeaderLabels(
-            ["파일명", "현재 위치", "기준 위치", "옮길 위치", "이동"]
-        )
+        self.table.setHorizontalHeaderLabels(["파일명", "현재 위치", "기준 위치", "옮길 위치", "이동"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -66,9 +67,7 @@ class PreviewDialog(QDialog):
                 if suggestion.source.parent.resolve() == desktop_folder.resolve()
                 else "downloads"
             )
-            destination_selector.setCurrentIndex(
-                destination_selector.findData(default_destination)
-            )
+            destination_selector.setCurrentIndex(destination_selector.findData(default_destination))
             self.table.setCellWidget(row, 2, destination_selector)
             self.table.setItem(row, 3, QTableWidgetItem(suggestion.folder))
             self.table.setItem(row, 4, self._checked_item())
@@ -83,12 +82,14 @@ class PreviewDialog(QDialog):
 
     @staticmethod
     def _checked_item() -> QTableWidgetItem:
+        """Create a checked, user-toggleable table item."""
         item = QTableWidgetItem()
         item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Checked)
         return item
 
     def approved_changes(self) -> list[ApprovedFileMove]:
+        """Translate checked table rows into validated move requests."""
         approved: list[ApprovedFileMove] = []
         for row, original in enumerate(self.suggestions):
             move_approved = self.table.item(row, 4).checkState() == Qt.CheckState.Checked
@@ -108,6 +109,7 @@ class PreviewDialog(QDialog):
         return approved
 
     def _confirm(self) -> None:
+        """Require at least one move and explicit final confirmation."""
         count = len(self.approved_changes())
         if count == 0:
             QMessageBox.information(self, "Sort Pilot", "적용할 파일을 하나 이상 선택하세요.")

@@ -7,6 +7,8 @@ from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 
 class TrayIcon:
+    """Own the system-tray icon and all top-level application actions."""
+
     def __init__(
         self,
         organize_all: Callable[[], None],
@@ -15,6 +17,7 @@ class TrayIcon:
         undo: Callable[[], None],
         quit_program: Callable[[], None],
     ) -> None:
+        """Build the tray menu and connect its user actions."""
         self.tray = QSystemTrayIcon(self._icon())
         self.tray.setToolTip("Sort Pilot")
         self.menu = QMenu()
@@ -37,17 +40,26 @@ class TrayIcon:
         self.menu.addAction(self.quit_action)
         self.tray.setContextMenu(self.menu)
 
+    def set_busy(self, busy: bool) -> None:
+        """Disable conflicting organization actions while analysis is active."""
+        for action in (self.batch_action, self.desktop_action, self.downloads_action, self.undo_action):
+            action.setEnabled(not busy)
+
     def notify(self, title: str, message: str) -> None:
+        """Show a short informational system notification."""
         self.tray.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information, 4000)
 
     def show(self) -> None:
+        """Display the system-tray icon."""
         self.tray.show()
 
     def hide(self) -> None:
+        """Remove the system-tray icon."""
         self.tray.hide()
 
     @staticmethod
     def _icon() -> QIcon:
+        """Create the generated SP tray icon without external assets."""
         pixmap = QPixmap(64, 64)
         pixmap.fill(QColor("#2563eb"))
         painter = QPainter(pixmap)

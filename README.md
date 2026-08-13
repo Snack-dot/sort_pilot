@@ -1,109 +1,93 @@
 # Sort Pilot
 
-Sort Pilot은 사용자가 원할 때 바탕화면과 Downloads 폴더를 분석하고, AI가 **저장할 폴더를 추천**하면 사용자 승인 후 파일을 정리하는 Windows 데스크톱 앱입니다.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends destination folders using a fully local classifier, and moves only the files explicitly approved by the user.
 
-현재 버전은 실제 로컬 AI를 연결하기 전의 제품 기반입니다. 파일명·확장자 기반 경량 분석기가 AI 역할을 임시로 대신하며, 이후 분석기만 교체할 수 있도록 파일 조작 계층과 분리했습니다.
+## Current workflow
 
 ```text
-트레이에서 정리 메뉴 선택
-→ 대상 파일 수집
-→ AI에 의미 분석 요청
-→ 추천 저장 폴더 수신
-→ 사용자에게 추천 내용 표시
-→ 사용자 승인
-→ 프로그램이 원본 파일명을 유지한 채 이동
+Tray action (Desktop / Downloads / both)
+→ safe top-level candidate collection
+→ deduplicated two-worker classification queue
+→ cancellable progress dialog
+→ editable destination preview
+→ explicit user approval
+→ original-name file moves
+→ atomic JSON history and restart-safe Undo
 ```
 
-## 안전 원칙
+There is no real-time filesystem watcher in the integrated app. Manual organization avoids repeated background scans, and each worker reuses one local RapidOCR engine rather than initializing ONNX Runtime for every image.
 
-- 사용자 승인 없이 파일을 이동하거나 이름을 바꾸지 않습니다.
-- 분석기는 파일을 직접 조작하지 않고 추천 결과만 반환합니다.
-- 삭제 기능을 제공하지 않습니다.
-- 실행한 이동은 JSON 작업 기록에 저장하며 프로그램 재실행 후에도 마지막 작업 묶음을 Undo할 수 있습니다.
-- 폴더, 바로가기, 실행 파일, 스크립트, 임시 파일은 정리 대상에서 제외합니다.
+## Public classifier interface
 
-## 현재 기능
+`LocalPipelineAnalyzer` returns Python dictionaries that are directly JSON-compatible.
 
-- 규칙 기반 폴더 및 파일명 추천
-- 바탕화면·다운로드 폴더 개별 또는 통합 일괄 정리
-- 변경 전 표 형태 미리보기
-- 파일별 현재 위치 표시
-- 파일별 기준 위치(바탕화면·다운로드 폴더) 선택
-- 추천 정리 폴더 수정 및 파일별 이동 승인
-- 승인된 파일만 이동
-- 파일명 충돌 시 `_1`, `_2` 자동 추가
-- 마지막 정리 작업 전체 실행 취소 및 작업 중 생성된 빈 폴더 제거
-- 트레이에서 수동 정리 및 완전 종료
-
-분석 결과의 공용 형식은 다음과 같습니다. AI 영역과의 호환성을 위해 `suggested_name`은 유지하지만 현재 앱은 파일명 변경에 사용하지 않습니다. `confidence`는 사용하지 않습니다.
+Single file:
 
 ```python
 {
-    "file_path": "C:/Users/user/Downloads/document(4).pdf",
-    "file_name": "document(4).pdf",
-    "suggested_name": "운영체제_과제안내서.pdf",
-    "folder": "학교",
-    "reason": "운영체제 과제 안내 문서입니다."
+    "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
+    "folder": "학교"
 }
 ```
 
-## 설치 및 실행
+Multiple files:
 
-Python 3.11.9를 권장합니다.
+```python
+{
+    "results": [
+        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "학교"},
+        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "금융/영수증"}
+    ]
+}
+```
+
+Use `analyze_json(path)` or `analyze_many_json(paths)`. The desktop app uses `analyze(path)`, which adapts the same engine result into `FileSuggestion` and falls back to filename/extension rules if the local engine cannot produce a category.
+
+## Features and safety
+
+- Manual Desktop, Downloads, or combined organization.
+- Exactly two classification workers; duplicate paths are processed once per session.
+- One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
+- Cancellable progress with no partial preview after cancellation.
+- Local document, archive, image, OCR, and optional ONNX object features.
+- Editable destination root and relative folder for every file.
+- Original filenames are preserved; collisions receive numeric suffixes.
+- No move occurs before final approval.
+- Completed move batches are stored atomically in `history.json` and can be undone after restart.
+- The latest active legacy `history.db` batch is migrated once without modifying the database.
+- A Qt lock prevents two Sort Pilot instances from running simultaneously.
+- No cloud inference or file upload.
+
+## Setup and verification
+
+Python 3.11 is recommended.
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[test]"
+python -m pytest -q
 python main.py
 ```
 
-메인 창은 나타나지 않습니다. Windows 시스템 트레이에서 `SP` 아이콘을 우클릭해 사용합니다.
+The app has no main window. Right-click the `SP` system-tray icon to organize files, undo the latest batch, or quit.
 
-## 트레이 메뉴
-
-- `일괄 정리`: 바탕화면과 다운로드 폴더를 함께 분석합니다.
-- `바탕화면 정리`: 바탕화면의 안전한 일반 파일만 분석합니다.
-- `다운로드 폴더 정리`: 다운로드 폴더의 기존 파일을 분석합니다.
-- `마지막 정리 실행 취소`: 마지막 작업을 복원하고, 해당 작업이 만든 폴더가 비면 제거합니다.
-- `프로그램 종료`: 트레이를 정리한 뒤 프로세스를 종료합니다.
-
-승인된 파일은 AI가 반환한 상대 폴더를 원래 폴더 아래에 적용합니다. 예를 들어 AI가 `학교`를 추천하면 `Downloads/학교/<원본 파일명>`으로 이동합니다.
-
-## 구조
+## Repository layout
 
 ```text
-sort_pilot/
-├── main.py
-├── requirements.txt
-├── sort_pilot/
-│   ├── app.py          # 앱 흐름과 UI 연결
-│   ├── classifier.py   # 교체 가능한 분석기 인터페이스
-│   ├── filters.py      # 안전 제외 규칙
-│   ├── history.py      # JSON 작업 기록
-│   ├── models.py       # 팀 공용 데이터 모델
-│   ├── organizer.py    # 작업 계획, 이동, Undo
-│   ├── preview.py      # 승인 전 미리보기
-│   ├── scanner.py      # 폴더 스캔
-│   └── tray.py         # 시스템 트레이
-└── tests/
-    └── test_core.py
+main.py                            desktop entry point
+sort_pilot/app.py                  tray workflow and UI coordination
+sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
+sort_pilot/classifier.py           public JSON API and app adapter
+sort_pilot/classifier_engine/      local extraction, scoring, persistence, learning, vision
+sort_pilot/history.py              atomic JSON move history and SQLite migration
+sort_pilot/preview.py              destination review and approval
+sort_pilot/organizer.py            safe moves, rollback, collision handling, Undo
+tests/                             app, queue, contract, and engine tests
+docs/FUNCTION_MAP.md               complete function ownership and call-flow map
+docs/INTEGRATION_PROCESS.md        app-branch integration record
 ```
 
-## 테스트
+Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-코어 테스트는 외부 패키지 없이 실행할 수 있습니다.
-
-```powershell
-python -m unittest discover -s tests -v
-```
-
-테스트는 분석 결과 계약, 위험 파일 제외, 이동 및 Undo를 임시 폴더에서 검증합니다.
-
-## 다음 개발 단계
-
-1. PDF·TXT·이미지 텍스트 추출기 추가
-2. 경량 로컬 AI 분석기 구현 및 `FileAnalyzer` 인터페이스에 연결
-3. 추천 폴더 수정 UI와 사용자 규칙 저장
-4. 작업 기록 조회 화면과 선택적 Undo
-5. Windows 설치 파일 패키징
+Model binaries are not committed. An optional locally exported model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.

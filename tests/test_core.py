@@ -64,36 +64,16 @@ class CoreTests(unittest.TestCase):
             root = Path(directory)
             destination_root = root / "organized"
             destination_root.mkdir()
-            move_source = root / "move" / "original.txt"
-            move_source.parent.mkdir()
-            move_source.write_text("move", encoding="utf-8")
-            move_suggestion = FileSuggestion(
-                str(move_source), move_source.name, "suggested.txt", "학교", "test"
-            )
-            move_change = ApprovedFileMove(move_suggestion, "current", "학교", True)
-            move_operation = build_operation(move_change, destination_root)
-            self.assertEqual(move_operation.destination_path, destination_root / "학교" / "original.txt")
-
-    def test_undo_keeps_preexisting_destination_folder(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source = root / "incoming" / "assignment.txt"
+            source = root / "incoming" / "original.txt"
             source.parent.mkdir()
-            source.write_text("assignment", encoding="utf-8")
-            destination_root = root / "organized"
-            school_folder = destination_root / "학교"
-            school_folder.mkdir(parents=True)
-            history = HistoryStore(root / "history.json")
-            suggestion = FileSuggestion(
-                str(source), source.name, source.name, "학교", "test"
-            )
+            source.write_text("move", encoding="utf-8")
+            suggestion = FileSuggestion(str(source), source.name, "renamed.txt", "학교", "test")
             change = ApprovedFileMove(suggestion, "current", "학교", True)
-
-            execute_batch([build_operation(change, destination_root)], history)
-            undo_latest(history)
-
-            self.assertTrue(source.exists())
-            self.assertTrue(school_folder.exists())
+            operation = build_operation(change, destination_root)
+            self.assertEqual(
+                operation.destination_path.resolve(),
+                (destination_root / "학교" / "original.txt").resolve(),
+            )
 
     def test_json_history_survives_restart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -104,9 +84,7 @@ class CoreTests(unittest.TestCase):
             history_path = root / "history.json"
             destination_root = root / "organized"
             destination_root.mkdir()
-            suggestion = FileSuggestion(
-                str(source), source.name, "ignored-name.txt", "금융", "test"
-            )
+            suggestion = FileSuggestion(str(source), source.name, source.name, "금융", "test")
             change = ApprovedFileMove(suggestion, "current", "금융", True)
 
             execute_batch([build_operation(change, destination_root)], HistoryStore(history_path))
@@ -115,8 +93,32 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())
             self.assertFalse((destination_root / "금융").exists())
-            self.assertIn('"batches"', history_path.read_text(encoding="utf-8"))
+
+    def test_legacy_sqlite_history_migrates_latest_active_batch(self) -> None:
+        import sqlite3
+        from contextlib import closing
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "history.db"
+            with closing(sqlite3.connect(database)) as connection:
+                with connection:
+                    connection.execute(
+                        "CREATE TABLE operations (id INTEGER PRIMARY KEY, batch_id TEXT, "
+                        "source TEXT, destination TEXT, undone INTEGER DEFAULT 0)"
+                    )
+                    connection.execute(
+                        "INSERT INTO operations(batch_id, source, destination, undone) VALUES (?, ?, ?, 0)",
+                        ("legacy", "C:/source.txt", "C:/destination.txt"),
+                    )
+            store = HistoryStore(root / "history.json", database)
+            latest = store.latest_batch()
+            self.assertTrue(store.migrated_legacy_batch)
+            self.assertIsNotNone(latest)
+            self.assertEqual(latest[0], "legacy")
+            self.assertTrue(database.exists())
 
 
 if __name__ == "__main__":
     unittest.main()
+

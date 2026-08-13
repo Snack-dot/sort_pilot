@@ -10,6 +10,7 @@ TEMP_SUFFIXES = {".tmp", ".part", ".crdownload", ".download"}
 
 
 def is_safe_candidate(path: Path) -> bool:
+    """Return whether a path is a safe, complete, non-executable file candidate."""
     if not path.is_file() or path.name.startswith("."):
         return False
     suffix = path.suffix.casefold()

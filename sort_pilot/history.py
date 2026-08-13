@@ -2,22 +2,29 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from .models import FileOperation
 
 
 class HistoryStore:
-    """Small JSON-backed operation history used for restart-safe Undo."""
+    """Atomic JSON operation history with one-time legacy SQLite migration."""
 
-    def __init__(self, history_path: Path) -> None:
+    def __init__(self, history_path: Path, legacy_database_path: Path | None = None) -> None:
+        """Open JSON history, migrating the latest active SQLite batch if needed."""
         history_path.parent.mkdir(parents=True, exist_ok=True)
         self.history_path = history_path
+        self.migrated_legacy_batch = False
         if not self.history_path.exists():
-            self._write({"version": 1, "batches": []})
+            legacy_path = legacy_database_path or history_path.with_name("history.db")
+            data = self._legacy_data(legacy_path) or {"version": 1, "batches": []}
+            self._write(data)
 
     def record(self, batch_id: str, operation: FileOperation) -> None:
+        """Append a completed operation to a batch and persist atomically."""
         data = self._read()
         batch = self._batch(data, batch_id)
         batch["operations"].append(
@@ -26,6 +33,7 @@ class HistoryStore:
         self._write(data)
 
     def record_created_directories(self, batch_id: str, directories: list[Path]) -> None:
+        """Record directories created by a batch so Undo can remove them safely."""
         if not directories:
             return
         data = self._read()
@@ -39,6 +47,7 @@ class HistoryStore:
         self._write(data)
 
     def latest_batch(self) -> tuple[str, list[FileOperation], list[Path]] | None:
+        """Return the newest active batch in reverse operation order for Undo."""
         data = self._read()
         for batch in reversed(data["batches"]):
             if not batch.get("undone", False) and batch.get("operations"):
@@ -51,6 +60,7 @@ class HistoryStore:
         return None
 
     def mark_undone(self, batch_id: str) -> None:
+        """Mark a batch inactive after Undo or transactional rollback."""
         data = self._read()
         for batch in data["batches"]:
             if batch.get("batch_id") == batch_id:
@@ -58,7 +68,44 @@ class HistoryStore:
                 self._write(data)
                 return
 
+    def _legacy_data(self, database_path: Path) -> dict | None:
+        """Convert the latest active legacy SQLite batch without modifying it."""
+        if not database_path.is_file():
+            return None
+        try:
+            with closing(sqlite3.connect(database_path)) as connection:
+                row = connection.execute(
+                    "SELECT batch_id FROM operations WHERE undone = 0 ORDER BY id DESC LIMIT 1"
+                ).fetchone()
+                if row is None:
+                    return None
+                batch_id = str(row[0])
+                rows = connection.execute(
+                    "SELECT source, destination FROM operations "
+                    "WHERE batch_id = ? AND undone = 0 ORDER BY id",
+                    (batch_id,),
+                ).fetchall()
+        except sqlite3.Error:
+            return None
+        self.migrated_legacy_batch = bool(rows)
+        return {
+            "version": 1,
+            "batches": [
+                {
+                    "batch_id": batch_id,
+                    "operations": [
+                        {"source": str(source), "destination": str(destination)}
+                        for source, destination in rows
+                    ],
+                    "created_directories": [],
+                    "undone": False,
+                    "migrated_from": str(database_path),
+                }
+            ],
+        } if rows else None
+
     def _read(self) -> dict:
+        """Read and minimally validate the JSON history document."""
         try:
             data = json.loads(self.history_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -68,6 +115,7 @@ class HistoryStore:
         return data
 
     def _write(self, data: dict) -> None:
+        """Persist history using fsync and atomic replacement."""
         descriptor, temporary_name = tempfile.mkstemp(
             dir=self.history_path.parent,
             prefix=f"{self.history_path.stem}-",
@@ -85,6 +133,7 @@ class HistoryStore:
 
     @staticmethod
     def _batch(data: dict, batch_id: str) -> dict:
+        """Find or initialize a JSON batch record."""
         for batch in data["batches"]:
             if batch.get("batch_id") == batch_id:
                 return batch
