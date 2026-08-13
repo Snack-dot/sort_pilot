@@ -19,6 +19,7 @@ from .classifier_engine.topics import (
     TopicProfileStore,
     TopicProposal,
     contextual_terms,
+    humanize_term,
     normalize_tag,
     validate_topic_name,
 )
@@ -266,8 +267,13 @@ class CalibrationService:
 
     @staticmethod
     def fallback_topic(proposal: TopicProposal) -> str:
-        """Create a deterministic human-editable fallback without built-in semantics."""
-        source = " ".join(proposal.top_terms[:2]).strip()
+        """Create a deterministic human-editable fallback, preferring collocation phrases over loose terms."""
+        collocation = next(
+            (humanize_term(term) for term in proposal.top_terms if term.startswith(("bi:", "tri:"))),
+            None,
+        )
+        humanized = [word for word in (humanize_term(term) for term in proposal.top_terms) if word]
+        source = collocation or " ".join(humanized[:2]).strip()
         if not source and proposal.representative_files:
             source = Path(proposal.representative_files[0]).stem
         cleaned = "".join("_" if char in '<>:"/\\|?*' else char for char in source).strip(" ._")

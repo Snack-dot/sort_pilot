@@ -272,18 +272,12 @@ def test_version_two_profile_migrates_with_empty_negative_evidence(tmp_path):
 
 
 def test_local_tagger_rejects_incomplete_or_invalid_json():
-    from sort_pilot.classifier_engine.topics import TopicProposal
-
-    proposal = TopicProposal("문서", (0,), ("tax",), ("tax.pdf",), {"tax": 1})
-    cluster_id = LocalTagger.cluster_id(proposal)
-    valid = json.dumps(
-        {"results": [{"cluster_id": cluster_id, "topic": "세금", "tags": ["tax", "invoice"]}]}
-    )
-    assert LocalTagger._validate_response(valid, [proposal])[cluster_id][0] == "세금"
+    valid = json.dumps({"topic": "세금", "tags": ["tax", "invoice"]})
+    assert LocalTagger._validate_response(valid)[0] == "세금"
     with pytest.raises(ValueError):
-        LocalTagger._validate_response('{"results": []}', [proposal])
+        LocalTagger._validate_response('{"topic": "세금", "tags": []}')
     with pytest.raises(json.JSONDecodeError):
-        LocalTagger._validate_response("not json", [proposal])
+        LocalTagger._validate_response("not json")
 
 
 def test_download_verifies_checksum_before_atomic_install(tmp_path, monkeypatch):

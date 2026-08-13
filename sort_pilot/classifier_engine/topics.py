@@ -128,6 +128,17 @@ def tag_tokens(value: str) -> list[str]:
     return re.findall(r"[가-힣]+|[a-z][a-z0-9]*", normalize_tag(value))
 
 
+def humanize_term(term: str) -> str | None:
+    """Convert a feature token into a human-readable word or phrase, or None if not nameable."""
+    if term.startswith(("bi:", "tri:")):
+        return term.split(":", 1)[1]
+    if term.startswith("obj:"):
+        return term[len("obj:"):].replace("_", " ")
+    if term.startswith(("pair:", "co:")):
+        return None
+    return term
+
+
 def vector_terms(vector: FeatureVector, source_weights: dict[str, float]) -> dict[str, float]:
     """Convert only body/OCR/object evidence into terms used for semantic topics."""
     terms: Counter[str] = Counter()

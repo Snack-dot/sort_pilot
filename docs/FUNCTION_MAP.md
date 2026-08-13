@@ -114,7 +114,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `route_type`, `hierarchical_folder` | `classifier_engine/hierarchy.py` | Map extension/MIME to one fixed Korean root and build the reserved two-level fallback path. |
-| `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens` | `classifier_engine/topics.py` | Normalize profile metadata and reject unsafe/reserved topic names. |
+| `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens`, `humanize_term` | `classifier_engine/topics.py` | Normalize profile metadata, reject unsafe/reserved topic names, and convert a raw feature token into a human-readable name component. |
 | `TopicProfile`, `pseudo_terms`, `negative_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and expose boosted positive/tag and negative correction evidence. |
 | `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
 | `TopicProposal` | `classifier_engine/topics.py` | Carry an automatic sample cluster, evidence, membership, and aggregate weights into calibration and local label generation. |
