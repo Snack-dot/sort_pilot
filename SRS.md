@@ -1,5 +1,7 @@
 # SRS — Local File Classifier (working name: `tidy`)
 
+> **Implementation note (2026-08-13):** The integrated desktop MVP uses explicit Desktop/Downloads batch actions and a cancellable two-worker in-process queue. Watcher-oriented requirements below are retained as historical/future requirements and are not part of the current app workflow. The engine package is now `sort_pilot.classifier_engine`; its data directory remains `%APPDATA%\tidy` for compatibility.
+
 **Status:** Draft v0.3 · **Owner:** you · **Target:** MVP, Windows-first, Korean + English
 **Context:** 공모전 submission and personal daily-driver. Single user, single machine, no distribution.
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-13 — App and classifier-engine integration
+
+- Integrated live `origin/app` behavior into `architecture-srs-implementation`.
+- Replaced real-time watching with manual Desktop/Downloads/all organization.
+- Renamed `sort_pilot/tidy` to `sort_pilot/classifier_engine` while preserving its data path.
+- Added exact single/multiple JSON-object classifier contracts.
+- Added a cancellable, deduplicated two-worker Qt analysis queue and per-worker OCR reuse.
+- Adopted atomic JSON move history with latest-batch SQLite migration.
+- Added single-instance enforcement, full callable docstrings, and `docs/FUNCTION_MAP.md`.
+
 All notable changes to the architecture implementation branch are documented here.
 
 ## Unreleased

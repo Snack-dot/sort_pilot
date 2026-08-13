@@ -11,7 +11,10 @@ from .types import Decision, Tier3Stub
 
 
 class Pipeline:
+    """Orchestrate local extraction, tiered classification, and decision logging."""
+
     def __init__(self, config: Config | None = None, root: Path | None = None):
+        """Load configuration, state storage, model weights, and tier-three stub."""
         self.config = config or Config()
         self.root = root or data_dir()
         self.store = Store(self.root / "state.db")
@@ -19,11 +22,13 @@ class Pipeline:
         self.tier3 = Tier3Stub()
 
     def categories(self) -> list[str]:
+        """Return destination folders and learned model categories."""
         root = Path(self.config.destination_root)
         disk = [p.name for p in root.iterdir() if p.is_dir()] if root.exists() else []
         return sorted(set(disk) | set(self.model.categories))
 
     def classify(self, path: Path) -> tuple[object, Decision, int]:
+        """Classify a processable path and persist its decision."""
         if not is_processable(path, self.config.exclusions):
             raise ValueError(f"Excluded or incomplete file: {path}")
         tier1, marks = evaluate(path, load_rules(self.root / "rules.json"))
@@ -37,6 +42,7 @@ class Pipeline:
         return vector, decision, decision_id
 
     def safe_classify(self, path: Path):
+        """Return an unsorted decision instead of propagating extraction failures."""
         try: return self.classify(path)
         except Exception:
             from .types import FeatureVector, path_id
@@ -45,3 +51,6 @@ class Pipeline:
             decision = Decision(None, 0, 0, 0, "unsorted", "error")
             return vector, decision, self.store.record_decision(vector, decision)
 
+    def close(self) -> None:
+        """Close the pipeline's worker-local SQLite connection."""
+        self.store.close()

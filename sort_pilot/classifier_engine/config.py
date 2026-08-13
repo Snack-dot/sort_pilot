@@ -8,6 +8,8 @@ from pathlib import Path
 
 @dataclass
 class Config:
+    """Serializable thresholds, paths, exclusions, and engine safety settings."""
+
     watched_paths: list[str] = field(default_factory=lambda: [str(Path.home() / "Downloads")])
     destination_root: str = str(Path.home() / "Documents" / "Sorted")
     exclusions: list[str] = field(default_factory=list)
@@ -28,6 +30,7 @@ class Config:
 
     @classmethod
     def load(cls, path: Path) -> "Config":
+        """Load known settings or create a default configuration file."""
         if not path.exists():
             cfg = cls()
             cfg.save(path)
@@ -37,11 +40,13 @@ class Config:
         return cls(**{k: v for k, v in values.items() if k in known})
 
     def save(self, path: Path) -> None:
+        """Persist the current configuration as readable UTF-8 JSON."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(asdict(self), ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def data_dir() -> Path:
+    """Return the legacy-compatible private classifier data directory."""
     root = Path(os.getenv("APPDATA", Path.home() / ".local" / "share")) / "tidy"
     root.mkdir(parents=True, exist_ok=True)
     try:
@@ -49,4 +54,3 @@ def data_dir() -> Path:
     except OSError:
         pass
     return root
-

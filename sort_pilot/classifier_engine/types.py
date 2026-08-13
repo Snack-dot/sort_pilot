@@ -7,6 +7,8 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class Feature:
+    """One weighted token and its extraction source."""
+
     t: str
     src: str
     n: float = 1.0
@@ -14,6 +16,8 @@ class Feature:
 
 @dataclass
 class FeatureVector:
+    """Complete bounded local feature representation of one file."""
+
     file_id: str
     path: str
     size: int
@@ -24,11 +28,14 @@ class FeatureVector:
     peak_rss_mb: float = 0.0
 
     def to_dict(self) -> dict:
+        """Serialize the feature vector for persistence and evaluation."""
         return asdict(self)
 
 
 @dataclass
 class Decision:
+    """Classifier category, confidence evidence, action gate, and explanation."""
+
     category: str | None
     score: float
     margin: float
@@ -39,18 +46,25 @@ class Decision:
 
 
 class Classifier(Protocol):
-    def classify(self, vector: FeatureVector, candidates: list[str]) -> Decision | None: ...
+    """Protocol for optional higher-tier local classifiers."""
+
+    def classify(self, vector: FeatureVector, candidates: list[str]) -> Decision | None:
+        """Return a decision for a feature vector or decline classification."""
+        ...
 
 
 class Tier3Stub:
+    """Disabled-by-default extension point for a future local classifier."""
+
     def classify(self, vector: FeatureVector, candidates: list[str]) -> Decision | None:
+        """Decline classification until a Tier 3 implementation is configured."""
         return None
 
 
 def path_id(path: Path) -> str:
+    """Create a stable content-version identifier from path metadata."""
     import hashlib
 
     stat = path.stat()
     value = f"{path.resolve()}\0{stat.st_mtime_ns}\0{stat.st_size}".encode("utf-8")
     return "sha1:" + hashlib.sha1(value).hexdigest()
-

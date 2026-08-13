@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-The application lives in `ai-file-organizer-team-mvp-fixed/`. `main.py` starts the PyQt6 tray application, while `app_controller.py` coordinates the UI and file-watching flow. `watcher.py` detects completed downloads; `filters.py` excludes temporary or irrelevant files; `classifier.py` returns folder suggestions; and `organizer.py` performs approved moves. UI code is split across `tray.py`, `popup.py`, and `batch_preview.py`; desktop discovery belongs to `batch_scanner.py`. `README.md` documents the current classifier contract and development boundaries. No automated test or asset directories currently exist.
+The application lives in `ai-file-organizer-team-mvp-fixed/`. `main.py` starts the PyQt6 tray application, `app.py` coordinates manual Desktop/Downloads organization, and `analysis_queue.py` runs a cancellable two-worker classifier queue. `classifier.py` owns the public JSON contract and adapts `classifier_engine/`; `organizer.py` performs approved moves. Tests live under `tests/`, and the complete callable map is in `docs/FUNCTION_MAP.md`.
 
 ## Build, Test, and Development Commands
 
@@ -16,7 +16,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-The first two commands create and activate an isolated environment; installation provides pinned PyQt6 and watchdog versions. `python main.py` launches the background system-tray application. There is no build step or configured test runner yet. Installing packages, models, runtimes, or executables requires explicit approval; identify the source and exact version first.
+The first two commands create and activate an isolated environment; installation provides the pinned local classifier stack. `python main.py` launches the system-tray application and `python -m pytest -q` runs the configured test suite. Installing packages, models, runtimes, or executables requires explicit approval; identify the source and exact version first.
 
 ## Coding Style & Naming Conventions
 

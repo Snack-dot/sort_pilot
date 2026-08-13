@@ -7,6 +7,7 @@ from .extract import extract
 
 
 def feedback(model, vector, chosen: str, predicted: str | None = None, demote=.5):
+    """Apply user feedback to model token weights and persist the delta."""
     deltas = []
     for feature in vector.features:
         deltas.append((feature.t, chosen, feature.n))
@@ -16,6 +17,7 @@ def feedback(model, vector, chosen: str, predicted: str | None = None, demote=.5
 
 
 def bootstrap(model, root: Path, limit=200) -> dict[str, int]:
+    """Seed a model from files already organized into category folders."""
     counts = {}
     for category in (p for p in root.iterdir() if p.is_dir()):
         files = [p for p in category.rglob("*") if p.is_file()]; random.Random(0).shuffle(files)
@@ -25,9 +27,9 @@ def bootstrap(model, root: Path, limit=200) -> dict[str, int]:
 
 
 def calibrate(history: list[tuple[float, bool]], floor=.97, default=.55) -> float:
+    """Choose the lowest margin meeting an empirical accuracy floor."""
     if len(history) < 50: return default
     for threshold in sorted({margin for margin, _ in history}):
         chosen = [ok for margin, ok in history if margin >= threshold]
         if chosen and sum(chosen) / len(chosen) >= floor: return threshold
     return max(margin for margin, _ in history)
-

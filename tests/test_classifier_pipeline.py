@@ -1,14 +1,16 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
-from sort_pilot.tidy.actions import Executor, collision_free
-from sort_pilot.tidy.extract import extract, normalize_filename, tokenize
-from sort_pilot.tidy.learning import feedback
-from sort_pilot.tidy.model import NaiveBayesModel
-from sort_pilot.tidy.store import Store
-from sort_pilot.tidy.types import Feature, FeatureVector
-from sort_pilot.tidy.vision import derived, postprocess
+from sort_pilot.classifier_engine.actions import Executor, collision_free
+from sort_pilot.classifier_engine.extract import extract, normalize_filename, tokenize
+from sort_pilot.classifier_engine.learning import feedback
+from sort_pilot.classifier_engine.model import NaiveBayesModel
+from sort_pilot.classifier_engine.store import Store
+from sort_pilot.classifier_engine.types import Feature, FeatureVector
+from sort_pilot.classifier_engine.vision import derived, postprocess
+from sort_pilot.classifier_engine import extract as extract_module
 
 
 def test_filename_and_korean_normalization():
@@ -61,3 +63,19 @@ def test_vision_postprocess_and_derived():
     detections = postprocess(output)
     tokens = {feature.t for feature in derived(detections)}
     assert {"obj:person", "obj:laptop", "pair:laptop+person", "n_person:1"} <= tokens
+
+
+def test_rapidocr_engine_is_reused_within_worker_thread():
+    created = []
+
+    class FakeRapidOCR:
+        def __init__(self):
+            created.append(self)
+
+    extract_module._OCR_LOCAL = __import__("threading").local()
+    with patch("rapidocr.RapidOCR", FakeRapidOCR):
+        first = extract_module._ocr_engine()
+        second = extract_module._ocr_engine()
+
+    assert first is second
+    assert len(created) == 1

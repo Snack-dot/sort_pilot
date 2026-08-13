@@ -13,12 +13,14 @@ COCO = ("person bicycle car motorcycle airplane bus train truck boat traffic_lig
 
 
 def _iou(a, b) -> float:
+    """Calculate intersection-over-union for two bounding boxes."""
     x1, y1 = max(a[0], b[0]), max(a[1], b[1]); x2, y2 = min(a[2], b[2]), min(a[3], b[3])
     inter = max(0, x2-x1) * max(0, y2-y1)
     return inter / max((a[2]-a[0])*(a[3]-a[1]) + (b[2]-b[0])*(b[3]-b[1]) - inter, 1e-9)
 
 
 def postprocess(output: np.ndarray, conf=.15, iou=.45) -> list[dict]:
+    """Decode YOLO output and apply class-aware non-maximum suppression."""
     rows = np.squeeze(output).T
     candidates = []
     for row in rows:
@@ -33,6 +35,7 @@ def postprocess(output: np.ndarray, conf=.15, iou=.45) -> list[dict]:
 
 
 def derived(detections: list[dict]) -> list[Feature]:
+    """Convert object detections into counts, pairs, and size features."""
     grouped = {}
     for det in detections: grouped.setdefault(det["class"], []).append(det)
     features = [Feature(f"obj:{name}", "obj", min(len(items), 3) * sum(x["confidence"] for x in items)/len(items)) for name, items in grouped.items()]
@@ -48,6 +51,7 @@ def derived(detections: list[dict]) -> list[Feature]:
 
 
 def infer(path: Path, model: Path) -> tuple[list[Feature], list[dict]]:
+    """Run local ONNX object detection and return derived features."""
     import onnxruntime as ort
     image = Image.open(path).convert("RGB"); image.thumbnail((640, 640))
     canvas = Image.new("RGB", (640, 640), (114, 114, 114)); canvas.paste(image, ((640-image.width)//2, (640-image.height)//2))
@@ -55,4 +59,3 @@ def infer(path: Path, model: Path) -> tuple[list[Feature], list[dict]]:
     session = ort.InferenceSession(str(model), providers=["CPUExecutionProvider"])
     detections = postprocess(session.run(None, {session.get_inputs()[0].name: tensor})[0])
     return derived(detections), detections
-

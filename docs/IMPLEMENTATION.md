@@ -6,9 +6,11 @@ This work belongs on a feature branch rather than `main`. It turns the compact t
 
 ## Implemented layers
 
-`sort_pilot/tidy/` contains configuration, data contracts, extraction, Tier 1 rules, Naive Bayes classification, learning, persistence, reconciliation, actions, and ONNX vision. `eval/` provides repeatable classifier metrics and decision-resource export. `tests/` keeps the baseline application tests and adds classifier-pipeline coverage.
+`sort_pilot/classifier_engine/` contains configuration, data contracts, extraction, Tier 1 rules, Naive Bayes classification, learning, persistence, reconciliation, actions, and ONNX vision. `eval/` provides repeatable classifier metrics and decision-resource export. `tests/` covers the application, queue, public JSON contract, migration, and classifier pipeline.
 
-The root launcher and `sort_pilot/` application package retain the layout from `main`. `sort_pilot.classifier.LocalPipelineAnalyzer` adapts the new pipeline to the existing `FileSuggestion` contract and falls back to the original rules when the pipeline is unavailable or uncertain.
+The root launcher and `sort_pilot/` application package use the manual Desktop/Downloads workflow from `app`. `sort_pilot.classifier.LocalPipelineAnalyzer` adapts `sort_pilot.classifier_engine` to the existing `FileSuggestion` contract and falls back to the original rules when the engine is unavailable or uncertain.
+
+The manual app uses a two-thread Qt pool. Each pool thread retains its own analyzer, engine pipeline, SQLite connection, and RapidOCR instance. Progress and results cross back to the Qt main thread through signals. See `FUNCTION_MAP.md` for complete ownership and `INTEGRATION_PROCESS.md` for the branch integration record.
 
 ## Local model setup
 

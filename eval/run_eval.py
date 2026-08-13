@@ -4,7 +4,7 @@ import argparse
 import csv
 from pathlib import Path
 
-from sort_pilot.tidy.pipeline import Pipeline
+from sort_pilot.classifier_engine.pipeline import Pipeline
 
 
 def main() -> None:

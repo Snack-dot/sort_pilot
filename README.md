@@ -1,22 +1,66 @@
-# Sort Pilot — Local Classifier Architecture
+# Sort Pilot
 
-This branch develops the SRS and architecture-driven local classification engine on top of the tray application in `main`. It preserves `main`'s root launcher and `sort_pilot/` package layout while adding the experimental local pipeline under `sort_pilot/tidy/`.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends destination folders using a fully local classifier, and moves only the files explicitly approved by the user.
 
-## What is included
+## Current workflow
 
-- Tier 1 ordered filename and extension rules
-- Local document, archive, image, and OCR feature extraction
-- Korean morphological tokenization
-- Multinomial Naive Bayes scoring, margin gating, and explanations
-- SQLite queue, review records, decisions, and undo journal
-- Bootstrap learning, feedback, calibration, and atomic model storage
-- Dry-run-safe action execution and startup reconciliation
-- YOLOv8n ONNX object, pair, count, and image-context features
-- Evaluation and resource-export utilities
+```text
+Tray action (Desktop / Downloads / both)
+→ safe top-level candidate collection
+→ deduplicated two-worker classification queue
+→ cancellable progress dialog
+→ editable destination preview
+→ explicit user approval
+→ original-name file moves
+→ atomic JSON history and restart-safe Undo
+```
 
-See [SRS.md](SRS.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for requirements, design, and current coverage.
+There is no real-time filesystem watcher in the integrated app. Manual organization avoids repeated background scans, and each worker reuses one local RapidOCR engine rather than initializing ONNX Runtime for every image.
 
-## Setup
+## Public classifier interface
+
+`LocalPipelineAnalyzer` returns Python dictionaries that are directly JSON-compatible.
+
+Single file:
+
+```python
+{
+    "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
+    "folder": "학교"
+}
+```
+
+Multiple files:
+
+```python
+{
+    "results": [
+        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "학교"},
+        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "금융/영수증"}
+    ]
+}
+```
+
+Use `analyze_json(path)` or `analyze_many_json(paths)`. The desktop app uses `analyze(path)`, which adapts the same engine result into `FileSuggestion` and falls back to filename/extension rules if the local engine cannot produce a category.
+
+## Features and safety
+
+- Manual Desktop, Downloads, or combined organization.
+- Exactly two classification workers; duplicate paths are processed once per session.
+- One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
+- Cancellable progress with no partial preview after cancellation.
+- Local document, archive, image, OCR, and optional ONNX object features.
+- Editable destination root and relative folder for every file.
+- Original filenames are preserved; collisions receive numeric suffixes.
+- No move occurs before final approval.
+- Completed move batches are stored atomically in `history.json` and can be undone after restart.
+- The latest active legacy `history.db` batch is migrated once without modifying the database.
+- A Qt lock prevents two Sort Pilot instances from running simultaneously.
+- No cloud inference or file upload.
+
+## Setup and verification
+
+Python 3.11 is recommended.
 
 ```powershell
 python -m venv .venv
@@ -26,22 +70,24 @@ python -m pytest -q
 python main.py
 ```
 
+The app has no main window. Right-click the `SP` system-tray icon to organize files, undo the latest batch, or quit.
+
 ## Repository layout
 
 ```text
-main.py                    # desktop entry point
-requirements.txt           # runtime dependencies
-sort_pilot/                # application package from main
-  classifier.py            # stable analyzer contract and pipeline adapter
-  tidy/                    # architecture-driven local classifier engine
-tests/                     # baseline app and classifier tests
-data/                      # default rules and seed lexicon
-docs/                      # implementation notes
-eval/                      # offline evaluation utilities
+main.py                            desktop entry point
+sort_pilot/app.py                  tray workflow and UI coordination
+sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
+sort_pilot/classifier.py           public JSON API and app adapter
+sort_pilot/classifier_engine/      local extraction, scoring, persistence, learning, vision
+sort_pilot/history.py              atomic JSON move history and SQLite migration
+sort_pilot/preview.py              destination review and approval
+sort_pilot/organizer.py            safe moves, rollback, collision handling, Undo
+tests/                             app, queue, contract, and engine tests
+docs/FUNCTION_MAP.md               complete function ownership and call-flow map
+docs/INTEGRATION_PROCESS.md        app-branch integration record
 ```
 
-Model binaries are intentionally not committed. Place the locally exported model at `data/models/yolov8n.onnx`. Expected hashes and export provenance are documented in [THIRD_PARTY.md](THIRD_PARTY.md).
+Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-## Safety
-
-Classification is local-only. Do not upload files or use cloud inference. Dry-run remains the default, uncertain decisions enter the review queue, and model or dependency downloads require explicit approval.
+Model binaries are not committed. An optional locally exported model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.

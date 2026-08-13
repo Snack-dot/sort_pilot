@@ -1,5 +1,7 @@
 # Architecture — Local File Classifier
 
+> **Implemented-app note (2026-08-13):** The diagrams below describe the original long-lived watcher proposal. The integrated MVP instead uses manual Desktop/Downloads collection, an in-process `QThreadPool` capped at two workers, one reusable pipeline/OCR engine per worker, and Qt signals back to the UI. See `docs/FUNCTION_MAP.md` for the implemented call graph.
+
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that document.
 
 ---

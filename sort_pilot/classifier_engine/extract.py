@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mimetypes
 import re
+import threading
 import time
 import zipfile
 from collections import Counter
@@ -14,9 +15,11 @@ IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
 STOP = {"the", "and", "for", "with", "from", "this", "that", "그리고", "합니다", "있는", "없는"}
 _KIWI = None
+_OCR_LOCAL = threading.local()
 
 
 def normalize_filename(path: Path) -> list[str]:
+    """Normalize timestamp, copy, case, and separator patterns into tokens."""
     stem = re.sub(r"_?\d{8}_\d{6}", "", path.stem)
     stem = re.sub(r"\s*\(\d+\)$", "", stem)
     if stem.lower().rstrip("_") == "kakaotalk":
@@ -26,6 +29,7 @@ def normalize_filename(path: Path) -> list[str]:
 
 
 def tokenize(text: str) -> list[str]:
+    """Tokenize Korean and Latin text using Kiwi with a regex fallback."""
     global _KIWI
     try:
         if _KIWI is None:
@@ -53,6 +57,7 @@ def tokenize(text: str) -> list[str]:
 
 
 def _read_text(path: Path, limit: int) -> str:
+    """Read bounded plain text using common Korean and Unicode encodings."""
     for encoding in ("utf-8-sig", "cp949", "utf-16"):
         try: return path.read_text(encoding=encoding)[:limit]
         except (UnicodeError, OSError): continue
@@ -60,30 +65,35 @@ def _read_text(path: Path, limit: int) -> str:
 
 
 def _docx(path: Path, limit: int) -> str:
+    """Extract bounded text directly from a DOCX document XML payload."""
     with zipfile.ZipFile(path) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
     return " ".join(node.text or "" for node in root.iter())[:limit]
 
 
 def _archive(path: Path) -> str:
+    """Extract representative top-level names from a ZIP archive."""
     if path.suffix.lower() != ".zip": return ""
     with zipfile.ZipFile(path) as archive:
         return " ".join(Path(name).parts[0] for name in archive.namelist()[:500])
 
 
 def _pdf(path: Path, max_chars: int, max_pages: int = 5) -> str:
+    """Extract bounded text from the first pages of a PDF."""
     import pymupdf
     with pymupdf.open(path) as document:
         return " ".join(page.get_text() for page in list(document)[:max_pages])[:max_chars]
 
 
 def _pptx(path: Path, limit: int) -> str:
+    """Extract bounded text from PowerPoint slide text frames."""
     from pptx import Presentation
     deck = Presentation(path)
     return " ".join(shape.text for slide in deck.slides for shape in slide.shapes if hasattr(shape, "text_frame"))[:limit]
 
 
 def _xlsx(path: Path, limit: int) -> str:
+    """Extract bounded sheet names and cell values from a workbook."""
     from openpyxl import load_workbook
     book = load_workbook(path, read_only=True, data_only=True)
     values = []
@@ -98,6 +108,7 @@ def _xlsx(path: Path, limit: int) -> str:
 
 
 def _image_features(path: Path) -> tuple[str, list[Feature]]:
+    """Route an image and derive camera, aspect, and color metadata."""
     from PIL import Image, ImageStat
     with Image.open(path) as image:
         exif = image.getexif(); width, height = image.size
@@ -111,14 +122,26 @@ def _image_features(path: Path) -> tuple[str, list[Feature]]:
         return route, features
 
 
-def _ocr(path: Path) -> list[Feature]:
+def _ocr_engine():
+    """Return one lazily initialized RapidOCR engine per worker thread."""
     from rapidocr import RapidOCR
-    result = RapidOCR()(str(path))
+
+    engine = getattr(_OCR_LOCAL, "engine", None)
+    if engine is None:
+        engine = RapidOCR()
+        _OCR_LOCAL.engine = engine
+    return engine
+
+
+def _ocr(path: Path) -> list[Feature]:
+    """Extract at most forty OCR tokens while reusing the thread's engine."""
+    result = _ocr_engine()(str(path))
     texts = getattr(result, "txts", None) or []
     return [Feature(token, "ocr") for token in tokenize(" ".join(texts))[:40]]
 
 
 def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
+    """Build a bounded local feature vector from filename, content, and media."""
     started = time.perf_counter(); stat = path.stat(); features = []
     features.extend(Feature(t, "filename") for t in normalize_filename(path))
     features.append(Feature(path.suffix.lower().lstrip(".") or "no_ext", "ext"))
@@ -153,11 +176,13 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
 
 
 def is_processable(path: Path, exclusions=()) -> bool:
+    """Reject directories, partial downloads, office locks, and excluded paths."""
     import fnmatch
     return path.is_file() and path.suffix.lower() not in IN_PROGRESS and not path.name.startswith("~$") and not any(fnmatch.fnmatch(str(path), p) for p in exclusions)
 
 
 def is_stable(path: Path, interval=2.0) -> bool:
+    """Check that file size and modification time remain unchanged."""
     try:
         first = path.stat(); time.sleep(interval); second = path.stat()
         if (first.st_size, first.st_mtime_ns) != (second.st_size, second.st_mtime_ns): return False

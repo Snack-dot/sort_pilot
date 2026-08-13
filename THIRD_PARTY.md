@@ -3,7 +3,6 @@
 | Dependency | Version | License | Purpose |
 | --- | --- | --- | --- |
 | PyQt6 | 6.7.1 | GPL-3.0/commercial | Desktop tray and dialogs |
-| watchdog | 4.0.1 | Apache-2.0 | Native filesystem events |
 | kiwipiepy | 0.23.2 | LGPL-3.0 | Korean morphology |
 | PyMuPDF | 1.28.0 | AGPL-3.0/commercial | PDF text and rendering |
 | python-docx | 1.2.0 | MIT | DOCX text extraction |
