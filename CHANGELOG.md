@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-13 — Sample-first topic calibration
+
+- Added first-run and tray-triggered calibration using up to 3 randomized, extension-diverse files per type without moving samples; one- and two-file families remain eligible.
+- Added adaptive TF-IDF clustering and an editable family board with reassignment, split, merge, tags, and explicit sample exclusion.
+- Added consent-gated Google Gemma 3 1B Q4 and llama.cpp CPU installation with pinned size/SHA-256 verification, safe extraction, localhost-only inference, and TF-IDF fallback.
+- Upgraded topic profiles to version 3 with positive and negative evidence; successful confirmations reinforce the chosen topic and corrections demote the rejected topic.
+- Replaced the temporary unmatched-proposal step with one full-batch topic review and success-gated learning.
+- Added calibration, signed-feedback, model-response, download-integrity, and archive-safety tests.
+
 ## 2026-08-13 — Full classifier-engine wiring
 
 - Removed `classifier.py`, its compatibility alias, and the temporary rule-based/fallback implementation.
@@ -8,6 +17,8 @@
 - Removed automatic engine-category topic mapping, built-in semantic profiles, and the seed lexicon.
 - Converted default coursework/finance rules into evidence marks rather than terminal topic categories.
 - Added real-pipeline tests proving fresh files remain `미분류` until a user-created profile or explicitly approved proposal names the topic.
+- Removed the small-batch proposal minimum so every unmatched file reaches a checked user-assignment row.
+- Added editable existing/new topic selectors and merged learning when several rows use the same user topic.
 
 ## 2026-08-13 — Hierarchical type/topic classification
 

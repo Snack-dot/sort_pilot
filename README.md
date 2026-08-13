@@ -10,7 +10,8 @@ Tray action (Desktop / Downloads / both)
 → deduplicated two-worker classification queue
 → real Pipeline Tier-1 / Naive Bayes decision and persistence
 → fixed file type + user-created topic profile resolution
-→ optional current-batch TF-IDF topic proposal
+→ first-run sample calibration when no user topics exist
+→ full-batch editable topic review
 → cancellable progress dialog
 → editable destination preview
 → explicit user approval
@@ -55,7 +56,7 @@ Multiple files:
 }
 ```
 
-Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. A fresh install contains no semantic topics. `내과제` and `구매기록` above are examples of profiles explicitly named by the user. Engine decisions are persisted as evidence but never become destination topic names automatically. The desktop batch UI can propose TF-IDF groups, but a user must select and name each topic before it is saved or applied.
+Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. A fresh install contains no semantic topics. `내과제` and `구매기록` above are examples of profiles confirmed by the user during calibration. Engine decisions are persisted as evidence but never become destination topic names automatically.
 
 ## Features and safety
 
@@ -63,8 +64,11 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
 - User-created topic names, tags, enable/disable state, and learn-only example files.
-- Current-batch TF-IDF topic suggestions for documents (minimum 5) and images (minimum 10).
-- Explicit topic naming/approval before a discovered profile is saved or applied.
+- First-run calibration samples up to 3 safe top-level files per type, prioritizes extensions and roots fairly, and never moves sample files. One or two available files still start calibration.
+- Adaptive TF-IDF grouping proposes topics; an optional local Google Gemma 3 1B model improves names and tag lists after explicit terms/download consent.
+- The calibration board supports moving files between topics, renaming, editing tags, splitting, merging, and excluding samples.
+- The final batch review uses an editable topic selector. Confirmed predictions reinforce a profile; corrections reinforce the chosen profile and demote the rejected profile.
+- Profile data is version 3 and stores independent positive and negative aggregate evidence without raw contents or example paths.
 - Manual previewed migration from a user-named flat folder such as `직접선택` to `문서/직접선택` or `이미지/직접선택`.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
@@ -98,6 +102,9 @@ The app has no main window. Right-click the `SP` system-tray icon to organize fi
 main.py                            desktop entry point
 sort_pilot/app.py                  tray workflow and UI coordination
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
+sort_pilot/calibration.py          bounded sampling, editable drafts, signed feedback
+sort_pilot/calibration_dialog.py   calibration board and consent/install UI
+sort_pilot/local_tagger.py         pinned Gemma/llama.cpp install and localhost inference
 sort_pilot/classifier_engine/      sole public classifier, extraction, scoring, persistence, topics, vision
 sort_pilot/topic_dialogs.py        topic profile and TF-IDF proposal UI
 sort_pilot/migration.py            safe flat-folder hierarchy migration planning
@@ -110,6 +117,6 @@ docs/INTEGRATION_PROCESS.md        app-branch integration record
 docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migration
 ```
 
-Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles are stored atomically in `topic_profiles.json`; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
+Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles and hashed calibration history are stored locally; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-Model binaries are not committed. An optional locally exported model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.
+Model binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or inference fails, TF-IDF names keep calibration usable. The optional vision model belongs at `data/models/yolov8n.onnx`; provenance requirements are in `THIRD_PARTY.md`.

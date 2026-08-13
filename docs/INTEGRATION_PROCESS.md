@@ -74,6 +74,10 @@ New tray workflows manage custom folders/tags and run a separately approved flat
 
 Follow-up verification covered the hierarchical JSON contract, all six fixed type routes, independent same-name profiles per family, user-profile precedence, document/image discovery minimums, preserved migration subpaths, and documentation coverage. The complete suite now passes 24 tests; compilation, dependency consistency, and Git whitespace validation also pass.
 
+The user-assignment follow-up removed the 5-document/10-image proposal gate after it caused small and mixed batches to fall directly into `미분류`. Every unmatched record now receives a checked assignment row. Similar documents/images remain TF-IDF-grouped, and the editable selector can reuse an existing user topic or create a newly named one.
+
+User-assignment verification brings the complete suite to 32 passing tests. An offscreen Qt smoke test also confirmed checked-by-default rows, existing-topic selection, editable new names, and successful approval.
+
 ## Full engine-wiring correction
 
 The temporary `RuleBasedAnalyzer`, fallback implementation, `classifier.py`, and compatibility aliases were removed after an integration audit showed that the earlier adapter consumed only extracted terms in the hierarchical workflow. `classifier_engine.analyzer.ClassifierEngine` is now the sole implementation and calls `Pipeline.safe_classify()` for every file.
@@ -83,3 +87,13 @@ Contract tests now instantiate a real pipeline and SQLite decision store instead
 The final topic-policy correction removed seeded semantic profiles and automatic category-to-topic aliases. Version-1 built-ins are migrated out of persisted profile documents, and default coursework/purchase rules now emit evidence marks rather than terminal categories. Only user-created profiles, named/approved TF-IDF proposals, and approved migration groups can select topics.
 
 Final correction verification: 30 automated tests passed, including the real engine running through the Qt analysis queue. Package/test/eval compilation, installed dependency consistency, callable documentation/function-map coverage, and Git whitespace validation also passed.
+
+## Sample-first calibration implementation
+
+The temporary per-batch unmatched proposal table was superseded by a calibration transaction. With an empty profile store, the controller samples at most three safe top-level files from each fixed family across Desktop and Downloads; one or two files still produce a calibration group. Root/extension buckets are randomized in rounds, previously unseen hashed fingerprints are preferred, and no sample is moved.
+
+The classifier now derives discovery granularity from the sample similarity distribution. A family-scoped board lets the user reassign files, rename and tag clusters, split or merge groups, retain existing profiles during recalibration, and exclude unsuitable examples. Profiles are written only after the complete board passes validation.
+
+Google Gemma 3 1B Q4 was selected after the user explicitly rejected Chinese models. Installation is gated by a Gemma-terms dialog; both the 806,058,240-byte GGUF and llama.cpp `b10405` Windows CPU archive have pinned SHA-256 digests. Input is limited to bounded filenames, family names, and extracted top terms. Inference runs for one request on loopback and the child process is terminated in all paths. Refusal, download failure, timeout, or invalid JSON falls back to deterministic TF-IDF labels.
+
+Topic persistence is version 3. Positive example centroids remain compatible with earlier data, while negative centroids record files corrected away from a topic. The final score subtracts `0.65 × negative cosine`; hard tag overrides were removed so repeated corrections can defeat an overly broad tag. Feedback is committed only for files that moved successfully.

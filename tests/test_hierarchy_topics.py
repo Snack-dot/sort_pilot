@@ -58,7 +58,7 @@ def test_version_one_builtin_profiles_are_removed_during_load():
         profiles = TopicProfileStore(path).load()
         persisted = json.loads(path.read_text(encoding="utf-8"))
         assert [profile.name for profile in profiles] == ["사용자선택"]
-        assert persisted["version"] == 2
+        assert persisted["version"] == 3
         assert all(item["origin"] != "builtin" for item in persisted["profiles"])
 
 
@@ -85,7 +85,7 @@ def test_builtin_origin_is_never_used_even_if_supplied_programmatically():
     assert target.topic is None
 
 
-def test_current_batch_discovery_uses_family_minimums():
+def test_current_batch_discovery_groups_similar_files_without_minimums():
     classifier = TopicClassifier()
     documents = [
         record(f"doc-{index}.pdf", "문서", {"운영체제": 3, "프로세스": 2, f"term{index}": 0.1})
@@ -96,10 +96,25 @@ def test_current_batch_discovery_uses_family_minimums():
         for index in range(9)
     ]
     proposals = classifier.discover(documents + images)
-    assert len(proposals) == 1
-    assert proposals[0].family == "문서"
-    assert len(proposals[0].record_indexes) == 5
-    assert "운영체제" in proposals[0].top_terms
+    assert len(proposals) == 2
+    by_family = {proposal.family: proposal for proposal in proposals}
+    assert len(by_family["문서"].record_indexes) == 5
+    assert len(by_family["이미지"].record_indexes) == 9
+    assert "운영체제" in by_family["문서"].top_terms
+
+
+def test_every_unmatched_file_gets_a_user_assignment_proposal():
+    classifier = TopicClassifier()
+    proposals = classifier.discover(
+        [
+            record("one.pdf", "문서", {"alpha": 1}),
+            record("backup.zip", "압축파일", {}),
+        ]
+    )
+    assert {(proposal.family, proposal.record_indexes) for proposal in proposals} == {
+        ("문서", (0,)),
+        ("압축파일", (1,)),
+    }
 
 
 def test_migration_preserves_topic_and_deeper_relative_path():

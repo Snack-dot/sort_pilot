@@ -2,7 +2,7 @@
 
 > **Implemented-app note (2026-08-13):** The diagrams below describe the original long-lived watcher proposal. The integrated MVP instead uses manual Desktop/Downloads collection, an in-process `QThreadPool` capped at two workers, one reusable pipeline/OCR engine per worker, and Qt signals back to the UI. See `docs/FUNCTION_MAP.md` for the implemented call graph.
 >
-> Each worker now runs the complete `Pipeline.safe_classify()` path and returns a reusable `AnalysisRecord` containing the persisted Tier-1/Naive Bayes evidence plus extracted features. Engine categories never become destination topics automatically. The main-thread coordinator applies only user-created profiles and explicitly named/approved TF-IDF or migration groups before preview. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
+> Each worker now runs the complete `Pipeline.safe_classify()` path and returns a reusable `AnalysisRecord` containing persisted Tier-1/Naive Bayes evidence plus extracted features. Engine categories never become destination topics automatically. A fresh install calibrates user topics from a bounded random sample; adaptive TF-IDF and optional consent-gated local Gemma labels are reviewed before profile creation. Full-batch corrections add signed positive/negative evidence only after successful moves. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
 
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that document.
 

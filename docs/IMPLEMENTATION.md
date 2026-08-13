@@ -12,7 +12,7 @@ The root launcher and `sort_pilot/` application package use the manual Desktop/D
 
 The manual app uses a two-thread Qt pool. Each pool thread retains its own analyzer, engine pipeline, SQLite connection, and RapidOCR instance. Progress and results cross back to the Qt main thread through signals. See `FUNCTION_MAP.md` for complete ownership and `INTEGRATION_PROCESS.md` for the branch integration record.
 
-Hierarchical classification routes each file into a fixed Korean type family and then applies only family-specific profiles created or approved by the user. Engine categories never name destination topics, and there are no built-in topics. Unmatched document/image records can form dependency-free current-batch TF-IDF proposals, but a user must select and name them before use. See `HIERARCHICAL_TOPICS.md` for scoring, persistence, UI, and migration behavior.
+Hierarchical classification routes each file into a fixed Korean type family and then applies only family-specific profiles confirmed by the user. Engine categories never name destination topics, and there are no built-in topics. A bounded first-run sample is adaptively TF-IDF clustered and reviewed in a calibration board; optional local Gemma improves names/tags, while deterministic terms remain the fallback. Successful full-batch corrections add positive evidence to the chosen topic and negative evidence to the rejected topic. See `HIERARCHICAL_TOPICS.md` for persistence, scoring, privacy, UI, and migration behavior.
 
 ## Local model setup
 
