@@ -44,15 +44,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `FileAnalyzer.analyze` | `sort_pilot/classifier.py` | Protocol boundary used by scanner/queue and test analyzers. |
-| `RuleBasedAnalyzer.analyze` | `sort_pilot/classifier.py` | Safe filename/extension fallback producing `FileSuggestion`. |
-| `RuleBasedAnalyzer._clean_name` | `sort_pilot/classifier.py` | Normalizes the compatibility-only suggested filename. |
-| `LocalPipelineAnalyzer.__init__` | `sort_pilot/classifier.py` | Creates a worker-local `Pipeline`, or retains fallback only if unavailable. |
-| `LocalPipelineAnalyzer.analyze` | `sort_pilot/classifier.py` | Converts engine decisions to the app's stable model. |
-| `LocalPipelineAnalyzer.analyze_record`, `_suggestion` | `sort_pilot/classifier.py` | Extract reusable family/term records and adapt assigned records into `FileSuggestion`. |
-| `analyze_json` | `sort_pilot/classifier.py` | Public single-file `{filepath, folder}` dictionary contract. |
-| `analyze_many_json` | `sort_pilot/classifier.py` | Public ordered `{"results": [...]}` dictionary contract. |
-| `LocalPipelineAnalyzer.close` | `sort_pilot/classifier.py` | Releases the pipeline's worker-owned store connection. |
+| `FileAnalyzer.analyze` | `classifier_engine/analyzer.py` | Structural protocol boundary used by scanner, queue, and test analyzers. |
+| `ClassifierEngine.__init__` | `classifier_engine/analyzer.py` | Owns the real pipeline, profile store, and topic resolver. |
+| `analyze_record` | `classifier_engine/analyzer.py` | Calls `Pipeline.safe_classify`, retains persisted decision metadata as evidence, and deliberately leaves the topic unset. |
+| `analyze`, `_suggestion` | `classifier_engine/analyzer.py` | Resolve only user-owned profiles and adapt a record into `FileSuggestion`. |
+| `analyze_json`, `analyze_many_json` | `classifier_engine/analyzer.py` | Public single/batch JSON-object contracts backed by real engine decisions. |
+| `_decision_reason`, `close` | `classifier_engine/analyzer.py` | Explain recorded engine evidence without naming a topic and release its SQLite connection. |
 
 ## Candidate, preview, and move layer
 
@@ -89,8 +86,8 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `Pipeline.__init__` | `classifier_engine/pipeline.py` | Creates config, model, worker-local store, and Tier 3 extension point. |
-| `categories`, `extract_vector`, `classify`, `safe_classify`, `close` | `classifier_engine/pipeline.py` | Extract reusable features, retain legacy scoring tools, and release storage. |
+| `Pipeline.__init__` | `classifier_engine/pipeline.py` | Loads persisted config and creates the model, worker-local store, and Tier 3 extension point. |
+| `categories`, `extract_vector`, `classify`, `safe_classify`, `close` | `classifier_engine/pipeline.py` | Enumerate candidates, extract features, persist real Tier-1/Naive Bayes decisions, contain file failures, and release storage. |
 | `Store.__init__`, `close` | `classifier_engine/store.py` | Own a WAL/busy-timeout SQLite connection per pipeline worker. |
 | `now`, `enqueue`, `pending`, `mark` | `classifier_engine/store.py` | Timestamp and persistent queue utilities retained for engine tooling. |
 | `record_decision`, `journal` | `classifier_engine/store.py` | Persist decisions/review state and engine action journals. |
@@ -116,12 +113,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `route_type`, `hierarchical_folder` | `classifier_engine/hierarchy.py` | Map extension/MIME to one fixed Korean root and build the reserved two-level fallback path. |
 | `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens` | `classifier_engine/topics.py` | Normalize profile metadata and reject unsafe/reserved topic names. |
 | `TopicProfile`, `pseudo_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and combine example weights with boosted tags. |
-| `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms plus current hierarchical assignment. |
+| `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
 | `TopicProposal` | `classifier_engine/topics.py` | Carry a current-batch cluster, evidence, membership, and aggregate weights to approval UI. |
-| `vector_terms`, `filename_terms` | `classifier_engine/topics.py` | Convert engine features or fallback filenames into weighted semantic terms. |
+| `vector_terms` | `classifier_engine/topics.py` | Convert mandatory engine features into weighted semantic terms for user-owned topic matching. |
 | `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
-| `upsert`, `delete`, `new_profile`, `_validate_profiles`, `_default_profiles` | `classifier_engine/topics.py` | Maintain validated independent family profiles and built-in seeds. |
-| `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match explicit user profiles before built-ins under family-specific thresholds. |
+| `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
+| `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
 | `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Generate current-batch document/image cluster proposals and persistent example centroids. |
 | `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce precedence, explicit tag override, and threshold gating. |
 | `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math and deterministic centroid clustering/refinement. |

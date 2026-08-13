@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,7 @@ from sort_pilot.classifier_engine.hierarchy import hierarchical_folder, route_ty
 from sort_pilot.classifier_engine.topics import (
     AnalysisRecord,
     TopicClassifier,
+    TopicProfile,
     TopicProfileStore,
     validate_topic_name,
 )
@@ -32,9 +35,7 @@ def test_fixed_type_routing_and_unsorted_hierarchy():
 def test_profile_store_separates_families_and_validates_names():
     with tempfile.TemporaryDirectory() as directory:
         store = TopicProfileStore(Path(directory) / "profiles.json")
-        defaults = store.load()
-        assert any(item.family == "문서" and item.name == "학교" for item in defaults)
-        assert any(item.family == "이미지" and item.name == "학교" for item in defaults)
+        assert store.load() == []
         store.upsert(store.new_profile("문서", "취미", ["등산", "산행"]))
         store.upsert(store.new_profile("이미지", "취미", ["등산 사진"]))
         with pytest.raises(ValueError):
@@ -45,17 +46,43 @@ def test_profile_store_separates_families_and_validates_names():
             validate_topic_name("미분류")
 
 
-def test_user_profile_wins_and_same_name_is_family_specific():
+def test_version_one_builtin_profiles_are_removed_during_load():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "profiles.json"
+        builtin = TopicProfile("builtin:old", "문서", "자동주제", origin="builtin")
+        user = TopicProfileStore.new_profile("문서", "사용자선택", ["직접"])
+        path.write_text(
+            json.dumps({"version": 1, "profiles": [asdict(builtin), asdict(user)]}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        profiles = TopicProfileStore(path).load()
+        persisted = json.loads(path.read_text(encoding="utf-8"))
+        assert [profile.name for profile in profiles] == ["사용자선택"]
+        assert persisted["version"] == 2
+        assert all(item["origin"] != "builtin" for item in persisted["profiles"])
+
+
+def test_only_user_profiles_assign_family_specific_topics():
     classifier = TopicClassifier()
-    store_profiles = TopicProfileStore._default_profiles()
-    custom = TopicProfileStore.new_profile("문서", "내수업", ["과제"])
+    document_profile = TopicProfileStore.new_profile("문서", "내문서함", ["과제"])
+    image_profile = TopicProfileStore.new_profile("이미지", "내사진함", ["과제"])
     records = [
         record("assignment.pdf", "문서", {"과제": 3}),
         record("assignment.png", "이미지", {"과제": 3}),
+        record("unmatched.pdf", "문서", {"관계없음": 3}),
     ]
-    classifier.assign_existing(records, store_profiles + [custom])
-    assert records[0].topic == "내수업"
-    assert records[1].topic == "학교"
+    classifier.assign_existing(records, [document_profile, image_profile])
+    assert records[0].topic == "내문서함"
+    assert records[1].topic == "내사진함"
+    assert records[2].topic is None
+
+
+def test_builtin_origin_is_never_used_even_if_supplied_programmatically():
+    classifier = TopicClassifier()
+    legacy = TopicProfile("builtin:legacy", "문서", "자동주제", tags=("과제",), origin="builtin")
+    target = record("assignment.pdf", "문서", {"과제": 3})
+    classifier.assign_existing([target], [legacy])
+    assert target.topic is None
 
 
 def test_current_batch_discovery_uses_family_minimums():
@@ -78,18 +105,18 @@ def test_current_batch_discovery_uses_family_minimums():
 def test_migration_preserves_topic_and_deeper_relative_path():
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        old = root / "학교" / "1학기" / "과제.pdf"
+        old = root / "직접선택" / "1차" / "과제.pdf"
         old.parent.mkdir(parents=True)
         old.write_text("assignment", encoding="utf-8")
         direct = root / "이미지" / "photo.png"
         direct.parent.mkdir()
         direct.write_bytes(b"not-an-image")
-        already = root / "문서" / "학교" / "done.pdf"
+        already = root / "문서" / "직접선택" / "done.pdf"
         already.parent.mkdir(parents=True)
         already.write_text("done", encoding="utf-8")
 
         candidates = collect_migration_candidates(root)
         targets = {item.source.name: item.folder for item in candidates}
-        assert targets["과제.pdf"] == "문서/학교/1학기"
+        assert targets["과제.pdf"] == "문서/직접선택/1차"
         assert targets["photo.png"] == "이미지/미분류"
         assert "done.pdf" not in targets

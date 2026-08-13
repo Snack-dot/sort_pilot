@@ -5,9 +5,9 @@
 The classifier treats file kind and semantic topic as independent axes:
 
 ```text
-문서/학교
-이미지/학교
-문서/금융
+문서/내과제
+이미지/가족사진
+문서/고객A
 이미지/미분류
 ```
 
@@ -24,16 +24,18 @@ Profiles live in `%APPDATA%\tidy\topic_profiles.json` using an atomic version-1 
 - stable ID, fixed family, and validated single-folder name;
 - normalized tags;
 - averaged example term weights and example count;
-- origin (`builtin`, `user`, `discovered`, or `migration`);
+- origin (`user`, `discovered`, or `migration`);
 - enabled state and timestamps.
 
-Example paths and raw file contents are never stored. Built-in `학교`, `금융`, and `업무` profiles are seeded independently for `문서` and `이미지`. Built-ins may be disabled but not deleted or renamed. User/discovered/migration profiles are evaluated before built-ins.
+Example paths and raw file contents are never stored. A fresh profile document is empty: there are no built-in topics or semantic seed lexicon. Version-1 `builtin` entries are removed automatically when the profile document is loaded. Every remaining profile was created by the user, named during an approved TF-IDF proposal, or learned from an approved migration group.
 
 The `폴더/태그 관리` tray action lets the user create, rename, enable/disable, or delete profiles. Dragged/selected examples are extracted through the same two-worker queue and update only a profile of the selected family; they are never moved. Physical folders are created only by a later approved move.
 
 ## Matching and TF-IDF
 
-Feature extraction already produces local filename, body, OCR, object, and pair tokens. Topic scoring excludes extension and generic media metadata, then applies existing extraction-source weights.
+Every file first runs the complete `Pipeline.safe_classify()` path. This evaluates Tier-1 evidence rules, extracts local filename/body/OCR/object/pair features, scores the learned Naive Bayes model, persists the decision, and returns its decision ID. The category/action/margin are retained for diagnostics and future feedback, but are never copied into a destination topic. Default coursework and purchase patterns add evidence marks rather than terminal categories.
+
+Resolution is intentionally simple: a matching `user`, `discovered`, or `migration` profile wins; otherwise the topic is `미분류`. Topic scoring excludes extension and generic media metadata, then applies existing extraction-source weights.
 
 For each family batch:
 
@@ -43,7 +45,7 @@ For each family batch:
 4. Profile/example cosine similarity is compared to `0.25` for documents, `0.20` for images, and `0.30` for other families.
 5. Explicit normalized user tags are five-times-weighted pseudo-document terms; a complete tag-token or filename-phrase match overrides the cosine threshold.
 
-Single-file/public JSON analysis matches saved profiles only and otherwise returns `<유형>/미분류`. It never invents or persists a topic.
+Single-file/public JSON analysis runs and persists the real engine decision, then checks only saved user-owned profiles. With an empty profile store it returns `<유형>/미분류`. It never creates a discovered TF-IDF profile or moves a file.
 
 ### Current-batch discovery
 
@@ -55,7 +57,7 @@ A proposal requires at least five documents or ten images. The dialog shows the 
 
 `기존 폴더 계층화` is a separate manual action. It recursively examines safe files below Desktop and Downloads top-level folders but never moves anything before preview approval.
 
-- `학교/1학기/과제.pdf` becomes `문서/학교/1학기/과제.pdf`.
+- `직접선택/1차/과제.pdf` becomes `문서/직접선택/1차/과제.pdf` after approval.
 - A direct file under an existing fixed root becomes `<유형>/미분류/<파일>`.
 - Files already below `<유형>/<주제>` are skipped.
 - Successfully approved migration groups update independent family/topic profiles from their extracted features.

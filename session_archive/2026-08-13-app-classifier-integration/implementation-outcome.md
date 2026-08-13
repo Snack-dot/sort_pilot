@@ -34,3 +34,11 @@ Status: implemented and verified on `architecture-srs-implementation`.
 The later hierarchy implementation added fixed Korean type roots, independent per-type topic profiles, learn-only user examples, dependency-free TF-IDF proposals, and a separately previewed migration from existing flat folders. See `docs/HIERARCHICAL_TOPICS.md` and the updated function map for the final behavior.
 
 Follow-up verification: 24 automated tests passed, including the hierarchical JSON contract, profile precedence/isolation, discovery thresholds, migration path preservation, and complete docstring/function-map coverage. Compilation, dependency checks, Qt offscreen UI smoke checks, and Git whitespace validation also passed.
+
+## Classifier integration correction
+
+A later audit found that the hierarchical adapter used only engine feature extraction and that its contract tests disabled the pipeline. The temporary rule/fallback implementation was removed from `classifier.py`, which is now a stable facade for `classifier_engine.analyzer.ClassifierEngine`. Every classification now runs and persists `Pipeline.safe_classify()` output before user-profile → engine-topic → built-in resolution. New tests use real Tier-1 and learned-model decisions and verify physical creation of the approved nested destination.
+
+Final correction verification: 30 automated tests (including the real engine through the Qt queue), compilation, dependency consistency, documentation coverage, and Git whitespace checks passed.
+
+The final policy correction subsequently removed `classifier.py` and all compatibility aliases entirely. It also removed automatic engine-category destinations and built-in semantic profiles. The engine remains mandatory for extraction/scoring/persistence, while topics now come only from user-created profiles or explicitly named and approved TF-IDF/migration groups.

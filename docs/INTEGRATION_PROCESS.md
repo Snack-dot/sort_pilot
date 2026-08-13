@@ -31,7 +31,7 @@ Tray action
   → scanner.collect_candidates
   → BatchAnalysisController.start
   → two _AnalysisJob workers
-  → thread-local LocalPipelineAnalyzer
+  → thread-local classifier_engine.ClassifierEngine
   → classifier_engine.Pipeline.safe_classify
   → extract (thread-local RapidOCR when required)
   → ordered FileSuggestion results
@@ -73,3 +73,13 @@ The flat application category was subsequently split into a fixed Korean file-ty
 New tray workflows manage custom folders/tags and run a separately approved flat-folder migration. Discovered topics, learn-only examples, and approved migration groups create or update profiles, but physical folders still appear only during approved moves. Full algorithm, thresholds, persistence, and migration rules are documented in `HIERARCHICAL_TOPICS.md`.
 
 Follow-up verification covered the hierarchical JSON contract, all six fixed type routes, independent same-name profiles per family, user-profile precedence, document/image discovery minimums, preserved migration subpaths, and documentation coverage. The complete suite now passes 24 tests; compilation, dependency consistency, and Git whitespace validation also pass.
+
+## Full engine-wiring correction
+
+The temporary `RuleBasedAnalyzer`, fallback implementation, `classifier.py`, and compatibility aliases were removed after an integration audit showed that the earlier adapter consumed only extracted terms in the hierarchical workflow. `classifier_engine.analyzer.ClassifierEngine` is now the sole implementation and calls `Pipeline.safe_classify()` for every file.
+
+Contract tests now instantiate a real pipeline and SQLite decision store instead of forcing `pipeline = None`. Engine categories are retained as evidence only. Topic coverage proves that an empty profile store yields `미분류`, a user-created profile supplies the destination name, and an approved operation physically creates that user-named nested folder.
+
+The final topic-policy correction removed seeded semantic profiles and automatic category-to-topic aliases. Version-1 built-ins are migrated out of persisted profile documents, and default coursework/purchase rules now emit evidence marks rather than terminal categories. Only user-created profiles, named/approved TF-IDF proposals, and approved migration groups can select topics.
+
+Final correction verification: 30 automated tests passed, including the real engine running through the Qt analysis queue. Package/test/eval compilation, installed dependency consistency, callable documentation/function-map coverage, and Git whitespace validation also passed.

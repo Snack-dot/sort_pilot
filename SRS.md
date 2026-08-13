@@ -2,7 +2,7 @@
 
 > **Implementation note (2026-08-13):** The integrated desktop MVP uses explicit Desktop/Downloads batch actions and a cancellable two-worker in-process queue. Watcher-oriented requirements below are retained as historical/future requirements and are not part of the current app workflow. The engine package is now `sort_pilot.classifier_engine`; its data directory remains `%APPDATA%\tidy` for compatibility.
 >
-> The current destination model is hierarchical: one fixed Korean file-type root plus one family-specific semantic topic. User profiles override built-ins; unmatched files use `미분류`; current-batch TF-IDF discovery never creates a topic without explicit approval.
+> The current destination model is hierarchical: one fixed Korean file-type root plus one family-specific semantic topic. Every file runs the persisted Tier-1/Naive Bayes engine path, but engine categories are evidence only. There are no built-in semantic topics or seed lexicon; only user-created profiles and explicitly named/approved TF-IDF or migration groups can select a topic. Unmatched files use `미분류`.
 
 **Status:** Draft v0.3 · **Owner:** you · **Target:** MVP, Windows-first, Korean + English
 **Context:** 공모전 submission and personal daily-driver. Single user, single machine, no distribution.
@@ -56,7 +56,7 @@ The classifier is a Naive Bayes model over cheap text features, stored as a plai
 | --- | --- |
 | **Feature** | A single token extracted from a file: a filename fragment, a body keyword, an OCR word, an extension, or a metadata flag. |
 | **Feature vector** | The bag of features for one file, with per-feature source and count. |
-| **Category** | A destination folder, e.g. `Finance`, `School`. One label per file. |
+| **Category** | An internal classifier evidence label. In the implemented MVP it never names a destination topic automatically. |
 | **Decision** | `(category, score, margin, action)` produced by the classifier for one file. |
 | **Margin** | `score(top1) − score(top2)` in log space, length-normalised. The confidence signal actually used for gating. |
 | **Auto-move** | The app moves a file without asking. |
@@ -92,7 +92,7 @@ IDs are stable. Reference them in commits and in Claude Code prompts (`implement
 | FR-104 | Skip files matching in-progress patterns: `*.crdownload`, `*.part`, `*.tmp`, `*.download`, `~$*`, and any file with a shared-write lock on Windows. | A partial Chrome download is never read or moved. |
 | FR-105 | Verify stability before processing: size and mtime unchanged across two probes ≥ 2 s apart. | A file being copied over the network is deferred until it settles. |
 | FR-106 | Skip files above a configurable size ceiling (default 200 MB) for content extraction; classify by Tier 1 signals only. | A 4 GB ISO is never opened for reading. |
-| FR-107 | Honour an exclusion list of glob patterns and absolute paths. Directories inside watched dirs that are themselves destination categories are always excluded. | Files already sorted into `Downloads/Finance/` are not re-processed. |
+| FR-107 | Honour an exclusion list of glob patterns and absolute paths. Directories inside watched dirs that are themselves destination categories are always excluded. | Files already sorted into a user-owned destination are not re-processed. |
 | FR-108 | Maintain a processing queue with at most one worker. Queue survives restart. | Killing the app mid-queue loses no pending items. |
 
 ### 5.2 Feature extraction (FR-2xx)
@@ -122,7 +122,7 @@ IDs are stable. Reference them in commits and in Claude Code prompts (`implement
 | FR-302 | Tier 1 rules are user-editable in a config file, ordered, with first-match-wins semantics. | User adds a rule and it takes effect without restart. |
 | FR-303 | Tier 2 scores every category with multinomial Naive Bayes over the feature vector, with per-source feature weights and Laplace smoothing. | Scores reproducible: same vector + same model → same output. |
 | FR-304 | The decision gate uses **length-normalised margin**, not raw posterior. Two thresholds: `θ_auto` (auto-move) and `θ_suggest` (show suggestion). Below `θ_suggest` → `Unsorted`. | Documented in `ARCHITECTURE.md` §5.3; thresholds live in config. |
-| FR-305 | Every decision records its top 8 contributing features with signed contributions, for display to the user. | The UI can answer "why did you think this was Finance?" |
+| FR-305 | Every decision records its top 8 contributing features with signed contributions, for display to the user. | The UI can explain which evidence influenced an internal signal without silently selecting a topic. |
 | FR-306 | If Tier 2 falls below `θ_suggest` **and** Tier 3 is enabled, escalate to Tier 3. If Tier 3 is disabled, route to the suggestion queue as `Unsorted`. | With Tier 3 off, no file is ever silently dropped. |
 | FR-307 | Tier 3 is defined as an interface (`Classifier.classify(vector, candidates) -> Decision`) with a stub implementation in MVP. | A future local-LLM backend drops in without touching the pipeline. |
 | FR-308 | Category vocabulary is derived from the user's chosen destination root: each immediate subdirectory is a category. Users may add, rename, merge, or hide categories. | Renaming a folder on disk does not orphan its learned weights. |
@@ -132,7 +132,7 @@ IDs are stable. Reference them in commits and in Claude Code prompts (`implement
 | ID | Requirement | Acceptance |
 | --- | --- | --- |
 | FR-401 | **Bootstrap wizard:** on first run, offer to learn from existing organised folders. Sample up to N files (default 200) per category, extract features, populate counts. | After bootstrap on a real user's Documents tree, top-1 accuracy on held-out files ≥ 70 %. |
-| FR-402 | Ship a **seed lexicon** (Korean + English) mapping common terms to default categories, loaded as prior pseudo-counts. | On a fresh profile with no bootstrap, `세금계산서.pdf` still routes to Finance. |
+| FR-402 | **Superseded in the manual MVP:** do not ship a semantic seed lexicon or default topics. Engine features may support proposals, but only a user-created or explicitly named/approved profile selects a topic. | A fresh profile store leaves every unmatched semantic topic as `미분류`. |
 | FR-403 | Accepting a suggestion increments counts for the chosen category. | Model file changes; the same file re-classified scores higher. |
 | FR-404 | Correcting a suggestion increments the correct category **and** applies a configurable decrement to the wrongly predicted one (default: partial, not full). | Two corrections flip a borderline term's routing; one does not whipsaw it. |
 | FR-405 | Every model update is journalled with the exact count deltas, so it can be reversed. | Undoing a move also undoes its learning. |

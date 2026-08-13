@@ -7,8 +7,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 
-from .classifier import FileAnalyzer, LocalPipelineAnalyzer
-from .models import FileSuggestion
+from .classifier_engine.analyzer import ClassifierEngine, FileAnalyzer
 
 _WORKER_LOCAL = threading.local()
 
@@ -83,7 +82,7 @@ class BatchAnalysisController(QObject):
     def __init__(
         self,
         parent: QObject | None = None,
-        analyzer_factory: Callable[[], FileAnalyzer] = LocalPipelineAnalyzer,
+        analyzer_factory: Callable[[], FileAnalyzer] = ClassifierEngine,
         worker_count: int = 2,
     ) -> None:
         """Create an isolated pool with a fixed worker count and shared signals."""
@@ -100,7 +99,7 @@ class BatchAnalysisController(QObject):
         self._cancel_event: threading.Event | None = None
         self._total = 0
         self._finished = 0
-        self._results: dict[int, FileSuggestion] = {}
+        self._results: dict[int, object] = {}
         self._errors: list[tuple[str, str]] = []
 
     @property
@@ -166,7 +165,7 @@ class BatchAnalysisController(QObject):
                 unique.append(resolved)
         return unique
 
-    def _on_result(self, token: object, index: int, suggestion: FileSuggestion) -> None:
+    def _on_result(self, token: object, index: int, suggestion: object) -> None:
         """Collect a result only when it belongs to the active session."""
         if token is self._token:
             self._results[index] = suggestion

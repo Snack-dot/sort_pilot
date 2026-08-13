@@ -84,6 +84,10 @@ class AnalysisRecord:
     topic: str | None = None
     score: float = 0.0
     reason: str = ""
+    engine_category: str | None = None
+    engine_action: str = "unsorted"
+    engine_tier: str = ""
+    decision_id: int | None = None
 
     @property
     def source(self) -> Path:
@@ -125,21 +129,15 @@ def vector_terms(vector: FeatureVector, source_weights: dict[str, float]) -> dic
     return dict(terms)
 
 
-def filename_terms(path: Path) -> dict[str, float]:
-    """Create fallback semantic terms from a filename when extraction is unavailable."""
-    tokens = re.findall(r"[가-힣]+|[A-Za-z][A-Za-z0-9]*", path.stem.casefold())
-    return dict(Counter(tokens))
-
-
 class TopicProfileStore:
     """Atomic versioned JSON persistence for family-specific topic profiles."""
 
     def __init__(self, path: Path) -> None:
-        """Create a profile document with separate built-in family seeds if absent."""
+        """Create an empty user-owned profile document when none exists."""
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not self.path.exists():
-            self.save(self._default_profiles())
+            self.save([])
 
     def load(self) -> list[TopicProfile]:
         """Read and validate all persisted topic profiles."""
@@ -149,7 +147,11 @@ class TopicProfileStore:
         except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
             raise RuntimeError(f"주제 프로필을 읽을 수 없습니다: {self.path}") from exc
         profiles = []
+        removed_builtins = False
         for item in items:
+            if str(item.get("origin", "user")) == "builtin":
+                removed_builtins = True
+                continue
             profiles.append(
                 TopicProfile(
                     id=str(item["id"]),
@@ -164,13 +166,16 @@ class TopicProfileStore:
                     updated_at=str(item.get("updated_at", utc_now())),
                 )
             )
+        self._validate_profiles(profiles)
+        if removed_builtins or int(data.get("version", 1)) < 2:
+            self.save(profiles)
         return profiles
 
     def save(self, profiles: Iterable[TopicProfile]) -> None:
         """Validate and atomically replace the complete profile document."""
         normalized = list(profiles)
         self._validate_profiles(normalized)
-        payload = {"version": 1, "profiles": [asdict(profile) for profile in normalized]}
+        payload = {"version": 2, "profiles": [asdict(profile) for profile in normalized]}
         descriptor, temporary_name = tempfile.mkstemp(
             dir=self.path.parent, prefix="topic-profiles-", suffix=".tmp"
         )
@@ -208,8 +213,6 @@ class TopicProfileStore:
         target = next((profile for profile in profiles if profile.id == profile_id), None)
         if target is None:
             return
-        if target.origin == "builtin":
-            raise ValueError("기본 프로필은 삭제할 수 없으며 비활성화만 할 수 있습니다.")
         self.save(profile for profile in profiles if profile.id != profile_id)
 
     @staticmethod
@@ -239,35 +242,13 @@ class TopicProfileStore:
         for profile in profiles:
             if profile.family not in TYPE_FAMILIES:
                 raise ValueError(f"알 수 없는 파일 유형입니다: {profile.family}")
+            if profile.origin not in USER_ORIGINS:
+                raise ValueError(f"알 수 없는 사용자 주제 출처입니다: {profile.origin}")
             name = validate_topic_name(profile.name)
             key = profile.family, name.casefold()
             if key in seen:
                 raise ValueError(f"'{profile.family}'에 같은 이름의 주제가 이미 있습니다: {name}")
             seen.add(key)
-
-    @staticmethod
-    def _default_profiles() -> list[TopicProfile]:
-        """Create independent Korean built-in seeds for documents and images."""
-        seeds = {
-            "학교": ("과제", "강의", "수강", "시험", "논문", "assignment", "lecture", "syllabus", "thesis"),
-            "금융": ("세금계산서", "영수증", "청구서", "거래내역", "명세서", "invoice", "receipt", "statement", "payment"),
-            "업무": ("회의록", "보고서", "기획", "계약서", "meeting", "agenda", "proposal", "contract", "roadmap"),
-        }
-        created = utc_now()
-        return [
-            TopicProfile(
-                id=f"builtin:{family}:{name}",
-                family=family,
-                name=name,
-                tags=tuple(tags),
-                origin="builtin",
-                created_at=created,
-                updated_at=created,
-            )
-            for family in ("문서", "이미지")
-            for name, tags in seeds.items()
-        ]
-
 
 class TopicClassifier:
     """Match saved profiles and discover deterministic current-batch TF-IDF topics."""
@@ -277,8 +258,11 @@ class TopicClassifier:
         records: list[AnalysisRecord],
         profiles: Iterable[TopicProfile],
     ) -> list[AnalysisRecord]:
-        """Assign enabled user profiles before built-in profiles within each family."""
-        enabled = [profile for profile in profiles if profile.enabled]
+        """Assign only enabled user-created or user-approved profiles per family."""
+        enabled = [
+            profile for profile in profiles
+            if profile.enabled and profile.origin in USER_ORIGINS
+        ]
         for family in TYPE_FAMILIES:
             family_records = [record for record in records if record.family == family]
             family_profiles = [profile for profile in enabled if profile.family == family]
@@ -295,8 +279,7 @@ class TopicClassifier:
                 profile, score, tag_match = self._best_profile(
                     record, record_vector, family_profiles, profile_vectors
                 )
-                threshold = PROFILE_THRESHOLDS.get(family, OTHER_PROFILE_THRESHOLD)
-                if profile is not None and (tag_match or score >= threshold):
+                if profile is not None:
                     record.topic = profile.name
                     record.score = 1.0 if tag_match else score
                     record.reason = (
@@ -351,20 +334,16 @@ class TopicClassifier:
         profiles: list[TopicProfile],
         profile_vectors: dict[str, dict[str, float]],
     ) -> tuple[TopicProfile | None, float, bool]:
-        """Return the best user profile first, falling back to built-in profiles."""
-        for group in (
-            [profile for profile in profiles if profile.origin in USER_ORIGINS],
-            [profile for profile in profiles if profile.origin == "builtin"],
-        ):
-            exact = [profile for profile in group if self._tag_matches(record, profile)]
-            if exact:
-                return sorted(exact, key=lambda profile: profile.name.casefold())[0], 1.0, True
-            scored = [(self._cosine(record_vector, profile_vectors[profile.id]), profile) for profile in group]
-            if scored:
-                score, profile = max(scored, key=lambda item: (item[0], item[1].name.casefold()))
-                threshold = PROFILE_THRESHOLDS.get(record.family, OTHER_PROFILE_THRESHOLD)
-                if score >= threshold:
-                    return profile, score, False
+        """Return the best threshold-qualified profile from one precedence group."""
+        exact = [profile for profile in profiles if self._tag_matches(record, profile)]
+        if exact:
+            return sorted(exact, key=lambda profile: profile.name.casefold())[0], 1.0, True
+        scored = [(self._cosine(record_vector, profile_vectors[profile.id]), profile) for profile in profiles]
+        if scored:
+            score, profile = max(scored, key=lambda item: (item[0], item[1].name.casefold()))
+            threshold = PROFILE_THRESHOLDS.get(record.family, OTHER_PROFILE_THRESHOLD)
+            if score >= threshold:
+                return profile, score, False
         return None, 0.0, False
 
     @staticmethod

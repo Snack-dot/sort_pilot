@@ -4,10 +4,13 @@ from unittest.mock import patch
 import numpy as np
 
 from sort_pilot.classifier_engine.actions import Executor, collision_free
+from sort_pilot.classifier_engine.config import Config
 from sort_pilot.classifier_engine.extract import extract, normalize_filename, tokenize
 from sort_pilot.classifier_engine.learning import feedback
 from sort_pilot.classifier_engine.model import NaiveBayesModel
+from sort_pilot.classifier_engine.pipeline import Pipeline
 from sort_pilot.classifier_engine.store import Store
+from sort_pilot.classifier_engine.tier1 import DEFAULT_RULES, evaluate
 from sort_pilot.classifier_engine.types import Feature, FeatureVector
 from sort_pilot.classifier_engine.vision import derived, postprocess
 from sort_pilot.classifier_engine import extract as extract_module
@@ -21,17 +24,35 @@ def test_filename_and_korean_normalization():
 def test_model_feedback_and_scoring(tmp_path):
     model = NaiveBayesModel(tmp_path / "model.json")
     vector = FeatureVector("x", "x.pdf", 1, [Feature("invoice", "body", 3)])
-    feedback(model, vector, "Finance")
-    decision = model.score(vector, ["Finance", "School"], {"body": 1}, .1, .01, 1)
-    assert decision.category == "Finance"
+    feedback(model, vector, "PurchaseSignal")
+    decision = model.score(vector, ["PurchaseSignal", "ResearchSignal"], {"body": 1}, .1, .01, 1)
+    assert decision.category == "PurchaseSignal"
     assert decision.explanation
 
 
 def test_atomic_model_roundtrip(tmp_path):
     model = NaiveBayesModel(tmp_path / "model.json")
-    model.apply([("과제", "School", 8)])
+    model.apply([("과제", "UserSignal", 8)])
     model.save()
-    assert NaiveBayesModel(tmp_path / "model.json").tokens["과제"]["School"] == 8
+    assert NaiveBayesModel(tmp_path / "model.json").tokens["과제"]["UserSignal"] == 8
+
+
+def test_default_topic_patterns_are_evidence_marks_not_categories():
+    decision, marks = evaluate(Path("assignment.pdf"), DEFAULT_RULES)
+    assert decision is None
+    assert {mark.t for mark in marks} == {"topic_hint:coursework"}
+
+
+def test_pipeline_loads_persisted_engine_config(tmp_path):
+    root = tmp_path / "engine"
+    expected = Config(theta_auto=0.91, destination_root=str(tmp_path / "dest"))
+    expected.save(root / "config.json")
+    pipeline = Pipeline(root=root)
+    try:
+        assert pipeline.config.theta_auto == 0.91
+        assert pipeline.config.destination_root == str(tmp_path / "dest")
+    finally:
+        pipeline.close()
 
 
 def test_dry_run_and_collision(tmp_path):
@@ -39,7 +60,7 @@ def test_dry_run_and_collision(tmp_path):
     source.write_text("invoice")
     store = Store(tmp_path / "state.db")
     executor = Executor(store, dry_run=True)
-    destination = executor.execute(source, tmp_path / "sorted", "Finance")
+    destination = executor.execute(source, tmp_path / "sorted", "UserChosen")
     assert source.exists() and not destination.exists()
     destination.parent.mkdir(parents=True)
     destination.write_text("old")
