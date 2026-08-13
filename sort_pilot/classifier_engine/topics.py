@@ -534,39 +534,43 @@ class TopicClassifier:
         threshold: float,
         semantic_vectors: dict[int, list[np.ndarray]] | None = None,
     ) -> list[list[int]]:
-        """Build deterministic similarity-connected clusters for user review.
+        """Build deterministic complete-linkage clusters for user review.
 
         Two records connect if either their lexical co-occurrence cosine clears
         ``threshold`` or, when pretrained word vectors are loaded, their
         distinctive-word embedding similarity clears ``SEMANTIC_MATCH_THRESHOLD``.
+        Clusters only merge when every cross-pair connects, not just one path
+        through the group, so one weak transitive link can't chain together an
+        entire unrelated batch (single-linkage's classic failure at scale).
         """
         semantic_vectors = semantic_vectors or {}
         ordered = [index for index, _ in sorted(indexed, key=lambda item: item[1].file_path.casefold())]
-        clusters: list[list[int]] = []
-        remaining = set(ordered)
-        for seed in ordered:
-            if seed not in remaining:
-                continue
-            remaining.remove(seed)
-            cluster: list[int] = []
-            pending = [seed]
-            while pending:
-                current = pending.pop()
-                cluster.append(current)
-                neighbors = [
-                    candidate
-                    for candidate in ordered
-                    if candidate in remaining
-                    and (
-                        self._cosine(vectors[current], vectors[candidate]) >= threshold
-                        or semantic_similarity(
-                            semantic_vectors.get(current, []), semantic_vectors.get(candidate, [])
-                        )
-                        >= SEMANTIC_MATCH_THRESHOLD
+        connected: set[tuple[int, int]] = set()
+        for position, left in enumerate(ordered):
+            for right in ordered[position + 1:]:
+                if (
+                    self._cosine(vectors[left], vectors[right]) >= threshold
+                    or semantic_similarity(
+                        semantic_vectors.get(left, []), semantic_vectors.get(right, [])
                     )
-                ]
-                for candidate in neighbors:
-                    remaining.remove(candidate)
-                    pending.append(candidate)
-            clusters.append(sorted(cluster))
+                    >= SEMANTIC_MATCH_THRESHOLD
+                ):
+                    connected.add((left, right))
+
+        def linked(a: int, b: int) -> bool:
+            return (a, b) in connected or (b, a) in connected
+
+        clusters: list[list[int]] = [[index] for index in ordered]
+        merged = True
+        while merged:
+            merged = False
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    if all(linked(a, b) for a in clusters[i] for b in clusters[j]):
+                        clusters[i] = sorted(clusters[i] + clusters[j])
+                        del clusters[j]
+                        merged = True
+                        break
+                if merged:
+                    break
         return clusters
