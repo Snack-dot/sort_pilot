@@ -75,7 +75,8 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable progress with no partial preview after cancellation.
 - Local document, archive, image, OCR, and optional ONNX object features.
-- Actual contents are read locally for TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, and XLSX; ZIP entry names and image OCR/object evidence are also extracted. Up to 160 distinct body terms are retained per readable document. Legacy binary DOC/XLS files currently contribute filename/metadata only.
+- Semantic topics use actual local contents only: TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, XLSX, ZIP entry names, and image OCR/object evidence. Filenames, extensions, and generic metadata may inform the lower-level engine decision but cannot create or select a topic. Up to 160 distinct body terms are retained per readable document.
+- Calibration samples only formats with a bundled content extractor, and extraction-empty samples cannot create a profile. `.hwp` and `.hwpx` are excluded from collection while the content architecture is being validated; legacy binary DOC/XLS/PPT files are not calibration seeds.
 - Editable destination root and relative folder for every file.
 - Original filenames are preserved; collisions receive numeric suffixes.
 - No move occurs before final approval.

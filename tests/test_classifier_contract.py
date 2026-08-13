@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image
 
 from sort_pilot.classifier_engine import ClassifierEngine
 from sort_pilot.classifier_engine.config import Config
@@ -38,10 +41,10 @@ def test_real_engine_decision_is_persisted_without_automatic_topic(tmp_path: Pat
 
 
 def test_user_chosen_topics_drive_ordered_batch_json(tmp_path: Path) -> None:
-    assignment = tmp_path / "assignment.pdf"
+    assignment = tmp_path / "opaque-document.txt"
     receipt = tmp_path / "쿠팡영수증.png"
-    assignment.write_bytes(b"assignment")
-    receipt.write_bytes(b"not-a-real-image")
+    assignment.write_text("assignment course project", encoding="utf-8")
+    Image.new("RGB", (64, 64), "white").save(receipt)
     analyzer = engine(tmp_path)
     analyzer.profile_store.upsert(
         analyzer.profile_store.new_profile("문서", "내과제", ["assignment"])
@@ -50,7 +53,11 @@ def test_user_chosen_topics_drive_ordered_batch_json(tmp_path: Path) -> None:
         analyzer.profile_store.new_profile("이미지", "구매기록", ["영수증"])
     )
     try:
-        result = analyzer.analyze_many_json([assignment, receipt])
+        with patch(
+            "sort_pilot.classifier_engine.extract._ocr",
+            return_value=[Feature("영수증", "ocr")],
+        ):
+            result = analyzer.analyze_many_json([assignment, receipt])
         assert result == {
             "results": [
                 {"filepath": assignment.resolve().as_posix(), "folder": "문서/내과제"},

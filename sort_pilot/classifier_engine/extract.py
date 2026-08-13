@@ -15,8 +15,18 @@ IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
 STOP = {"the", "and", "for", "with", "from", "this", "that", "그리고", "합니다", "있는", "없는"}
 MAX_BODY_TERMS = 160
+SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj"})
+CONTENT_ANALYSIS_SUFFIXES = frozenset({
+    ".txt", ".md", ".csv", ".rtf", ".pdf", ".docx", ".odt", ".pptx", ".xlsx",
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic",
+})
 _KIWI = None
 _OCR_LOCAL = threading.local()
+
+
+def supports_content_analysis(path: Path) -> bool:
+    """Return whether the bundled extractors can derive semantic content evidence."""
+    return path.suffix.casefold() in CONTENT_ANALYSIS_SUFFIXES
 
 
 def normalize_filename(path: Path) -> list[str]:

@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from .classifier_engine.extract import supports_content_analysis
 from .classifier_engine.hierarchy import TYPE_FAMILIES, route_type
 from .classifier_engine.topics import (
     AnalysisRecord,
@@ -62,7 +63,8 @@ class CalibrationSampler:
             if not root.is_dir():
                 continue
             for path in collect_candidates(root):
-                candidates.append((root_index, path.resolve()))
+                if supports_content_analysis(path):
+                    candidates.append((root_index, path.resolve()))
         seen = self._load_seen()
         selected: list[Path] = []
         for family in TYPE_FAMILIES:

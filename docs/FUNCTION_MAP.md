@@ -98,6 +98,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
+| `supports_content_analysis` | `classifier_engine/extract.py` | Gate calibration candidates to formats with a bundled semantic-content extractor. |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
 | `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
@@ -115,13 +116,13 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `TopicProfile`, `pseudo_terms`, `negative_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and expose boosted positive/tag and negative correction evidence. |
 | `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
 | `TopicProposal` | `classifier_engine/topics.py` | Carry an automatic sample cluster, evidence, membership, and aggregate weights into calibration and local label generation. |
-| `vector_terms`, `contextual_terms` | `classifier_engine/topics.py` | Convert engine features into base terms and bounded weighted co-occurrence context pairs. |
+| `vector_terms`, `contextual_terms` | `classifier_engine/topics.py` | Retain body/OCR/object terms only and create canonical bounded weighted co-occurrence pairs. |
 | `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
 | `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
 | `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
-| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose every unmatched record, TF-IDF-group similar documents/images, and calculate persistent example centroids. |
-| `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce precedence, explicit tag override, and threshold gating. |
-| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math, adaptive granularity, and deterministic centroid clustering/refinement. |
+| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose content-backed unmatched records, TF-IDF-group related samples, and calculate persistent example centroids. |
+| `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce content-only tag matching, signed evidence, and threshold gating. |
+| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Provide sparse TF-IDF math, conservative small-batch thresholds, and deterministic similarity-connected groups. |
 
 ## Topic and migration UI
 

@@ -103,7 +103,7 @@ def test_current_batch_discovery_groups_similar_files_without_minimums():
     assert "운영체제" in by_family["문서"].top_terms
 
 
-def test_every_unmatched_file_gets_a_user_assignment_proposal():
+def test_discovery_excludes_records_without_content_terms():
     classifier = TopicClassifier()
     proposals = classifier.discover(
         [
@@ -111,10 +111,39 @@ def test_every_unmatched_file_gets_a_user_assignment_proposal():
             record("backup.zip", "압축파일", {}),
         ]
     )
-    assert {(proposal.family, proposal.record_indexes) for proposal in proposals} == {
+    assert [(proposal.family, proposal.record_indexes) for proposal in proposals] == [
         ("문서", (0,)),
-        ("압축파일", (1,)),
-    }
+    ]
+
+
+def test_three_related_content_records_form_one_discovery_group():
+    records = [
+        record("opaque-a.txt", "문서", {"quantum": 5, "orbit": 4, "telescope": 3, "research": 2, "alpha": 1}),
+        record("opaque-b.txt", "문서", {"quantum": 4, "orbit": 5, "telescope": 2, "research": 3, "beta": 1}),
+        record("opaque-c.txt", "문서", {"quantum": 5, "orbit": 3, "telescope": 4, "research": 2, "gamma": 1}),
+    ]
+
+    proposals = TopicClassifier().discover(records)
+
+    assert [proposal.record_indexes for proposal in proposals] == [(0, 1, 2)]
+
+
+def test_two_three_file_content_topics_are_separated_within_one_family():
+    records = [
+        record("opaque-a1.txt", "문서", {"quantum": 5, "orbit": 4, "telescope": 3, "research": 2, "alpha": 1}),
+        record("opaque-a2.txt", "문서", {"quantum": 4, "orbit": 5, "telescope": 2, "research": 3, "beta": 1}),
+        record("opaque-a3.txt", "문서", {"quantum": 5, "orbit": 3, "telescope": 4, "research": 2, "gamma": 1}),
+        record("opaque-b1.txt", "문서", {"invoice": 5, "payment": 4, "receipt": 3, "merchant": 2, "delta": 1}),
+        record("opaque-b2.txt", "문서", {"invoice": 4, "payment": 5, "receipt": 2, "merchant": 3, "epsilon": 1}),
+        record("opaque-b3.txt", "문서", {"invoice": 5, "payment": 3, "receipt": 4, "merchant": 2, "zeta": 1}),
+    ]
+
+    proposals = TopicClassifier().discover(records)
+
+    assert [proposal.record_indexes for proposal in proposals] == [
+        (0, 1, 2),
+        (3, 4, 5),
+    ]
 
 
 def test_migration_preserves_topic_and_deeper_relative_path():

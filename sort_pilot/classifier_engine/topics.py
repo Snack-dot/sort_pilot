@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+from .extract import SEMANTIC_FEATURE_SOURCES
 from .hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, hierarchical_folder
 from .types import FeatureVector
 
@@ -123,13 +124,13 @@ def tag_tokens(value: str) -> list[str]:
 
 
 def vector_terms(vector: FeatureVector, source_weights: dict[str, float]) -> dict[str, float]:
-    """Convert extracted features into semantic weighted terms for topic scoring."""
+    """Convert only body/OCR/object evidence into terms used for semantic topics."""
     terms: Counter[str] = Counter()
     for feature in vector.features:
         token = normalize_tag(feature.t)
         if not token or token in GENERIC_TERMS or token.startswith(GENERIC_PREFIXES):
             continue
-        if feature.src in {"ext", "meta"}:
+        if feature.src not in SEMANTIC_FEATURE_SOURCES:
             continue
         terms[token] += float(feature.n) * float(source_weights.get(feature.src, 1.0))
     return dict(terms)
@@ -150,7 +151,8 @@ def contextual_terms(
     pairs: list[tuple[float, str]] = []
     for position, (left, left_weight) in enumerate(ranked):
         for right, right_weight in ranked[position + 1:]:
-            pair = f"{CONTEXT_PREFIX}{left}|{right}"
+            first, second = sorted((left, right))
+            pair = f"{CONTEXT_PREFIX}{first}|{second}"
             pairs.append((math.sqrt(left_weight * right_weight) * 0.5, pair))
     for weight, pair in sorted(pairs, key=lambda item: (-item[0], item[1]))[:max_pairs]:
         expanded[pair] = weight
@@ -294,7 +296,10 @@ class TopicClassifier:
             if profile.enabled and profile.origin in USER_ORIGINS
         ]
         for family in TYPE_FAMILIES:
-            family_records = [record for record in records if record.family == family]
+            family_records = [
+                record for record in records
+                if record.family == family and record.terms
+            ]
             family_profiles = [profile for profile in enabled if profile.family == family]
             if not family_records or not family_profiles:
                 continue
@@ -330,7 +335,11 @@ class TopicClassifier:
         """Propose every unmatched file, grouping similar documents and images."""
         proposals: list[TopicProposal] = []
         for family in TYPE_FAMILIES:
-            indexed = [(index, record) for index, record in enumerate(records) if record.family == family and not record.topic]
+            indexed = [
+                (index, record)
+                for index, record in enumerate(records)
+                if record.family == family and not record.topic and record.terms
+            ]
             if not indexed:
                 continue
             expanded = {index: contextual_terms(record.terms) for index, record in indexed}
@@ -407,15 +416,10 @@ class TopicClassifier:
 
     @staticmethod
     def _tag_matches(record: AnalysisRecord, profile: TopicProfile) -> bool:
-        """Return whether every token of any explicit tag occurs in the record."""
+        """Return whether every token of any explicit tag occurs in content evidence."""
         record_terms = set(record.terms)
-        filename = Path(record.file_name).stem.casefold()
         return any(
-            tokens
-            and (
-                set(tokens) <= record_terms
-                or normalize_tag(tag).replace(" ", "") in filename.replace(" ", "")
-            )
+            tokens and set(tokens) <= record_terms
             for tag, tokens in ((tag, tag_tokens(tag)) for tag in profile.tags)
         )
 
@@ -467,11 +471,13 @@ class TopicClassifier:
                     similarities.append(similarity)
         if not similarities:
             return 1.0
+        if len(vectors) <= 3:
+            return floor
         ordered = sorted(similarities)
         median = ordered[len(ordered) // 2]
         deviations = sorted(abs(value - median) for value in ordered)
         mad = deviations[len(deviations) // 2]
-        return min(0.75, max(floor * 0.7, median + 0.5 * mad))
+        return min(0.75, max(floor, median - mad))
 
     def _stable_clusters(
         self,
@@ -479,29 +485,27 @@ class TopicClassifier:
         vectors: dict[int, dict[str, float]],
         threshold: float,
     ) -> list[list[int]]:
-        """Build deterministic greedy centroid clusters and refine assignments."""
+        """Build deterministic similarity-connected clusters for user review."""
         ordered = [index for index, _ in sorted(indexed, key=lambda item: item[1].file_path.casefold())]
         clusters: list[list[int]] = []
-        for index in ordered:
-            similarities = [self._cosine(vectors[index], self._centroid([vectors[item] for item in cluster])) for cluster in clusters]
-            if similarities and max(similarities) >= threshold:
-                best = max(range(len(clusters)), key=lambda position: (similarities[position], -position))
-                clusters[best].append(index)
-            else:
-                clusters.append([index])
-        for _ in range(5):
-            centroids = [self._centroid([vectors[index] for index in cluster]) for cluster in clusters]
-            reassigned: list[list[int]] = [[] for _ in clusters]
-            for index in ordered:
-                similarities = [self._cosine(vectors[index], centroid) for centroid in centroids]
-                best = max(range(len(centroids)), key=lambda position: (similarities[position], -position))
-                if similarities[best] >= threshold:
-                    reassigned[best].append(index)
-                else:
-                    reassigned.append([index])
-                    centroids.append(vectors[index])
-            reassigned = [cluster for cluster in reassigned if cluster]
-            if reassigned == clusters:
-                break
-            clusters = reassigned
+        remaining = set(ordered)
+        for seed in ordered:
+            if seed not in remaining:
+                continue
+            remaining.remove(seed)
+            cluster: list[int] = []
+            pending = [seed]
+            while pending:
+                current = pending.pop()
+                cluster.append(current)
+                neighbors = [
+                    candidate
+                    for candidate in ordered
+                    if candidate in remaining
+                    and self._cosine(vectors[current], vectors[candidate]) >= threshold
+                ]
+                for candidate in neighbors:
+                    remaining.remove(candidate)
+                    pending.append(candidate)
+            clusters.append(sorted(cluster))
         return clusters

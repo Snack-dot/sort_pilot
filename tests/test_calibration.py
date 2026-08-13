@@ -66,6 +66,19 @@ def test_sampler_keeps_small_one_and_two_file_families(tmp_path):
     }
 
 
+def test_sampler_uses_only_formats_with_bundled_content_extraction(tmp_path):
+    root = tmp_path / "Downloads"
+    root.mkdir()
+    for name in ("readable.txt", "legacy.doc", "korean.hwp", "korean.hwpx", "archive.zip"):
+        (root / name).write_text("semantic body", encoding="utf-8")
+
+    selected = CalibrationSampler(
+        tmp_path / "state.json", rng=random.Random(1)
+    ).select([root])
+
+    assert [path.name for path in selected] == ["readable.txt"]
+
+
 def test_calibration_draft_persists_only_user_confirmed_topics(tmp_path):
     store = TopicProfileStore(tmp_path / "profiles.json")
     service = CalibrationService(TopicClassifier(), store)
@@ -137,6 +150,50 @@ def test_actual_file_body_reaches_the_calibration_profile(tmp_path):
 
     assert {"nebula", "roadmap", "milestone", "telescope", "orbit", "context"} <= set(profile.tags)
     assert "co:nebula|roadmap" in profile.example_weights or "co:roadmap|nebula" in profile.example_weights
+
+
+def test_content_calibration_groups_three_and_classifies_remaining_body(tmp_path):
+    from sort_pilot.classifier_engine.analyzer import ClassifierEngine
+    from sort_pilot.classifier_engine.config import Config
+    from sort_pilot.classifier_engine.pipeline import Pipeline
+
+    seed_texts = [
+        "quantum orbit telescope research alpha",
+        "quantum orbit telescope research beta",
+        "quantum orbit telescope research gamma",
+    ]
+    seed_paths = []
+    for index, body in enumerate(seed_texts):
+        path = tmp_path / f"opaque-{index}.txt"
+        path.write_text(body, encoding="utf-8")
+        seed_paths.append(path)
+    related = tmp_path / "invoice-looking-name.txt"
+    related.write_text("quantum orbit telescope experiment research", encoding="utf-8")
+    unrelated = tmp_path / "quantum-orbit-looking-name.txt"
+    unrelated.write_text("invoice payment merchant receipt tax", encoding="utf-8")
+
+    store = TopicProfileStore(tmp_path / "profiles.json")
+    engine = ClassifierEngine(
+        Pipeline(Config(destination_root=str(tmp_path / "sorted")), tmp_path / "engine"),
+        store,
+    )
+    try:
+        seed_records = [engine.analyze_record(path) for path in seed_paths]
+        service = CalibrationService(TopicClassifier(), store)
+        draft = service.build_draft(seed_records)
+        assert [cluster.record_indexes for cluster in draft.clusters] == [[0, 1, 2]]
+        draft.clusters[0].topic = "Space Research"
+        profiles = service.profiles_from_draft(draft)
+
+        remaining = [engine.analyze_record(related), engine.analyze_record(unrelated)]
+        service.classifier.assign_existing(remaining, profiles)
+    finally:
+        engine.close()
+
+    assert remaining[0].topic == "Space Research"
+    assert remaining[1].topic is None
+    assert "invoice" not in remaining[0].terms
+    assert "quantum" not in remaining[1].terms
 
 
 def test_calibration_seed_changes_move_seeds_before_remaining_review(tmp_path):

@@ -237,11 +237,16 @@ class AppController(QObject):
 
     def _complete_calibration(self, records: list[AnalysisRecord]) -> None:
         """Generate local labels, review the sample, then persist approved topics."""
-        if not records:
-            QMessageBox.information(None, "Sort Pilot", "표본 분석 결과가 없습니다.")
+        content_records = [record for record in records if record.terms]
+        if not content_records:
+            QMessageBox.information(
+                None,
+                "Sort Pilot",
+                "표본에서 읽을 수 있는 본문·OCR 내용을 찾지 못했습니다. 파일은 이동하지 않았습니다.",
+            )
             self._pending_organize = None
             return
-        proposals = self.topic_classifier.discover(records)
+        proposals = self.topic_classifier.discover(content_records)
         suggestions = {}
         if proposals and ensure_local_model(None, self.model_installer):
             progress = QProgressDialog("로컬 AI가 주제와 태그를 제안하고 있습니다.", "", 0, 0)
@@ -264,13 +269,16 @@ class AppController(QObject):
                 )
             finally:
                 progress.close()
-        draft = self.calibration.build_draft(records, suggestions)
+        draft = self.calibration.build_draft(content_records, suggestions)
         dialog = CalibrationDialog(draft, self.profile_store.load())
         if dialog.exec() != CalibrationDialog.DialogCode.Accepted:
             self._pending_organize = None
             return
         try:
-            fingerprints = [self.calibration_sampler.fingerprint(record.source) for record in records]
+            fingerprints = [
+                self.calibration_sampler.fingerprint(record.source)
+                for record in content_records
+            ]
             profiles = self.calibration.profiles_from_draft(draft)
             changes = self.calibration.seed_changes(
                 draft, self._desktop_folder(), self.downloads_folder
@@ -318,7 +326,10 @@ class AppController(QObject):
         self._pending_profile_request = None
         if request is None:
             return
-        matching = [record for record in records if record.family == request.profile.family]
+        matching = [
+            record for record in records
+            if record.family == request.profile.family and record.terms
+        ]
         profile = self._merge_examples(request.profile, matching)
         self.profile_store.upsert(profile)
         skipped = len(records) - len(matching)

@@ -18,9 +18,9 @@ class CoreTests(unittest.TestCase):
     def test_real_engine_result_creates_named_hierarchical_folder(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "incoming" / "운영체제 과제.PDF"
+            path = root / "incoming" / "불투명한 이름.txt"
             path.parent.mkdir()
-            path.write_text("test", encoding="utf-8")
+            path.write_text("운영체제 과제 보고서", encoding="utf-8")
             analyzer = ClassifierEngine(
                 Pipeline(Config(destination_root=str(root / "organized")), root / "engine"),
                 TopicProfileStore(root / "profiles.json"),
@@ -48,11 +48,15 @@ class CoreTests(unittest.TestCase):
             root = Path(directory)
             shortcut = root / "Chrome.lnk"
             partial = root / "download.crdownload"
+            hwp = root / "legacy.hwp"
+            hwpx = root / "legacy.hwpx"
             document = root / "notes.txt"
-            for path in (shortcut, partial, document):
+            for path in (shortcut, partial, hwp, hwpx, document):
                 path.touch()
             self.assertFalse(is_safe_candidate(shortcut))
             self.assertFalse(is_safe_candidate(partial))
+            self.assertFalse(is_safe_candidate(hwp))
+            self.assertFalse(is_safe_candidate(hwpx))
             self.assertTrue(is_safe_candidate(document))
 
     def test_execute_and_undo_batch(self) -> None:

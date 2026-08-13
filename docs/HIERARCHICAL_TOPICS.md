@@ -35,7 +35,7 @@ The `폴더/태그 관리` tray action lets the user create, rename, enable/disa
 
 Every file first runs the complete `Pipeline.safe_classify()` path. This evaluates Tier-1 evidence rules, extracts local filename/body/OCR/object/pair features, scores the learned Naive Bayes model, persists the decision, and returns its decision ID. The category/action/margin are retained for diagnostics and future feedback, but are never copied into a destination topic. Default coursework and purchase patterns add evidence marks rather than terminal categories.
 
-Content extraction is real and local, not filename-only. Plain text/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, and XLSX content is bounded to 20,000 characters and up to 160 distinct body terms. PDF reads the first five pages, workbooks read representative cells, ZIP uses entry names, and eligible images use OCR plus optional object evidence. Legacy binary DOC/XLS currently lack a bundled parser and therefore contribute filename/metadata evidence only.
+Content extraction is real and local. Plain text/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, and XLSX content is bounded to 20,000 characters and up to 160 distinct body terms. PDF reads the first five pages, workbooks read representative cells, ZIP uses entry names, and eligible images use OCR plus optional object evidence. Topic vectors retain only body, OCR, and object terms: filename, extension, and generic metadata features can still inform the lower-level engine decision, but cannot create or select a semantic topic. `.hwp` and `.hwpx` are excluded from app collection during architecture validation, while legacy binary DOC/XLS/PPT files cannot become calibration seeds.
 
 Resolution is intentionally simple: a matching `user`, `discovered`, or `migration` profile wins; otherwise the topic is `미분류`. Topic scoring excludes extension and generic media metadata, then applies existing extraction-source weights.
 
@@ -45,22 +45,22 @@ For each family batch:
 2. Smoothed IDF is `log((1 + N) / (1 + df)) + 1`.
 3. Sparse vectors are L2-normalized.
 4. Profile/example cosine similarity is compared to `0.25` for documents, `0.20` for images, and `0.30` for other families.
-5. Explicit normalized user tags are five-times-weighted pseudo-document terms.
+5. Explicit normalized user tags add `1.5` pseudo-document weight per content token; filenames never satisfy a tag.
 6. Final score is `max(0, positive cosine - 0.65 × negative cosine)`, so a correction can overcome an overly broad tag without deleting it.
 
 Single-file/public JSON analysis runs and persists the real engine decision, then checks only saved user-owned profiles. With an empty profile store it returns `<유형>/미분류`. It never creates a discovered TF-IDF profile or moves a file.
 
 ### Sample calibration and adaptive discovery
 
-When no profiles exist, organization is paused for calibration. The sampler reads only safe top-level Desktop/Downloads files, chooses at most 3 per family, round-robins source/extension buckets, and prefers fingerprints not used by an earlier calibration. A family with only one or two files is still calibrated. Fingerprints are hashes captured before movement; readable paths are not stored. Samples are analyzed by the existing two-worker queue.
+When no profiles exist, organization is paused for calibration. The sampler reads only safe top-level Desktop/Downloads files whose formats have bundled content extraction, chooses at most 3 per family, round-robins source/extension buckets, and prefers fingerprints not used by an earlier calibration. A family with only one or two readable files is still calibrated. After extraction, an empty-content record is removed before topic discovery and cannot be moved as a seed. Fingerprints are hashes captured before movement; readable paths are not stored. Samples are analyzed by the existing two-worker queue.
 
-For every family, pairwise cosine values derive a bounded threshold from their median and median absolute deviation. Stable centroid grouping and refinement then choose the number of clusters automatically; an evidence-free sample stays separate rather than being forced into a generic topic.
+For every family, batches of up to three use the family similarity floor so one unusually strong pair cannot raise the threshold above another valid relationship. Larger batches derive a conservative bounded threshold from the positive-similarity median minus its median absolute deviation. Deterministic connected components group samples linked by threshold-qualified TF-IDF similarity. Evidence-free samples are excluded rather than being forced into filename-derived topics.
 
 The optional local tagger sends only family, bounded filenames, and top extracted terms to Gemma 3 1B. It returns strict JSON containing `cluster_id`, `topic`, and `tags`. The model and pinned llama.cpp CPU runtime are downloaded only after Gemma-terms consent, verified by size and SHA-256, run on a temporary `127.0.0.1` port, and terminated after one request. Invalid output, timeout, refusal, or installation failure falls back to deterministic top-term names.
 
 The calibration board has separate immutable-family tabs. Users can drag sample files between cards, create or rename topics, edit tags, split selected files, merge checked topics, or explicitly exclude samples. Confirmation is step one: the app builds each profile, creates `<유형>/<주제>` under the seed's current source root, and transactionally moves the seed files there. If any seed move fails, all seed moves roll back; if profile persistence fails, the completed seed batch is undone. Rerunning calibration retains existing profiles and offers them as destination cards.
 
-Each seed contributes up to 40 weighted base words and 120 strongest unordered word pairs. A pair `co:A|B` receives `0.5 × sqrt(weight(A) × weight(B))`; cluster evidence averages these vectors. The editable visible tag list includes up to 60 high-weight base words, while the persisted centroid retains the co-occurrence pairs used for contextual matching.
+Each seed contributes up to 40 weighted base words and 120 strongest canonical unordered word pairs. A pair is always stored with a stable lexical identity such as `co:orbit|quantum`, regardless of which word is more frequent, and receives `0.5 × sqrt(weight(A) × weight(B))`. Cluster evidence averages these vectors. The editable visible tag list includes up to 60 high-weight base words, while the persisted centroid retains the co-occurrence pairs used for contextual matching.
 
 After the seed files have moved, the app rescans the original top-level source. Because seeds are now nested, only remaining files enter step two. The preview topic selector permits confirmation, correction, or creation of a user topic. Learning occurs only after a successful approved move: confirmation adds positive evidence, while changing A to B adds positive evidence to B and negative evidence to A. Canceled, unchecked, failed, and `미분류` rows do not learn.
 
