@@ -8,4 +8,5 @@ Pillow==12.1.0
 onnxruntime==1.27.0
 rapidocr==3.5.0
 psutil==7.0.0
+stop-words==2025.11.4
 

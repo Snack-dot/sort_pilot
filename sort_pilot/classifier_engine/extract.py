@@ -9,11 +9,13 @@ from collections import Counter
 from pathlib import Path
 from xml.etree import ElementTree
 
+from stop_words import get_stop_words
+
 from .types import Feature, FeatureVector, path_id
 
 IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
-STOP = {"the", "and", "for", "with", "from", "this", "that", "그리고", "합니다", "있는", "없는"}
+STOP = frozenset(get_stop_words("en")) | frozenset(get_stop_words("ko")) | {"그리고", "합니다", "있는", "없는"}
 MAX_BODY_TERMS = 160
 SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj"})
 CONTENT_ANALYSIS_SUFFIXES = frozenset({
