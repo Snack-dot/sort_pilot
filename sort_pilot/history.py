@@ -1,58 +1,98 @@
 from __future__ import annotations
 
-import sqlite3
-from contextlib import closing
+import json
+import os
+import tempfile
 from pathlib import Path
 
 from .models import FileOperation
 
 
 class HistoryStore:
-    def __init__(self, database_path: Path) -> None:
-        database_path.parent.mkdir(parents=True, exist_ok=True)
-        self.database_path = database_path
-        self._initialize()
+    """Small JSON-backed operation history used for restart-safe Undo."""
 
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.database_path)
-
-    def _initialize(self) -> None:
-        with closing(self._connect()) as connection:
-            with connection:
-                connection.execute(
-                    """CREATE TABLE IF NOT EXISTS operations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        batch_id TEXT NOT NULL,
-                        source TEXT NOT NULL,
-                        destination TEXT NOT NULL,
-                        undone INTEGER NOT NULL DEFAULT 0,
-                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )"""
-                )
+    def __init__(self, history_path: Path) -> None:
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        self.history_path = history_path
+        if not self.history_path.exists():
+            self._write({"version": 1, "batches": []})
 
     def record(self, batch_id: str, operation: FileOperation) -> None:
-        with closing(self._connect()) as connection:
-            with connection:
-                connection.execute(
-                    "INSERT INTO operations(batch_id, source, destination) VALUES (?, ?, ?)",
-                    (batch_id, operation.source, operation.destination),
-                )
+        data = self._read()
+        batch = self._batch(data, batch_id)
+        batch["operations"].append(
+            {"source": operation.source, "destination": operation.destination}
+        )
+        self._write(data)
 
-    def latest_batch(self) -> tuple[str, list[FileOperation]] | None:
-        with closing(self._connect()) as connection:
-            row = connection.execute(
-                "SELECT batch_id FROM operations WHERE undone = 0 ORDER BY id DESC LIMIT 1"
-            ).fetchone()
-            if row is None:
-                return None
-            batch_id = str(row[0])
-            rows = connection.execute(
-                "SELECT source, destination FROM operations WHERE batch_id = ? AND undone = 0 ORDER BY id DESC",
-                (batch_id,),
-            ).fetchall()
-        return batch_id, [FileOperation(source, destination) for source, destination in rows]
+    def record_created_directories(self, batch_id: str, directories: list[Path]) -> None:
+        if not directories:
+            return
+        data = self._read()
+        batch = self._batch(data, batch_id)
+        known = set(batch["created_directories"])
+        for directory in directories:
+            value = str(directory)
+            if value not in known:
+                batch["created_directories"].append(value)
+                known.add(value)
+        self._write(data)
+
+    def latest_batch(self) -> tuple[str, list[FileOperation], list[Path]] | None:
+        data = self._read()
+        for batch in reversed(data["batches"]):
+            if not batch.get("undone", False) and batch.get("operations"):
+                operations = [
+                    FileOperation(item["source"], item["destination"])
+                    for item in reversed(batch["operations"])
+                ]
+                directories = [Path(value) for value in batch.get("created_directories", [])]
+                return str(batch["batch_id"]), operations, directories
+        return None
 
     def mark_undone(self, batch_id: str) -> None:
-        with closing(self._connect()) as connection:
-            with connection:
-                connection.execute("UPDATE operations SET undone = 1 WHERE batch_id = ?", (batch_id,))
+        data = self._read()
+        for batch in data["batches"]:
+            if batch.get("batch_id") == batch_id:
+                batch["undone"] = True
+                self._write(data)
+                return
+
+    def _read(self) -> dict:
+        try:
+            data = json.loads(self.history_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"작업 기록을 읽을 수 없습니다: {self.history_path}") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("batches"), list):
+            raise RuntimeError(f"작업 기록 형식이 올바르지 않습니다: {self.history_path}")
+        return data
+
+    def _write(self, data: dict) -> None:
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=self.history_path.parent,
+            prefix=f"{self.history_path.stem}-",
+            suffix=".tmp",
+        )
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                json.dump(data, stream, ensure_ascii=False, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary_name, self.history_path)
+        finally:
+            if os.path.exists(temporary_name):
+                os.unlink(temporary_name)
+
+    @staticmethod
+    def _batch(data: dict, batch_id: str) -> dict:
+        for batch in data["batches"]:
+            if batch.get("batch_id") == batch_id:
+                return batch
+        batch = {
+            "batch_id": batch_id,
+            "operations": [],
+            "created_directories": [],
+            "undone": False,
+        }
+        data["batches"].append(batch)
+        return batch

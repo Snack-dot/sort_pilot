@@ -3,6 +3,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.db
+history.json
 dist/
 build/
-

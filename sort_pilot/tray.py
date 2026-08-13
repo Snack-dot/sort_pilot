@@ -9,7 +9,9 @@ from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 class TrayIcon:
     def __init__(
         self,
-        analyze_watched_folder: Callable[[], None],
+        organize_all: Callable[[], None],
+        organize_desktop: Callable[[], None],
+        organize_downloads: Callable[[], None],
         toggle_watch: Callable[[], None],
         undo: Callable[[], None],
         quit_program: Callable[[], None],
@@ -17,15 +19,21 @@ class TrayIcon:
         self.tray = QSystemTrayIcon(self._icon())
         self.tray.setToolTip("Sort Pilot")
         self.menu = QMenu()
-        self.analyze_action = QAction("감시 폴더 다시 분석", self.menu)
-        self.analyze_action.triggered.connect(analyze_watched_folder)
+        self.batch_action = QAction("일괄 정리", self.menu)
+        self.batch_action.triggered.connect(organize_all)
+        self.desktop_action = QAction("바탕화면 정리", self.menu)
+        self.desktop_action.triggered.connect(organize_desktop)
+        self.downloads_action = QAction("다운로드 폴더 정리", self.menu)
+        self.downloads_action.triggered.connect(organize_downloads)
         self.watch_action = QAction("감시 중지", self.menu)
         self.watch_action.triggered.connect(toggle_watch)
         self.undo_action = QAction("마지막 정리 실행 취소", self.menu)
         self.undo_action.triggered.connect(undo)
         self.quit_action = QAction("프로그램 종료", self.menu)
         self.quit_action.triggered.connect(quit_program)
-        self.menu.addAction(self.analyze_action)
+        self.menu.addAction(self.batch_action)
+        self.menu.addAction(self.desktop_action)
+        self.menu.addAction(self.downloads_action)
         self.menu.addSeparator()
         self.menu.addAction(self.watch_action)
         self.menu.addAction(self.undo_action)

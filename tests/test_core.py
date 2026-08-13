@@ -7,7 +7,7 @@ from pathlib import Path
 from sort_pilot.classifier import RuleBasedAnalyzer
 from sort_pilot.filters import is_safe_candidate
 from sort_pilot.history import HistoryStore
-from sort_pilot.models import FileSuggestion
+from sort_pilot.models import ApprovedFileMove, FileSuggestion
 from sort_pilot.organizer import build_operation, execute_batch, undo_latest
 
 
@@ -42,9 +42,12 @@ class CoreTests(unittest.TestCase):
             source = root / "incoming" / "document(4).pdf"
             source.parent.mkdir()
             source.write_bytes(b"pdf")
-            history = HistoryStore(root / "history.db")
+            history = HistoryStore(root / "history.json")
+            destination_root = root / "organized"
+            destination_root.mkdir()
             suggestion = FileSuggestion(str(source), source.name, "과제안내서.pdf", "학교", "test")
-            operation = build_operation(suggestion, root / "organized")
+            change = ApprovedFileMove(suggestion, "학교", True)
+            operation = build_operation(change, destination_root)
             execute_batch([operation], history)
             self.assertFalse(source.exists())
             self.assertTrue(operation.destination_path.exists())
@@ -53,8 +56,67 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())
             self.assertFalse(operation.destination_path.exists())
+            self.assertFalse(destination_root.joinpath("학교").exists())
+            self.assertTrue(destination_root.exists())
+
+    def test_move_keeps_original_file_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination_root = root / "organized"
+            destination_root.mkdir()
+            move_source = root / "move" / "original.txt"
+            move_source.parent.mkdir()
+            move_source.write_text("move", encoding="utf-8")
+            move_suggestion = FileSuggestion(
+                str(move_source), move_source.name, "suggested.txt", "학교", "test"
+            )
+            move_change = ApprovedFileMove(move_suggestion, "학교", True)
+            move_operation = build_operation(move_change, destination_root)
+            self.assertEqual(move_operation.destination_path, destination_root / "학교" / "original.txt")
+
+    def test_undo_keeps_preexisting_destination_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "incoming" / "assignment.txt"
+            source.parent.mkdir()
+            source.write_text("assignment", encoding="utf-8")
+            destination_root = root / "organized"
+            school_folder = destination_root / "학교"
+            school_folder.mkdir(parents=True)
+            history = HistoryStore(root / "history.json")
+            suggestion = FileSuggestion(
+                str(source), source.name, source.name, "학교", "test"
+            )
+            change = ApprovedFileMove(suggestion, "학교", True)
+
+            execute_batch([build_operation(change, destination_root)], history)
+            undo_latest(history)
+
+            self.assertTrue(source.exists())
+            self.assertTrue(school_folder.exists())
+
+    def test_json_history_survives_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "incoming" / "receipt.txt"
+            source.parent.mkdir()
+            source.write_text("receipt", encoding="utf-8")
+            history_path = root / "history.json"
+            destination_root = root / "organized"
+            destination_root.mkdir()
+            suggestion = FileSuggestion(
+                str(source), source.name, "ignored-name.txt", "금융", "test"
+            )
+            change = ApprovedFileMove(suggestion, "금융", True)
+
+            execute_batch([build_operation(change, destination_root)], HistoryStore(history_path))
+            restored = undo_latest(HistoryStore(history_path))
+
+            self.assertEqual(len(restored), 1)
+            self.assertTrue(source.exists())
+            self.assertFalse((destination_root / "금융").exists())
+            self.assertIn('"batches"', history_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
     unittest.main()
-

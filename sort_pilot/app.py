@@ -22,12 +22,19 @@ class AppController:
         self.app.setQuitOnLastWindowClosed(False)
         self.analyzer = RuleBasedAnalyzer()
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
-        self.history = HistoryStore(app_data / "history.db")
+        self.history = HistoryStore(app_data / "history.json")
         self.watch_folder = Path.home() / "Downloads"
         self.watcher = FolderWatcher(self.watch_folder)
         self.watcher.file_ready.connect(self._new_file)
         self.watcher.error.connect(lambda message: self.tray.notify("감시 오류", message))
-        self.tray = TrayIcon(self.analyze_watched_folder, self.toggle_watch, self.undo, self.quit)
+        self.tray = TrayIcon(
+            self.organize_all,
+            self.organize_desktop,
+            self.organize_downloads,
+            self.toggle_watch,
+            self.undo,
+            self.quit,
+        )
 
     def start(self) -> None:
         self.tray.show()
@@ -35,13 +42,30 @@ class AppController:
         self.tray.set_watching(True)
         self.tray.notify("Sort Pilot", "다운로드 폴더 감시를 시작했습니다.")
 
-    def analyze_watched_folder(self) -> None:
-        """Manually analyze existing files that were not caught as new downloads."""
-        suggestions = scan_folder(self.watch_folder, self.analyzer)
+    def organize_desktop(self) -> None:
+        self._organize_existing_files(self._desktop_folder(), "바탕화면")
+
+    def organize_downloads(self) -> None:
+        self._organize_existing_files(self.watch_folder, "다운로드 폴더")
+
+    def organize_all(self) -> None:
+        suggestions = scan_folder(self._desktop_folder(), self.analyzer)
+        suggestions.extend(scan_folder(self.watch_folder, self.analyzer))
         if not suggestions:
-            QMessageBox.information(None, "Sort Pilot", "분석할 파일이 없습니다.")
+            QMessageBox.information(None, "Sort Pilot", "바탕화면과 다운로드 폴더에 정리할 파일이 없습니다.")
             return
-        self._show_preview(suggestions, self.watch_folder)
+        self._show_preview(suggestions)
+
+    @staticmethod
+    def _desktop_folder() -> Path:
+        return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation))
+
+    def _organize_existing_files(self, folder: Path, label: str) -> None:
+        suggestions = scan_folder(folder, self.analyzer)
+        if not suggestions:
+            QMessageBox.information(None, "Sort Pilot", f"{label}에 정리할 파일이 없습니다.")
+            return
+        self._show_preview(suggestions)
 
     def toggle_watch(self) -> None:
         if self.watcher.running:
@@ -67,13 +91,16 @@ class AppController:
     def _new_file(self, path: Path) -> None:
         if is_safe_candidate(path):
             suggestion = self.analyzer.analyze(path)
-            self._show_preview([suggestion], self.watch_folder)
+            self._show_preview([suggestion])
 
-    def _show_preview(self, suggestions, destination_root: Path) -> None:
-        dialog = PreviewDialog(suggestions, destination_root)
+    def _show_preview(self, suggestions) -> None:
+        dialog = PreviewDialog(suggestions)
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
             return
-        operations = [build_operation(item, destination_root) for item in dialog.selected_suggestions()]
+        operations = [
+            build_operation(item, item.suggestion.source.parent)
+            for item in dialog.approved_changes()
+        ]
         try:
             completed = execute_batch(operations, self.history)
         except (OSError, ValueError) as exc:

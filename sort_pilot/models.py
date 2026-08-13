@@ -21,6 +21,15 @@ class FileSuggestion:
 
 
 @dataclass(frozen=True, slots=True)
+class ApprovedFileMove:
+    """User-approved folder move based on an analyzer suggestion."""
+
+    suggestion: FileSuggestion
+    folder: str
+    move_approved: bool
+
+
+@dataclass(frozen=True, slots=True)
 class FileOperation:
     source: str
     destination: str
@@ -32,4 +41,3 @@ class FileOperation:
     @property
     def destination_path(self) -> Path:
         return Path(self.destination)
-
