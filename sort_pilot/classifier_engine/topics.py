@@ -25,6 +25,17 @@ WINDOWS_INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 GENERIC_PREFIXES = ("image:", "aspect:", "color:", "n_person:", "n_objects:", "subject:")
 GENERIC_TERMS = {"needs_content", "kakao_export", "no_ext"}
 
+TEST_TEMPLATE: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("문서", "학업", ("과제", "강의", "수업", "시험", "학교", "assignment", "lecture")),
+    ("문서", "업무", ("회의", "보고서", "프로젝트", "기획", "계약", "meeting", "report", "project")),
+    ("문서", "금융", ("영수증", "세금", "청구서", "급여", "결제", "receipt", "invoice", "tax")),
+    ("문서", "개인", ("이력서", "자기소개서", "증명서", "신분증", "resume", "certificate")),
+    ("이미지", "사진", ("사진", "여행", "가족", "인물", "풍경", "photo", "travel", "family")),
+    ("이미지", "스크린샷", ("스크린샷", "캡처", "화면", "screenshot", "capture")),
+    ("압축파일", "백업", ("백업", "보관", "archive", "backup")),
+    ("압축파일", "설치자료", ("설치", "배포", "패키지", "setup", "install", "package")),
+)
+
 
 def utc_now() -> str:
     """Return a stable UTC timestamp for profile persistence."""
@@ -214,6 +225,18 @@ class TopicProfileStore:
         if target is None:
             return
         self.save(profile for profile in profiles if profile.id != profile_id)
+
+    def install_test_template_if_empty(self) -> list[TopicProfile]:
+        """Install a small MVP template only when the user owns no topic profiles."""
+        profiles = self.load()
+        if profiles:
+            return profiles
+        profiles = [
+            self.new_profile(family, name, tags, origin="user")
+            for family, name, tags in TEST_TEMPLATE
+        ]
+        self.save(profiles)
+        return profiles
 
     @staticmethod
     def new_profile(

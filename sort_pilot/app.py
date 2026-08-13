@@ -40,6 +40,7 @@ class AppController(QObject):
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         self.history = HistoryStore(app_data / "history.json", app_data / "history.db")
         self.profile_store = TopicProfileStore(data_dir() / "topic_profiles.json")
+        self.profile_store.install_test_template_if_empty()
         self.topic_classifier = TopicClassifier()
         self.downloads_folder = Path.home() / "Downloads"
         self.analysis = BatchAnalysisController(self)
