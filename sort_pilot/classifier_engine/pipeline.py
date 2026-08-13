@@ -15,8 +15,8 @@ class Pipeline:
 
     def __init__(self, config: Config | None = None, root: Path | None = None):
         """Load configuration, state storage, model weights, and tier-three stub."""
-        self.config = config or Config()
         self.root = root or data_dir()
+        self.config = config or Config.load(self.root / "config.json")
         self.store = Store(self.root / "state.db")
         self.model = NaiveBayesModel(self.root / "classifier_weights.json")
         self.tier3 = Tier3Stub()

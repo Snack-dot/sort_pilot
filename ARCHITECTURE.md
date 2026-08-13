@@ -2,7 +2,7 @@
 
 > **Implemented-app note (2026-08-13):** The diagrams below describe the original long-lived watcher proposal. The integrated MVP instead uses manual Desktop/Downloads collection, an in-process `QThreadPool` capped at two workers, one reusable pipeline/OCR engine per worker, and Qt signals back to the UI. See `docs/FUNCTION_MAP.md` for the implemented call graph.
 >
-> Worker extraction now returns reusable `AnalysisRecord` values. The main-thread batch coordinator applies fixed type routing, immutable topic-profile snapshots, and dependency-free sparse TF-IDF discovery before presenting approval UI. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
+> Each worker now runs the complete `Pipeline.safe_classify()` path and returns a reusable `AnalysisRecord` containing the persisted Tier-1/Naive Bayes evidence plus extracted features. Engine categories never become destination topics automatically. The main-thread coordinator applies only user-created profiles and explicitly named/approved TF-IDF or migration groups before preview. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
 
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that document.
 
@@ -125,14 +125,16 @@ rules:
 
   - id: coursework
     match: {filename_regex: '(과제|report|assignment|hw\d|lab\d)'}
-    category: School
+    action: mark
+    meta: [topic_hint:coursework]
 
   - id: bank-statements
     match: {filename_regex: '(거래내역|명세서|statement|invoice|세금계산서)'}
-    category: Finance
+    action: mark
+    meta: [topic_hint:purchase]
 ```
 
-Three rule outcomes: `category` (terminal), `mark` (annotate and continue), `exclude` (drop). The KakaoTalk rule is a `mark` — the filename tells you the *source* but nothing about the content, which is exactly why that folder is the interesting case.
+Three rule outcomes: `category` (terminal engine evidence), `mark` (annotate and continue), `exclude` (drop). Semantic defaults use `mark`, never a destination topic. The KakaoTalk rule is also a `mark` — the filename tells you the *source* but nothing about the content, which is exactly why that folder is the interesting case.
 
 Filename normalisation before regex matching:
 
@@ -409,24 +411,7 @@ Report the held-out number in the wizard. It sets honest expectations and it tel
 
 ### 5.2 Seed lexicon (FR-402)
 
-`seed_lexicon.yaml`, loaded as pseudo-counts so it is overridable by real evidence:
-
-```yaml
-Finance:
-  weight: 8          # pseudo-count per term
-  terms: [세금계산서, 영수증, 청구서, 거래내역, 명세서, 원천징수,
-          invoice, receipt, statement, tax, vat, payment]
-School:
-  weight: 8
-  terms: [과제, 강의, 수강, 학번, 시험, 레포트, 논문, 출석,
-          assignment, lecture, syllabus, midterm, thesis]
-Work:
-  weight: 8
-  terms: [회의록, 보고서, 기획, 계약서, 결재, 품의,
-          meeting, agenda, proposal, contract, deck, roadmap]
-```
-
-Pseudo-counts, not hard rules: eight occurrences of evidence is enough to bootstrap and little enough that a dozen real user corrections override it.
+Superseded in the manual MVP. No semantic seed lexicon is shipped, because it would silently impose destination topics. A fresh topic store is empty; only user-created profiles and explicitly named/approved proposals or migrations may select a topic.
 
 ### 5.3 Feedback (FR-403, FR-404)
 
@@ -476,13 +461,13 @@ Two files, two jobs. JSON for the model (inspectable, portable, matches the plan
   "version": 3,
   "updated_at": "2026-08-10T09:12:44Z",
   "categories": {
-    "Finance": {"docs": 142, "total": 3891},
-    "School":  {"docs":  88, "total": 2140}
+    "UserSignalA": {"docs": 142, "total": 3891},
+    "UserSignalB": {"docs":  88, "total": 2140}
   },
   "tokens": {
-    "세금계산서": {"Finance": 41, "Work": 3},
-    "과제":       {"School": 67},
-    "invoice":    {"Finance": 33, "Work": 8}
+    "token_a": {"UserSignalA": 41, "UserSignalB": 3},
+    "token_b": {"UserSignalB": 67},
+    "token_c": {"UserSignalA": 33, "UserSignalB": 8}
   },
   "params": {"alpha": 0.3, "theta_auto": 0.55, "theta_suggest": 0.15}
 }

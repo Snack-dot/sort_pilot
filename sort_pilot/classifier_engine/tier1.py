@@ -9,8 +9,8 @@ from .types import Decision, Feature
 DEFAULT_RULES = [
     {"id": "installers", "ext": ["exe", "msi", "dmg", "pkg", "appimage"], "category": "Installers"},
     {"id": "kakao-export", "regex": r"^KakaoTalk_\d{8}_\d{6}", "mark": ["kakao_export", "needs_content"]},
-    {"id": "coursework", "regex": r"(과제|report|assignment|hw\d|lab\d)", "category": "School"},
-    {"id": "finance", "regex": r"(거래내역|명세서|statement|invoice|세금계산서|영수증)", "category": "Finance"},
+    {"id": "coursework", "regex": r"(과제|report|assignment|hw\d|lab\d)", "mark": ["topic_hint:coursework"]},
+    {"id": "finance", "regex": r"(거래내역|명세서|statement|invoice|세금계산서|영수증)", "mark": ["topic_hint:finance"]},
 ]
 
 

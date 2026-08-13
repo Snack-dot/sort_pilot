@@ -165,8 +165,6 @@ class TopicManagerDialog(QDialog):
         self.profile_list.clear()
         for profile in visible:
             label = profile.name
-            if profile.origin == "builtin":
-                label += " (기본)"
             if not profile.enabled:
                 label += " [비활성]"
             item = QListWidgetItem(label)
@@ -186,14 +184,13 @@ class TopicManagerDialog(QDialog):
         self.name.setText(profile.name)
         self.tags.setPlainText("\n".join(profile.tags))
         self.enabled.setChecked(profile.enabled)
-        builtin = profile.origin == "builtin"
-        self.name.setReadOnly(builtin)
-        self.tags.setReadOnly(builtin)
+        self.name.setReadOnly(False)
+        self.tags.setReadOnly(False)
         self.examples.clear()
-        self.examples.setEnabled(not builtin)
-        self.add_examples_button.setEnabled(not builtin)
-        self.remove_examples_button.setEnabled(not builtin)
-        self.delete_button.setEnabled(not builtin)
+        self.examples.setEnabled(True)
+        self.add_examples_button.setEnabled(True)
+        self.remove_examples_button.setEnabled(True)
+        self.delete_button.setEnabled(True)
 
     def _new_profile(self) -> None:
         """Reset the editor for a new user profile in the selected family."""
@@ -222,7 +219,7 @@ class TopicManagerDialog(QDialog):
 
     def _delete_selected(self) -> None:
         """Delete a user profile after confirmation without touching folders."""
-        if self.current_profile is None or self.current_profile.origin == "builtin":
+        if self.current_profile is None:
             return
         answer = QMessageBox.question(
             self,
@@ -245,11 +242,10 @@ class TopicManagerDialog(QDialog):
             if self.current_profile is None:
                 profile = self.store.new_profile(self.family.currentText(), self.name.text(), tags)
             else:
-                name = self.current_profile.name if self.current_profile.origin == "builtin" else validate_topic_name(self.name.text())
                 profile = replace(
                     self.current_profile,
-                    name=name,
-                    tags=self.current_profile.tags if self.current_profile.origin == "builtin" else tags,
+                    name=validate_topic_name(self.name.text()),
+                    tags=tags,
                     enabled=self.enabled.isChecked(),
                 )
             candidates = [item for item in self.profiles if item.id != profile.id]

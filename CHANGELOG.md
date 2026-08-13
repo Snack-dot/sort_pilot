@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-13 — Full classifier-engine wiring
+
+- Removed `classifier.py`, its compatibility alias, and the temporary rule-based/fallback implementation.
+- Made the engine-owned `ClassifierEngine` the sole implementation and import path for the queue, synchronous scanner, and JSON API.
+- Routed every file through `Pipeline.safe_classify()` and retained the persisted decision ID, tier, action, category, and margin.
+- Removed automatic engine-category topic mapping, built-in semantic profiles, and the seed lexicon.
+- Converted default coursework/finance rules into evidence marks rather than terminal topic categories.
+- Added real-pipeline tests proving fresh files remain `미분류` until a user-created profile or explicitly approved proposal names the topic.
+
 ## 2026-08-13 — Hierarchical type/topic classification
 
 - Split flat categories into fixed Korean type roots and independent semantic topics.

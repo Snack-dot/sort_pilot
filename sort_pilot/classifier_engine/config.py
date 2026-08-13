@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -40,9 +41,20 @@ class Config:
         return cls(**{k: v for k, v in values.items() if k in known})
 
     def save(self, path: Path) -> None:
-        """Persist the current configuration as readable UTF-8 JSON."""
+        """Persist the current configuration as atomically replaced UTF-8 JSON."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(asdict(self), ensure_ascii=False, indent=2), encoding="utf-8")
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=path.parent, prefix="classifier-config-", suffix=".tmp"
+        )
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                json.dump(asdict(self), stream, ensure_ascii=False, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary_name, path)
+        finally:
+            if os.path.exists(temporary_name):
+                os.unlink(temporary_name)
 
 
 def data_dir() -> Path:

@@ -8,7 +8,8 @@ Sort Pilot is a Windows system-tray application that analyzes safe files on the 
 Tray action (Desktop / Downloads / both)
 → safe top-level candidate collection
 → deduplicated two-worker classification queue
-→ fixed file type + saved topic matching
+→ real Pipeline Tier-1 / Naive Bayes decision and persistence
+→ fixed file type + user-created topic profile resolution
 → optional current-batch TF-IDF topic proposal
 → cancellable progress dialog
 → editable destination preview
@@ -21,14 +22,25 @@ There is no real-time filesystem watcher in the integrated app. Manual organizat
 
 ## Public classifier interface
 
-`LocalPipelineAnalyzer` returns Python dictionaries that are directly JSON-compatible.
+`ClassifierEngine` is exported directly by `sort_pilot.classifier_engine` and returns Python dictionaries that are directly JSON-compatible. There is no separate compatibility classifier or fallback implementation; every call uses `Pipeline.safe_classify()`.
+
+```python
+from pathlib import Path
+from sort_pilot.classifier_engine import ClassifierEngine
+
+classifier = ClassifierEngine()
+try:
+    result = classifier.analyze_json(Path("C:/Users/user/Downloads/운영체제과제.pdf"))
+finally:
+    classifier.close()
+```
 
 Single file:
 
 ```python
 {
     "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
-    "folder": "문서/학교"
+    "folder": "문서/미분류"
 }
 ```
 
@@ -37,22 +49,23 @@ Multiple files:
 ```python
 {
     "results": [
-        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "문서/학교"},
-        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "이미지/금융"}
+        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "문서/내과제"},
+        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "이미지/구매기록"}
     ]
 }
 ```
 
-Use `analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. The desktop batch UI can additionally propose new TF-IDF topics, but public non-interactive calls never persist an inferred folder without approval.
+Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. A fresh install contains no semantic topics. `내과제` and `구매기록` above are examples of profiles explicitly named by the user. Engine decisions are persisted as evidence but never become destination topic names automatically. The desktop batch UI can propose TF-IDF groups, but a user must select and name each topic before it is saved or applied.
 
 ## Features and safety
 
 - Manual Desktop, Downloads, or combined organization.
-- Deterministic top-level type routing with independent topic profiles per type.
+- Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
+- Deterministic top-level type routing with independent, user-owned topic profiles per type.
 - User-created topic names, tags, enable/disable state, and learn-only example files.
 - Current-batch TF-IDF topic suggestions for documents (minimum 5) and images (minimum 10).
 - Explicit topic naming/approval before a discovered profile is saved or applied.
-- Manual previewed migration from flat folders such as `학교` to `문서/학교` or `이미지/학교`.
+- Manual previewed migration from a user-named flat folder such as `직접선택` to `문서/직접선택` or `이미지/직접선택`.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable progress with no partial preview after cancellation.
@@ -85,8 +98,7 @@ The app has no main window. Right-click the `SP` system-tray icon to organize fi
 main.py                            desktop entry point
 sort_pilot/app.py                  tray workflow and UI coordination
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
-sort_pilot/classifier.py           public JSON API and app adapter
-sort_pilot/classifier_engine/      local extraction, scoring, persistence, learning, vision
+sort_pilot/classifier_engine/      sole public classifier, extraction, scoring, persistence, topics, vision
 sort_pilot/topic_dialogs.py        topic profile and TF-IDF proposal UI
 sort_pilot/migration.py            safe flat-folder hierarchy migration planning
 sort_pilot/history.py              atomic JSON move history and SQLite migration

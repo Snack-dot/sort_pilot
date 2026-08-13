@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .classifier import FileAnalyzer
+from .classifier_engine.analyzer import FileAnalyzer
 from .filters import is_safe_candidate
 from .models import FileSuggestion
 

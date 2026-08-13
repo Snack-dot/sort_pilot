@@ -4,7 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sort_pilot.classifier import RuleBasedAnalyzer
+from sort_pilot.classifier_engine import ClassifierEngine
+from sort_pilot.classifier_engine.config import Config
+from sort_pilot.classifier_engine.pipeline import Pipeline
+from sort_pilot.classifier_engine.topics import TopicProfileStore
 from sort_pilot.filters import is_safe_candidate
 from sort_pilot.history import HistoryStore
 from sort_pilot.models import ApprovedFileMove, FileSuggestion
@@ -12,17 +15,33 @@ from sort_pilot.organizer import build_operation, execute_batch, undo_latest
 
 
 class CoreTests(unittest.TestCase):
-    def test_rule_analyzer_keeps_contract(self) -> None:
+    def test_real_engine_result_creates_named_hierarchical_folder(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "운영체제 과제.PDF"
+            root = Path(directory)
+            path = root / "incoming" / "운영체제 과제.PDF"
+            path.parent.mkdir()
             path.write_text("test", encoding="utf-8")
-            result = RuleBasedAnalyzer().analyze(path)
-            self.assertEqual(result.folder, "문서/학교")
-            self.assertEqual(result.suggested_name, "운영체제_과제.pdf")
-            self.assertEqual(
-                set(result.to_dict()),
-                {"file_path", "file_name", "suggested_name", "folder", "reason"},
+            analyzer = ClassifierEngine(
+                Pipeline(Config(destination_root=str(root / "organized")), root / "engine"),
+                TopicProfileStore(root / "profiles.json"),
             )
+            try:
+                analyzer.profile_store.upsert(
+                    analyzer.profile_store.new_profile("문서", "과제모음", ["과제"])
+                )
+                result = analyzer.analyze(path)
+                self.assertEqual(result.folder, "문서/과제모음")
+                self.assertEqual(
+                    set(result.to_dict()),
+                    {"file_path", "file_name", "suggested_name", "folder", "reason"},
+                )
+                change = ApprovedFileMove(result, "current", result.folder, True)
+                operation = build_operation(change, root / "organized")
+                execute_batch([operation], HistoryStore(root / "history.json"))
+                self.assertTrue((root / "organized" / "문서" / "과제모음" / path.name).is_file())
+                self.assertFalse(path.exists())
+            finally:
+                analyzer.close()
 
     def test_filter_blocks_shortcuts_and_temporary_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -45,8 +64,8 @@ class CoreTests(unittest.TestCase):
             history = HistoryStore(root / "history.json")
             destination_root = root / "organized"
             destination_root.mkdir()
-            suggestion = FileSuggestion(str(source), source.name, "과제안내서.pdf", "학교", "test")
-            change = ApprovedFileMove(suggestion, "current", "학교", True)
+            suggestion = FileSuggestion(str(source), source.name, "과제안내서.pdf", "프로젝트", "test")
+            change = ApprovedFileMove(suggestion, "current", "프로젝트", True)
             operation = build_operation(change, destination_root)
             execute_batch([operation], history)
             self.assertFalse(source.exists())
@@ -56,7 +75,7 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())
             self.assertFalse(operation.destination_path.exists())
-            self.assertFalse(destination_root.joinpath("학교").exists())
+            self.assertFalse(destination_root.joinpath("프로젝트").exists())
             self.assertTrue(destination_root.exists())
 
     def test_move_keeps_original_file_name(self) -> None:
@@ -67,12 +86,12 @@ class CoreTests(unittest.TestCase):
             source = root / "incoming" / "original.txt"
             source.parent.mkdir()
             source.write_text("move", encoding="utf-8")
-            suggestion = FileSuggestion(str(source), source.name, "renamed.txt", "학교", "test")
-            change = ApprovedFileMove(suggestion, "current", "학교", True)
+            suggestion = FileSuggestion(str(source), source.name, "renamed.txt", "프로젝트", "test")
+            change = ApprovedFileMove(suggestion, "current", "프로젝트", True)
             operation = build_operation(change, destination_root)
             self.assertEqual(
                 operation.destination_path.resolve(),
-                (destination_root / "학교" / "original.txt").resolve(),
+                (destination_root / "프로젝트" / "original.txt").resolve(),
             )
 
     def test_json_history_survives_restart(self) -> None:
@@ -84,15 +103,15 @@ class CoreTests(unittest.TestCase):
             history_path = root / "history.json"
             destination_root = root / "organized"
             destination_root.mkdir()
-            suggestion = FileSuggestion(str(source), source.name, source.name, "금융", "test")
-            change = ApprovedFileMove(suggestion, "current", "금융", True)
+            suggestion = FileSuggestion(str(source), source.name, source.name, "구매기록", "test")
+            change = ApprovedFileMove(suggestion, "current", "구매기록", True)
 
             execute_batch([build_operation(change, destination_root)], HistoryStore(history_path))
             restored = undo_latest(HistoryStore(history_path))
 
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())
-            self.assertFalse((destination_root / "금융").exists())
+            self.assertFalse((destination_root / "구매기록").exists())
 
     def test_legacy_sqlite_history_migrates_latest_active_batch(self) -> None:
         import sqlite3

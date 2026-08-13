@@ -8,11 +8,11 @@ This work belongs on a feature branch rather than `main`. It turns the compact t
 
 `sort_pilot/classifier_engine/` contains configuration, data contracts, extraction, Tier 1 rules, Naive Bayes classification, learning, persistence, reconciliation, actions, and ONNX vision. `eval/` provides repeatable classifier metrics and decision-resource export. `tests/` covers the application, queue, public JSON contract, migration, and classifier pipeline.
 
-The root launcher and `sort_pilot/` application package use the manual Desktop/Downloads workflow from `app`. `sort_pilot.classifier.LocalPipelineAnalyzer` adapts `sort_pilot.classifier_engine` to the existing `FileSuggestion` contract and falls back to the original rules when the engine is unavailable or uncertain.
+The root launcher and `sort_pilot/` application package use the manual Desktop/Downloads workflow from `app`. `classifier.py` and all compatibility aliases were removed; `sort_pilot.classifier_engine.ClassifierEngine` is the sole classifier used by the queue, scanner, and public JSON API. Every call runs `Pipeline.safe_classify()` and persists its Tier-1 or Naive Bayes evidence.
 
 The manual app uses a two-thread Qt pool. Each pool thread retains its own analyzer, engine pipeline, SQLite connection, and RapidOCR instance. Progress and results cross back to the Qt main thread through signals. See `FUNCTION_MAP.md` for complete ownership and `INTEGRATION_PROCESS.md` for the branch integration record.
 
-Hierarchical classification routes each file into a fixed Korean type family before applying a family-specific topic profile. User profiles outrank built-ins, and unmatched document/image records can form dependency-free current-batch TF-IDF proposals that require naming and approval. See `HIERARCHICAL_TOPICS.md` for scoring, persistence, UI, and migration behavior.
+Hierarchical classification routes each file into a fixed Korean type family and then applies only family-specific profiles created or approved by the user. Engine categories never name destination topics, and there are no built-in topics. Unmatched document/image records can form dependency-free current-batch TF-IDF proposals, but a user must select and name them before use. See `HIERARCHICAL_TOPICS.md` for scoring, persistence, UI, and migration behavior.
 
 ## Local model setup
 

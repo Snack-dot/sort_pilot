@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-The application lives in `ai-file-organizer-team-mvp-fixed/`. `main.py` starts the PyQt6 tray application, `app.py` coordinates manual Desktop/Downloads organization, and `analysis_queue.py` runs a cancellable two-worker classifier queue. `classifier.py` owns the public JSON contract and adapts `classifier_engine/`; `organizer.py` performs approved moves. Tests live under `tests/`, and the complete callable map is in `docs/FUNCTION_MAP.md`.
+The application lives in `ai-file-organizer-team-mvp-fixed/`. `main.py` starts the PyQt6 tray application, `app.py` coordinates manual Desktop/Downloads organization, and `analysis_queue.py` runs a cancellable two-worker classifier queue. `classifier_engine/analyzer.py` owns the public JSON contract and is the sole classifier implementation; `organizer.py` performs approved moves. Tests live under `tests/`, and the complete callable map is in `docs/FUNCTION_MAP.md`.
 
 ## Build, Test, and Development Commands
 
