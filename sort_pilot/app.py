@@ -50,7 +50,7 @@ class AppController(QObject):
         self.profile_store = TopicProfileStore(data_dir() / "topic_profiles.json")
         self.topic_classifier = TopicClassifier()
         self.calibration = CalibrationService(self.topic_classifier, self.profile_store)
-        self.calibration_sampler = CalibrationSampler(data_dir() / "calibration_state.json")
+        self.calibration_sampler = CalibrationSampler(data_dir() / "calibration_state.json", per_family=20)
         self.model_installer = LocalModelInstaller(data_dir() / "local_ai")
         self.local_tagger = LocalTagger(self.model_installer)
         self.downloads_folder = Path.home() / "Downloads"
@@ -269,7 +269,15 @@ class AppController(QObject):
                 )
             finally:
                 progress.close()
-        draft = self.calibration.build_draft(content_records, suggestions)
+        draft = self.calibration.build_draft(content_records, suggestions, min_cluster_size=2)
+        if not draft.clusters:
+            QMessageBox.information(
+                None,
+                "Sort Pilot",
+                "표본에서 서로 연관된 주제 묶음을 찾지 못했습니다. 나중에 더 많은 파일과 함께 다시 시도합니다.",
+            )
+            self._pending_organize = None
+            return
         dialog = CalibrationDialog(draft, self.profile_store.load())
         if dialog.exec() != CalibrationDialog.DialogCode.Accepted:
             self._pending_organize = None
@@ -277,7 +285,7 @@ class AppController(QObject):
         try:
             fingerprints = [
                 self.calibration_sampler.fingerprint(record.source)
-                for record in content_records
+                for record in draft.surfaced_records()
             ]
             profiles = self.calibration.profiles_from_draft(draft)
             changes = self.calibration.seed_changes(

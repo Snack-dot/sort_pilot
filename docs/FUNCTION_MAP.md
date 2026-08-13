@@ -130,7 +130,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `CalibrationCluster`, `CalibrationDraft` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction. |
+| `CalibrationCluster`, `CalibrationDraft`, `CalibrationDraft.surfaced_records` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction, and expose only the records referenced by a surfaced cluster. |
 | `CalibrationSampler.__init__`, `select`, `remember`, `remember_fingerprints` | `sort_pilot/calibration.py` | Configure the per-family limit, choose source/extension-diverse samples, and atomically remember fingerprints captured before seed moves. |
 | `CalibrationSampler._stratified`, `_load_seen`, `fingerprint` | `sort_pilot/calibration.py` | Round-robin randomized buckets, tolerate corrupt state, and hash path metadata without storing readable paths. |
 | `CalibrationService.__init__`, `build_draft`, `save_draft`, `profiles_from_draft` | `sort_pilot/calibration.py` | Convert proposals into an editable draft, build rich profiles without side effects, and persist confirmed groups. |

@@ -46,6 +46,11 @@ class CalibrationDraft:
     records: list[AnalysisRecord]
     clusters: list[CalibrationCluster]
 
+    def surfaced_records(self) -> list[AnalysisRecord]:
+        """Return only the records referenced by a surfaced cluster, in index order."""
+        used = sorted({index for cluster in self.clusters for index in cluster.record_indexes})
+        return [self.records[index] for index in used]
+
 
 class CalibrationSampler:
     """Choose bounded, extension-diverse top-level samples and remember prior files."""
@@ -143,10 +148,16 @@ class CalibrationService:
         self,
         records: list[AnalysisRecord],
         suggestions: dict[str, tuple[str, tuple[str, ...]]] | None = None,
+        min_cluster_size: int = 1,
     ) -> CalibrationDraft:
-        """Convert automatic clusters into editable topic groups."""
+        """Convert automatic clusters of at least ``min_cluster_size`` records into editable topic groups."""
         clusters: list[CalibrationCluster] = []
-        for proposal in self.classifier.discover(records):
+        proposals = [
+            proposal
+            for proposal in self.classifier.discover(records)
+            if len(proposal.record_indexes) >= min_cluster_size
+        ]
+        for proposal in proposals:
             cluster_id = self.cluster_id(proposal)
             suggested = (suggestions or {}).get(cluster_id)
             topic = suggested[0] if suggested else self.fallback_topic(proposal)
