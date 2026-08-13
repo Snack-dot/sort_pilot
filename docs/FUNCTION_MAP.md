@@ -10,12 +10,18 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `AppController.__init__` | `sort_pilot/app.py` | Wires history, queue signals, paths, and tray actions. |
 | `start` | `sort_pilot/app.py` | Shows the tray and reports successful history migration. |
 | `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Tray callbacks selecting one or both source roots. |
+| `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
 | `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
 | `_organize_existing_files` | `sort_pilot/app.py` | Collects safe paths and starts one queue session. |
+| `_start_analysis` | `sort_pilot/app.py` | Records the organize/profile/migration mode and starts a shared queue session. |
 | `_show_progress`, `_update_progress`, `_close_progress` | `sort_pilot/app.py` | Own the cancellable analysis progress dialog. |
 | `_analysis_completed`, `_analysis_cancelled` | `sort_pilot/app.py` | Consume final queue signals; errors are reported and only complete successful sessions reach preview. |
+| `_complete_organization`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Dispatch extracted records into matching/discovery, learn-only example updates, or prescribed migration previews. |
+| `_report_analysis_errors` | `sort_pilot/app.py` | Reports bounded per-file errors without discarding successful records. |
 | `_set_busy` | `sort_pilot/app.py` | Disables conflicting tray actions during analysis. |
 | `_show_preview`, `_destination_root` | `sort_pilot/app.py` | Convert approved UI rows into allowed-root move operations. |
+| `_learn_approved_migration`, `_merge_examples` | `sort_pilot/app.py` | Update family-specific profiles only from successfully approved examples/migration moves. |
+| `_record_suggestion`, `_path_key` | `sort_pilot/app.py` | Adapt hierarchical records and normalize Windows lookup paths. |
 | `undo`, `quit` | `sort_pilot/app.py` | Restore the latest batch or shut down workers and Qt safely. |
 
 ## Queue and worker ownership
@@ -43,6 +49,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `RuleBasedAnalyzer._clean_name` | `sort_pilot/classifier.py` | Normalizes the compatibility-only suggested filename. |
 | `LocalPipelineAnalyzer.__init__` | `sort_pilot/classifier.py` | Creates a worker-local `Pipeline`, or retains fallback only if unavailable. |
 | `LocalPipelineAnalyzer.analyze` | `sort_pilot/classifier.py` | Converts engine decisions to the app's stable model. |
+| `LocalPipelineAnalyzer.analyze_record`, `_suggestion` | `sort_pilot/classifier.py` | Extract reusable family/term records and adapt assigned records into `FileSuggestion`. |
 | `analyze_json` | `sort_pilot/classifier.py` | Public single-file `{filepath, folder}` dictionary contract. |
 | `analyze_many_json` | `sort_pilot/classifier.py` | Public ordered `{"results": [...]}` dictionary contract. |
 | `LocalPipelineAnalyzer.close` | `sort_pilot/classifier.py` | Releases the pipeline's worker-owned store connection. |
@@ -55,7 +62,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `collect_candidates` | `sort_pilot/scanner.py` | Fast top-level path collection used by the app before background analysis. |
 | `scan_folder` | `sort_pilot/scanner.py` | Compatibility synchronous analyzer used by scripts/tests. |
 | `PreviewDialog.__init__` | `sort_pilot/preview.py` | Builds current/root/folder/move controls for completed suggestions. |
-| `_checked_item`, `approved_changes`, `_confirm` | `sort_pilot/preview.py` | Create approval controls, translate rows to `ApprovedFileMove`, and require final confirmation. |
+| `_checked_item`, `approved_changes`, `_hierarchical_folder`, `_confirm` | `sort_pilot/preview.py` | Keep the type root immutable, translate editable topic paths to `ApprovedFileMove`, and require confirmation. |
 | `build_operation` | `sort_pilot/organizer.py` | Preserves original filename, validates folder, and selects collision-free destination. |
 | `execute_batch` | `sort_pilot/organizer.py` | Moves atomically at batch level; reverses completed moves on failure. |
 | `undo_latest` | `sort_pilot/organizer.py` | Restores newest active batch and removes only recorded empty directories. |
@@ -83,7 +90,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `Pipeline.__init__` | `classifier_engine/pipeline.py` | Creates config, model, worker-local store, and Tier 3 extension point. |
-| `categories`, `classify`, `safe_classify`, `close` | `classifier_engine/pipeline.py` | Discover categories, run/persist tiered classification, contain errors, and release storage. |
+| `categories`, `extract_vector`, `classify`, `safe_classify`, `close` | `classifier_engine/pipeline.py` | Extract reusable features, retain legacy scoring tools, and release storage. |
 | `Store.__init__`, `close` | `classifier_engine/store.py` | Own a WAL/busy-timeout SQLite connection per pipeline worker. |
 | `now`, `enqueue`, `pending`, `mark` | `classifier_engine/store.py` | Timestamp and persistent queue utilities retained for engine tooling. |
 | `record_decision`, `journal` | `classifier_engine/store.py` | Persist decisions/review state and engine action journals. |
@@ -101,6 +108,36 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
+
+## Hierarchy, profiles, and TF-IDF
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `route_type`, `hierarchical_folder` | `classifier_engine/hierarchy.py` | Map extension/MIME to one fixed Korean root and build the reserved two-level fallback path. |
+| `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens` | `classifier_engine/topics.py` | Normalize profile metadata and reject unsafe/reserved topic names. |
+| `TopicProfile`, `pseudo_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and combine example weights with boosted tags. |
+| `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms plus current hierarchical assignment. |
+| `TopicProposal` | `classifier_engine/topics.py` | Carry a current-batch cluster, evidence, membership, and aggregate weights to approval UI. |
+| `vector_terms`, `filename_terms` | `classifier_engine/topics.py` | Convert engine features or fallback filenames into weighted semantic terms. |
+| `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
+| `upsert`, `delete`, `new_profile`, `_validate_profiles`, `_default_profiles` | `classifier_engine/topics.py` | Maintain validated independent family profiles and built-in seeds. |
+| `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match explicit user profiles before built-ins under family-specific thresholds. |
+| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Generate current-batch document/image cluster proposals and persistent example centroids. |
+| `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce precedence, explicit tag override, and threshold gating. |
+| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math and deterministic centroid clustering/refinement. |
+
+## Topic and migration UI
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `ProfileEditRequest` | `sort_pilot/topic_dialogs.py` | Return one validated profile edit plus learn-only example paths to the app. |
+| `ExampleDropList.__init__`, `dragEnterEvent`, `dragMoveEvent`, `dropEvent` | `sort_pilot/topic_dialogs.py` | Accept safe local file drops without moving them. |
+| `add_paths`, `paths` | `sort_pilot/topic_dialogs.py` | Deduplicate examples and expose their pending paths. |
+| `TopicManagerDialog.__init__`, `_refresh_profiles`, `_load_selected`, `_new_profile` | `sort_pilot/topic_dialogs.py` | Browse independent family profiles and populate new/edit state. |
+| `_choose_examples`, `_remove_examples`, `_delete_selected`, `_prepare_save` | `sort_pilot/topic_dialogs.py` | Maintain learn-only examples and validate/save/delete profile configuration. |
+| `TopicProposalDialog.__init__`, `_confirm` | `sort_pilot/topic_dialogs.py` | Display TF-IDF evidence and validate selected topic names before approval. |
+| `MigrationCandidate` | `sort_pilot/migration.py` | Describe one safe source, root, family/topic, and preserved relative destination. |
+| `collect_migration_candidates` | `sort_pilot/migration.py` | Plan flat-folder hierarchy moves while skipping already hierarchical files. |
 
 ## Model, learning, and auxiliary engine actions
 

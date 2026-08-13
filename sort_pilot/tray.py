@@ -14,6 +14,8 @@ class TrayIcon:
         organize_all: Callable[[], None],
         organize_desktop: Callable[[], None],
         organize_downloads: Callable[[], None],
+        manage_topics: Callable[[], None],
+        migrate_folders: Callable[[], None],
         undo: Callable[[], None],
         quit_program: Callable[[], None],
     ) -> None:
@@ -27,6 +29,10 @@ class TrayIcon:
         self.desktop_action.triggered.connect(organize_desktop)
         self.downloads_action = QAction("다운로드 폴더 정리", self.menu)
         self.downloads_action.triggered.connect(organize_downloads)
+        self.topics_action = QAction("폴더/태그 관리", self.menu)
+        self.topics_action.triggered.connect(manage_topics)
+        self.migration_action = QAction("기존 폴더 계층화", self.menu)
+        self.migration_action.triggered.connect(migrate_folders)
         self.undo_action = QAction("마지막 정리 실행 취소", self.menu)
         self.undo_action.triggered.connect(undo)
         self.quit_action = QAction("프로그램 종료", self.menu)
@@ -35,6 +41,9 @@ class TrayIcon:
         self.menu.addAction(self.desktop_action)
         self.menu.addAction(self.downloads_action)
         self.menu.addSeparator()
+        self.menu.addAction(self.topics_action)
+        self.menu.addAction(self.migration_action)
+        self.menu.addSeparator()
         self.menu.addAction(self.undo_action)
         self.menu.addSeparator()
         self.menu.addAction(self.quit_action)
@@ -42,7 +51,14 @@ class TrayIcon:
 
     def set_busy(self, busy: bool) -> None:
         """Disable conflicting organization actions while analysis is active."""
-        for action in (self.batch_action, self.desktop_action, self.downloads_action, self.undo_action):
+        for action in (
+            self.batch_action,
+            self.desktop_action,
+            self.downloads_action,
+            self.topics_action,
+            self.migration_action,
+            self.undo_action,
+        ):
             action.setEnabled(not busy)
 
     def notify(self, title: str, message: str) -> None:

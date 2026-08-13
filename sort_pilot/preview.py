@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .models import ApprovedFileMove, FileSuggestion
+from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, route_type
 
 
 class PreviewDialog(QDialog):
@@ -42,15 +43,18 @@ class PreviewDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("파일별 기준 위치와 정리 폴더를 확인한 뒤 승인하세요."))
 
-        self.table = QTableWidget(len(suggestions), 5)
-        self.table.setHorizontalHeaderLabels(["파일명", "현재 위치", "기준 위치", "옮길 위치", "이동"])
+        self.table = QTableWidget(len(suggestions), 6)
+        self.table.setHorizontalHeaderLabels(
+            ["파일명", "현재 위치", "기준 위치", "파일 유형", "주제 / 하위 경로", "이동"]
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
         for row, suggestion in enumerate(suggestions):
             original_name = QTableWidgetItem(suggestion.file_name)
@@ -64,13 +68,19 @@ class PreviewDialog(QDialog):
                 destination_selector.addItem(label, value)
             default_destination = (
                 "desktop"
-                if suggestion.source.parent.resolve() == desktop_folder.resolve()
+                if suggestion.source.resolve().is_relative_to(desktop_folder.resolve())
                 else "downloads"
             )
             destination_selector.setCurrentIndex(destination_selector.findData(default_destination))
             self.table.setCellWidget(row, 2, destination_selector)
-            self.table.setItem(row, 3, QTableWidgetItem(suggestion.folder))
-            self.table.setItem(row, 4, self._checked_item())
+            parts = Path(suggestion.folder).parts
+            family = parts[0] if parts and parts[0] in TYPE_FAMILIES else route_type(suggestion.source)
+            topic_path = Path(*parts[1:]).as_posix() if len(parts) > 1 else UNSORTED_TOPIC
+            family_item = QTableWidgetItem(family)
+            family_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            self.table.setItem(row, 3, family_item)
+            self.table.setItem(row, 4, QTableWidgetItem(topic_path))
+            self.table.setItem(row, 5, self._checked_item())
 
         layout.addWidget(self.table)
         buttons = QDialogButtonBox()
@@ -92,7 +102,7 @@ class PreviewDialog(QDialog):
         """Translate checked table rows into validated move requests."""
         approved: list[ApprovedFileMove] = []
         for row, original in enumerate(self.suggestions):
-            move_approved = self.table.item(row, 4).checkState() == Qt.CheckState.Checked
+            move_approved = self.table.item(row, 5).checkState() == Qt.CheckState.Checked
             if not move_approved:
                 continue
             selector = self.table.cellWidget(row, 2)
@@ -102,11 +112,17 @@ class PreviewDialog(QDialog):
                 ApprovedFileMove(
                     suggestion=original,
                     destination_root=str(selector.currentData()),
-                    folder=self.table.item(row, 3).text().strip() or original.folder,
+                    folder=self._hierarchical_folder(row),
                     move_approved=move_approved,
                 )
             )
         return approved
+
+    def _hierarchical_folder(self, row: int) -> str:
+        """Reconstruct an approved path while keeping the first-level type immutable."""
+        family = self.table.item(row, 3).text()
+        topic_path = self.table.item(row, 4).text().strip().replace("\\", "/")
+        return f"{family}/{topic_path or UNSORTED_TOPIC}"
 
     def _confirm(self) -> None:
         """Require at least one move and explicit final confirmation."""

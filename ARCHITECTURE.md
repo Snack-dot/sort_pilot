@@ -1,6 +1,8 @@
 # Architecture — Local File Classifier
 
 > **Implemented-app note (2026-08-13):** The diagrams below describe the original long-lived watcher proposal. The integrated MVP instead uses manual Desktop/Downloads collection, an in-process `QThreadPool` capped at two workers, one reusable pipeline/OCR engine per worker, and Qt signals back to the UI. See `docs/FUNCTION_MAP.md` for the implemented call graph.
+>
+> Worker extraction now returns reusable `AnalysisRecord` values. The main-thread batch coordinator applies fixed type routing, immutable topic-profile snapshots, and dependency-free sparse TF-IDF discovery before presenting approval UI. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
 
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that document.
 

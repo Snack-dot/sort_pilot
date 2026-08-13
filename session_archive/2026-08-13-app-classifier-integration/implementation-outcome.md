@@ -28,3 +28,9 @@ Status: implemented and verified on `architecture-srs-implementation`.
 - Integration process: `docs/INTEGRATION_PROCESS.md`
 - Function ownership/call graph: `docs/FUNCTION_MAP.md`
 - Current usage and contracts: root `README.md`
+
+## Hierarchical topic follow-up
+
+The later hierarchy implementation added fixed Korean type roots, independent per-type topic profiles, learn-only user examples, dependency-free TF-IDF proposals, and a separately previewed migration from existing flat folders. See `docs/HIERARCHICAL_TOPICS.md` and the updated function map for the final behavior.
+
+Follow-up verification: 24 automated tests passed, including the hierarchical JSON contract, profile precedence/isolation, discovery thresholds, migration path preservation, and complete docstring/function-map coverage. Compilation, dependency checks, Qt offscreen UI smoke checks, and Git whitespace validation also passed.
