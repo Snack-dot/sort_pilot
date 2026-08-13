@@ -17,7 +17,7 @@ IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
 STOP = frozenset(get_stop_words("en")) | frozenset(get_stop_words("ko")) | {"그리고", "합니다", "있는", "없는"}
 MAX_BODY_TERMS = 160
-SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj"})
+SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj", "pair"})
 CONTENT_ANALYSIS_SUFFIXES = frozenset({
     ".txt", ".md", ".csv", ".rtf", ".pdf", ".docx", ".odt", ".pptx", ".xlsx",
     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic",
@@ -187,11 +187,10 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
         try:
             route, image_features = _image_features(path); features.extend(image_features)
             if route in {"screenshot", "ambiguous"}: features.extend(_ocr(path))
-            if route in {"photo", "ambiguous"}:
-                model_path = Path(__file__).parents[2] / "data" / "models" / "yolov8n.onnx"
-                if model_path.exists():
-                    from .vision import infer
-                    vision_features, _ = infer(path, model_path); features.extend(vision_features)
+            model_path = Path(__file__).parents[2] / "data" / "models" / "yolov8n.onnx"
+            if model_path.exists():
+                from .vision import infer
+                vision_features, _ = infer(path, model_path); features.extend(vision_features)
         except Exception:
             partial = True; route = "image"
     return FeatureVector(path_id(path), str(path), stat.st_size, features, partial, route, {"total": (time.perf_counter()-started)*1000})
