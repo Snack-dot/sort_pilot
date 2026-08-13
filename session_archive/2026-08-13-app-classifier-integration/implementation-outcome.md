@@ -42,3 +42,13 @@ A later audit found that the hierarchical adapter used only engine feature extra
 Final correction verification: 30 automated tests (including the real engine through the Qt queue), compilation, dependency consistency, documentation coverage, and Git whitespace checks passed.
 
 The final policy correction subsequently removed `classifier.py` and all compatibility aliases entirely. It also removed automatic engine-category destinations and built-in semantic profiles. The engine remains mandatory for extraction/scoring/persistence, while topics now come only from user-created profiles or explicitly named and approved TF-IDF/migration groups.
+
+The subsequent assignment fix removed proposal minimums so even a single unmatched file receives a checked user-selection row. Existing topics can be selected or a generated name can be edited; rows sharing a topic learn into one profile. Final suite: 32 passed, plus an offscreen assignment-dialog smoke test.
+
+## Sample-first calibration and signed feedback
+
+The assignment-row follow-up has now been replaced by the intended onboarding workflow. A fresh user first reviews randomized, type-bounded sample clusters and creates the topic/tag vocabulary before the full Desktop/Downloads analysis. The calibration UI supports within-family reassignment, split, merge, rename, tag editing, existing-topic reuse, and explicit exclusion without moving samples.
+
+Optional labels come from a consent-gated, checksummed Google Gemma 3 1B Q4 model running through a pinned local llama.cpp CPU server. No cloud API or upload is involved, and TF-IDF fallback keeps onboarding operational when local generation is unavailable.
+
+Profile schema version 3 adds negative evidence. Confirming a successful move reinforces its topic; correcting A to B reinforces B and demotes A. Canceled, unchecked, failed, and `미분류` rows remain non-learning. The callable map, hierarchy guide, architecture notes, third-party register, README, changelog, and automated coverage were updated with the implementation.

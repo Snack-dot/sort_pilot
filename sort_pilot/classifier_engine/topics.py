@@ -17,7 +17,6 @@ from .types import FeatureVector
 
 PROFILE_THRESHOLDS = {"문서": 0.25, "이미지": 0.20}
 DISCOVERY_THRESHOLDS = {"문서": 0.30, "이미지": 0.22}
-DISCOVERY_MINIMUMS = {"문서": 5, "이미지": 10}
 OTHER_PROFILE_THRESHOLD = 0.30
 DISCOVERY_FAMILIES = frozenset(DISCOVERY_THRESHOLDS)
 USER_ORIGINS = frozenset({"user", "discovered", "migration"})
@@ -58,6 +57,8 @@ class TopicProfile:
     tags: tuple[str, ...] = ()
     example_weights: dict[str, float] = field(default_factory=dict)
     example_count: int = 0
+    negative_weights: dict[str, float] = field(default_factory=dict)
+    negative_count: int = 0
     origin: str = "user"
     enabled: bool = True
     created_at: str = field(default_factory=utc_now)
@@ -70,6 +71,10 @@ class TopicProfile:
             for token in tag_tokens(tag):
                 terms[token] += 5.0
         return dict(terms)
+
+    def negative_terms(self) -> dict[str, float]:
+        """Return evidence learned from files moved away from this topic."""
+        return dict(self.negative_weights)
 
 
 @dataclass(slots=True)
@@ -160,6 +165,8 @@ class TopicProfileStore:
                     tags=tuple(item.get("tags", ())),
                     example_weights={str(k): float(v) for k, v in item.get("example_weights", {}).items()},
                     example_count=int(item.get("example_count", 0)),
+                    negative_weights={str(k): float(v) for k, v in item.get("negative_weights", {}).items()},
+                    negative_count=int(item.get("negative_count", 0)),
                     origin=str(item.get("origin", "user")),
                     enabled=bool(item.get("enabled", True)),
                     created_at=str(item.get("created_at", utc_now())),
@@ -167,7 +174,7 @@ class TopicProfileStore:
                 )
             )
         self._validate_profiles(profiles)
-        if removed_builtins or int(data.get("version", 1)) < 2:
+        if removed_builtins or int(data.get("version", 1)) < 3:
             self.save(profiles)
         return profiles
 
@@ -175,7 +182,7 @@ class TopicProfileStore:
         """Validate and atomically replace the complete profile document."""
         normalized = list(profiles)
         self._validate_profiles(normalized)
-        payload = {"version": 2, "profiles": [asdict(profile) for profile in normalized]}
+        payload = {"version": 3, "profiles": [asdict(profile) for profile in normalized]}
         descriptor, temporary_name = tempfile.mkstemp(
             dir=self.path.parent, prefix="topic-profiles-", suffix=".tmp"
         )
@@ -270,18 +277,25 @@ class TopicClassifier:
                 continue
             documents = [record.terms for record in family_records]
             documents.extend(profile.pseudo_terms() for profile in family_profiles)
+            documents.extend(
+                profile.negative_terms() for profile in family_profiles if profile.negative_weights
+            )
             idf = self._idf(documents)
             profile_vectors = {
                 profile.id: self._tfidf(profile.pseudo_terms(), idf) for profile in family_profiles
             }
+            negative_vectors = {
+                profile.id: self._tfidf(profile.negative_terms(), idf)
+                for profile in family_profiles
+            }
             for record in family_records:
                 record_vector = self._tfidf(record.terms, idf)
                 profile, score, tag_match = self._best_profile(
-                    record, record_vector, family_profiles, profile_vectors
+                    record, record_vector, family_profiles, profile_vectors, negative_vectors
                 )
                 if profile is not None:
                     record.topic = profile.name
-                    record.score = 1.0 if tag_match else score
+                    record.score = score
                     record.reason = (
                         f"사용자 태그 '{profile.name}' 일치" if tag_match
                         else f"{profile.name} 주제 유사도 {score:.3f}"
@@ -289,18 +303,23 @@ class TopicClassifier:
         return records
 
     def discover(self, records: list[AnalysisRecord]) -> list[TopicProposal]:
-        """Propose sufficiently large deterministic clusters from current unmatched files."""
+        """Propose every unmatched file, grouping similar documents and images."""
         proposals: list[TopicProposal] = []
-        for family in DISCOVERY_FAMILIES:
+        for family in TYPE_FAMILIES:
             indexed = [(index, record) for index, record in enumerate(records) if record.family == family and not record.topic]
-            if len(indexed) < DISCOVERY_MINIMUMS[family]:
+            if not indexed:
                 continue
             idf = self._idf([record.terms for _, record in indexed])
             vectors = {index: self._tfidf(record.terms, idf) for index, record in indexed}
-            clusters = self._stable_clusters(indexed, vectors, DISCOVERY_THRESHOLDS[family])
+            clusters = self._stable_clusters(
+                indexed,
+                vectors,
+                self._adaptive_threshold(
+                    vectors,
+                    DISCOVERY_THRESHOLDS.get(family, OTHER_PROFILE_THRESHOLD),
+                ),
+            )
             for indexes in clusters:
-                if len(indexes) < DISCOVERY_MINIMUMS[family]:
-                    continue
                 aggregate = self.aggregate_terms(records[index].terms for index in indexes)
                 centroid = self._centroid([vectors[index] for index in indexes])
                 ranked = sorted(indexes, key=lambda index: (-self._cosine(vectors[index], centroid), records[index].file_path))
@@ -333,17 +352,28 @@ class TopicClassifier:
         record_vector: dict[str, float],
         profiles: list[TopicProfile],
         profile_vectors: dict[str, dict[str, float]],
+        negative_vectors: dict[str, dict[str, float]],
     ) -> tuple[TopicProfile | None, float, bool]:
         """Return the best threshold-qualified profile from one precedence group."""
-        exact = [profile for profile in profiles if self._tag_matches(record, profile)]
-        if exact:
-            return sorted(exact, key=lambda profile: profile.name.casefold())[0], 1.0, True
-        scored = [(self._cosine(record_vector, profile_vectors[profile.id]), profile) for profile in profiles]
+        scored = [
+            (
+                max(
+                    0.0,
+                    self._cosine(record_vector, profile_vectors[profile.id])
+                    - 0.65 * self._cosine(record_vector, negative_vectors[profile.id]),
+                ),
+                profile,
+                self._tag_matches(record, profile),
+            )
+            for profile in profiles
+        ]
         if scored:
-            score, profile = max(scored, key=lambda item: (item[0], item[1].name.casefold()))
+            score, profile, tag_match = max(
+                scored, key=lambda item: (item[0], item[1].name.casefold())
+            )
             threshold = PROFILE_THRESHOLDS.get(record.family, OTHER_PROFILE_THRESHOLD)
             if score >= threshold:
-                return profile, score, False
+                return profile, score, tag_match
         return None, 0.0, False
 
     @staticmethod
@@ -396,6 +426,23 @@ class TopicClassifier:
         for vector in vectors:
             total.update(vector)
         return {term: value / len(vectors) for term, value in total.items()}
+
+    def _adaptive_threshold(self, vectors: dict[int, dict[str, float]], floor: float) -> float:
+        """Derive a bounded merge threshold from the batch similarity distribution."""
+        indexes = sorted(vectors)
+        similarities: list[float] = []
+        for position, left in enumerate(indexes):
+            for right in indexes[position + 1:]:
+                similarity = self._cosine(vectors[left], vectors[right])
+                if similarity > 0:
+                    similarities.append(similarity)
+        if not similarities:
+            return 1.0
+        ordered = sorted(similarities)
+        median = ordered[len(ordered) // 2]
+        deviations = sorted(abs(value - median) for value in ordered)
+        mad = deviations[len(deviations) // 2]
+        return min(0.75, max(floor * 0.7, median + 0.5 * mad))
 
     def _stable_clusters(
         self,

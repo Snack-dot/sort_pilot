@@ -2,7 +2,7 @@
 
 > **Implementation note (2026-08-13):** The integrated desktop MVP uses explicit Desktop/Downloads batch actions and a cancellable two-worker in-process queue. Watcher-oriented requirements below are retained as historical/future requirements and are not part of the current app workflow. The engine package is now `sort_pilot.classifier_engine`; its data directory remains `%APPDATA%\tidy` for compatibility.
 >
-> The current destination model is hierarchical: one fixed Korean file-type root plus one family-specific semantic topic. Every file runs the persisted Tier-1/Naive Bayes engine path, but engine categories are evidence only. There are no built-in semantic topics or seed lexicon; only user-created profiles and explicitly named/approved TF-IDF or migration groups can select a topic. Unmatched files use `미분류`.
+> The current destination model is hierarchical: one fixed Korean file-type root plus one family-specific semantic topic. Every file runs the persisted Tier-1/Naive Bayes engine path, but engine categories are evidence only. There are no built-in semantic topics or seed lexicon. First-run sample calibration creates only user-confirmed topics, and later successful review corrections provide signed learning evidence. Unmatched API results use `미분류`.
 
 **Status:** Draft v0.3 · **Owner:** you · **Target:** MVP, Windows-first, Korean + English
 **Context:** 공모전 submission and personal daily-driver. Single user, single machine, no distribution.

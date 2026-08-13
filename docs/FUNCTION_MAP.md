@@ -8,7 +8,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | --- | --- | --- |
 | `run` | `sort_pilot/app.py` | Creates Qt, acquires the single-instance lock, validates the tray, and enters the event loop; called by `main.py`. |
 | `AppController.__init__` | `sort_pilot/app.py` | Wires history, queue signals, paths, and tray actions. |
-| `start` | `sort_pilot/app.py` | Shows the tray and reports successful history migration. |
+| `start`, `calibrate_topics` | `sort_pilot/app.py` | Shows the tray, triggers first-run calibration, and starts manual recalibration from a bounded sample. |
 | `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Tray callbacks selecting one or both source roots. |
 | `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
 | `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
@@ -16,11 +16,11 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `_start_analysis` | `sort_pilot/app.py` | Records the organize/profile/migration mode and starts a shared queue session. |
 | `_show_progress`, `_update_progress`, `_close_progress` | `sort_pilot/app.py` | Own the cancellable analysis progress dialog. |
 | `_analysis_completed`, `_analysis_cancelled` | `sort_pilot/app.py` | Consume final queue signals; errors are reported and only complete successful sessions reach preview. |
-| `_complete_organization`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Dispatch extracted records into matching/discovery, learn-only example updates, or prescribed migration previews. |
+| `_complete_organization`, `_complete_calibration`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Dispatch extracted records into full review, calibration, learn-only example updates, or prescribed migration previews. |
 | `_report_analysis_errors` | `sort_pilot/app.py` | Reports bounded per-file errors without discarding successful records. |
 | `_set_busy` | `sort_pilot/app.py` | Disables conflicting tray actions during analysis. |
 | `_show_preview`, `_destination_root` | `sort_pilot/app.py` | Convert approved UI rows into allowed-root move operations. |
-| `_learn_approved_migration`, `_merge_examples` | `sort_pilot/app.py` | Update family-specific profiles only from successfully approved examples/migration moves. |
+| `_learn_approved_moves`, `_merge_examples` | `sort_pilot/app.py` | Apply signed profile feedback only after successful moves and merge explicit examples. |
 | `_record_suggestion`, `_path_key` | `sort_pilot/app.py` | Adapt hierarchical records and normalize Windows lookup paths. |
 | `undo`, `quit` | `sort_pilot/app.py` | Restore the latest batch or shut down workers and Qt safely. |
 
@@ -112,18 +112,49 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | --- | --- | --- |
 | `route_type`, `hierarchical_folder` | `classifier_engine/hierarchy.py` | Map extension/MIME to one fixed Korean root and build the reserved two-level fallback path. |
 | `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens` | `classifier_engine/topics.py` | Normalize profile metadata and reject unsafe/reserved topic names. |
-| `TopicProfile`, `pseudo_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and combine example weights with boosted tags. |
+| `TopicProfile`, `pseudo_terms`, `negative_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and expose boosted positive/tag and negative correction evidence. |
 | `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
-| `TopicProposal` | `classifier_engine/topics.py` | Carry a current-batch cluster, evidence, membership, and aggregate weights to approval UI. |
+| `TopicProposal` | `classifier_engine/topics.py` | Carry an automatic sample cluster, evidence, membership, and aggregate weights into calibration and local label generation. |
 | `vector_terms` | `classifier_engine/topics.py` | Convert mandatory engine features into weighted semantic terms for user-owned topic matching. |
 | `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
 | `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
 | `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
-| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Generate current-batch document/image cluster proposals and persistent example centroids. |
+| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose every unmatched record, TF-IDF-group similar documents/images, and calculate persistent example centroids. |
 | `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce precedence, explicit tag override, and threshold gating. |
-| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math and deterministic centroid clustering/refinement. |
+| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math, adaptive granularity, and deterministic centroid clustering/refinement. |
 
 ## Topic and migration UI
+
+### Calibration workflow
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `CalibrationCluster`, `CalibrationDraft` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction. |
+| `CalibrationSampler.__init__`, `select`, `remember` | `sort_pilot/calibration.py` | Configure the per-family limit, choose source/extension-diverse samples, and atomically remember approved fingerprints. |
+| `CalibrationSampler._stratified`, `_load_seen`, `fingerprint` | `sort_pilot/calibration.py` | Round-robin randomized buckets, tolerate corrupt state, and hash path metadata without storing readable paths. |
+| `CalibrationService.__init__`, `build_draft`, `save_draft` | `sort_pilot/calibration.py` | Convert TF-IDF proposals into an editable draft and persist only the final confirmed groups. |
+| `CalibrationService.cluster_id`, `fallback_topic` | `sort_pilot/calibration.py` | Share stable opaque IDs with model I/O and provide deterministic top-term names when the LLM is unavailable. |
+| `merge_profile_evidence`, `learn_correction` | `sort_pilot/calibration.py` | Merge positive/negative centroids and apply confirmation or A→B correction feedback. |
+| `CalibrationFileList` | `sort_pilot/calibration_dialog.py` | Move sample records between cards while retaining record-index identity. |
+| `CalibrationFileList.__init__` | `sort_pilot/calibration_dialog.py` | Enables extended selection and cross-card move drag/drop. |
+| `ClusterCard.__init__`, `indexes`, `tag_values` | `sort_pilot/calibration_dialog.py` | Render one editable topic and export its current file membership and normalized tags. |
+| `FamilyCalibrationPage.__init__`, `_add_card`, `new_group` | `sort_pilot/calibration_dialog.py` | Seed proposed/existing cards and add new topics within one immutable family tab. |
+| `FamilyCalibrationPage.split_selected`, `merge_selected`, `export` | `sort_pilot/calibration_dialog.py` | Split or merge user-selected groups and validate nonempty cards for persistence. |
+| `CalibrationDialog.__init__`, `_confirm` | `sort_pilot/calibration_dialog.py` | Build family tabs and require every sample to be assigned or explicitly excluded. |
+| `ensure_local_model` | `sort_pilot/calibration_dialog.py` | Obtain Gemma-terms consent and run cancellable, progress-reported local installation. |
+
+### Local tag generation
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `DownloadArtifact`, `InstallCancelled` | `sort_pilot/local_tagger.py` | Describe a pinned artifact and distinguish a user cancellation from installation failure. |
+| `LocalModelInstaller.__init__`, `ready`, `has_consent` | `sort_pilot/local_tagger.py` | Resolve versioned paths and report exact-model consent/installation readiness. |
+| `LocalModelInstaller.record_consent`, `install`, `_download`, `_extract_runtime` | `sort_pilot/local_tagger.py` | Persist consent, stream checksummed artifacts, reject ZIP traversal, and atomically stage llama.cpp. |
+| `LocalTagger.__init__`, `propose` | `sort_pilot/local_tagger.py` | Start one loopback-only CPU server, request all cluster labels once, and always terminate it. |
+| `LocalTagger._wait_until_ready`, `_post_json`, `_request_payload` | `sort_pilot/local_tagger.py` | Bound server startup, send local JSON, and treat filenames/terms as untrusted prompt data. |
+| `LocalTagger._validate_response`, `cluster_id`, `_free_port` | `sort_pilot/local_tagger.py` | Enforce complete strict output, correlate opaque cluster IDs, and allocate a temporary loopback port. |
+
+### Existing topic and migration UI
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
@@ -132,7 +163,6 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `add_paths`, `paths` | `sort_pilot/topic_dialogs.py` | Deduplicate examples and expose their pending paths. |
 | `TopicManagerDialog.__init__`, `_refresh_profiles`, `_load_selected`, `_new_profile` | `sort_pilot/topic_dialogs.py` | Browse independent family profiles and populate new/edit state. |
 | `_choose_examples`, `_remove_examples`, `_delete_selected`, `_prepare_save` | `sort_pilot/topic_dialogs.py` | Maintain learn-only examples and validate/save/delete profile configuration. |
-| `TopicProposalDialog.__init__`, `_confirm` | `sort_pilot/topic_dialogs.py` | Display TF-IDF evidence and validate selected topic names before approval. |
 | `MigrationCandidate` | `sort_pilot/migration.py` | Describe one safe source, root, family/topic, and preserved relative destination. |
 | `collect_migration_candidates` | `sort_pilot/migration.py` | Plan flat-folder hierarchy moves while skipping already hierarchical files. |
 

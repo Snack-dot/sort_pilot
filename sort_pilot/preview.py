@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from .models import ApprovedFileMove, FileSuggestion
 from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, route_type
+from .classifier_engine.topics import TopicProfile, validate_topic_name
 
 
 class PreviewDialog(QDialog):
@@ -32,11 +33,13 @@ class PreviewDialog(QDialog):
         suggestions: list[FileSuggestion],
         desktop_folder: Path,
         downloads_folder: Path,
+        profiles: list[TopicProfile] | None = None,
         parent=None,
     ) -> None:
         """Build an editable move preview for a completed analysis batch."""
         super().__init__(parent)
         self.suggestions = suggestions
+        self.profiles = profiles or []
         self.setWindowTitle("Sort Pilot - AI 추천 검토")
         self.resize(900, 460)
 
@@ -79,7 +82,16 @@ class PreviewDialog(QDialog):
             family_item = QTableWidgetItem(family)
             family_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             self.table.setItem(row, 3, family_item)
-            self.table.setItem(row, 4, QTableWidgetItem(topic_path))
+            topic_selector = QComboBox()
+            topic_selector.setEditable(True)
+            topic_selector.addItem(UNSORTED_TOPIC)
+            topic_selector.addItems(
+                profile.name
+                for profile in self.profiles
+                if profile.enabled and profile.family == family
+            )
+            topic_selector.setCurrentText(topic_path)
+            self.table.setCellWidget(row, 4, topic_selector)
             self.table.setItem(row, 5, self._checked_item())
 
         layout.addWidget(self.table)
@@ -121,12 +133,20 @@ class PreviewDialog(QDialog):
     def _hierarchical_folder(self, row: int) -> str:
         """Reconstruct an approved path while keeping the first-level type immutable."""
         family = self.table.item(row, 3).text()
-        topic_path = self.table.item(row, 4).text().strip().replace("\\", "/")
-        return f"{family}/{topic_path or UNSORTED_TOPIC}"
+        selector = self.table.cellWidget(row, 4)
+        topic = selector.currentText().strip() if isinstance(selector, QComboBox) else ""
+        if not topic or topic == UNSORTED_TOPIC:
+            return f"{family}/{UNSORTED_TOPIC}"
+        return f"{family}/{validate_topic_name(topic)}"
 
     def _confirm(self) -> None:
         """Require at least one move and explicit final confirmation."""
-        count = len(self.approved_changes())
+        try:
+            changes = self.approved_changes()
+        except ValueError as exc:
+            QMessageBox.warning(self, "잘못된 주제 이름", str(exc))
+            return
+        count = len(changes)
         if count == 0:
             QMessageBox.information(self, "Sort Pilot", "적용할 파일을 하나 이상 선택하세요.")
             return

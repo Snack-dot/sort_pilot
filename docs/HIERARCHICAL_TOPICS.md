@@ -15,19 +15,19 @@ The fixed first-level roots are `문서`, `이미지`, `압축파일`, `오디�
 
 Every normal destination has exactly two semantic levels. The reserved `미분류` topic is used when no enabled family-specific profile meets its threshold. Previewed legacy migration may preserve additional existing subfolders below the topic.
 
-The move preview renders the detected type as a read-only column. Users may edit the topic or preserved subpath, but approved output always reconstructs the destination beneath the fixed type root.
+The move preview renders the detected type as a read-only column. Users select an existing topic or type a new single-folder topic name, but approved output always reconstructs the destination beneath the fixed type root.
 
 ## Topic profiles
 
-Profiles live in `%APPDATA%\tidy\topic_profiles.json` using an atomic version-1 JSON document. Each profile contains:
+Profiles live in `%APPDATA%\tidy\topic_profiles.json` using an atomic version-3 JSON document. Each profile contains:
 
 - stable ID, fixed family, and validated single-folder name;
 - normalized tags;
-- averaged example term weights and example count;
+- averaged positive example weights/count and negative correction weights/count;
 - origin (`user`, `discovered`, or `migration`);
 - enabled state and timestamps.
 
-Example paths and raw file contents are never stored. A fresh profile document is empty: there are no built-in topics or semantic seed lexicon. Version-1 `builtin` entries are removed automatically when the profile document is loaded. Every remaining profile was created by the user, named during an approved TF-IDF proposal, or learned from an approved migration group.
+Example paths and raw file contents are never stored. A fresh profile document is empty: there are no built-in topics or semantic seed lexicon. Version-1 `builtin` entries are removed and version-1/2 documents are migrated with empty negative evidence. Every remaining profile was created or confirmed by the user.
 
 The `폴더/태그 관리` tray action lets the user create, rename, enable/disable, or delete profiles. Dragged/selected examples are extracted through the same two-worker queue and update only a profile of the selected family; they are never moved. Physical folders are created only by a later approved move.
 
@@ -43,15 +43,22 @@ For each family batch:
 2. Smoothed IDF is `log((1 + N) / (1 + df)) + 1`.
 3. Sparse vectors are L2-normalized.
 4. Profile/example cosine similarity is compared to `0.25` for documents, `0.20` for images, and `0.30` for other families.
-5. Explicit normalized user tags are five-times-weighted pseudo-document terms; a complete tag-token or filename-phrase match overrides the cosine threshold.
+5. Explicit normalized user tags are five-times-weighted pseudo-document terms.
+6. Final score is `max(0, positive cosine - 0.65 × negative cosine)`, so a correction can overcome an overly broad tag without deleting it.
 
 Single-file/public JSON analysis runs and persists the real engine decision, then checks only saved user-owned profiles. With an empty profile store it returns `<유형>/미분류`. It never creates a discovered TF-IDF profile or moves a file.
 
-### Current-batch discovery
+### Sample calibration and adaptive discovery
 
-Only unmatched documents and images are clustered. Records are processed in stable resolved-path order using deterministic greedy centroid assignment followed by up to five refinement passes. Minimum cosine is `0.30` for documents and `0.22` for images.
+When no profiles exist, organization is paused for calibration. The sampler reads only safe top-level Desktop/Downloads files, chooses at most 3 per family, round-robins source/extension buckets, and prefers fingerprints not used by an earlier calibration. A family with only one or two files is still calibrated. Fingerprints are hashes of resolved path metadata; readable paths are not stored. Samples are analyzed by the existing two-worker queue and never moved.
 
-A proposal requires at least five documents or ten images. The dialog shows the top eight centroid terms and five closest representative filenames. Approved proposals require a valid user-supplied name, are saved as independent family profiles, and apply immediately to the current batch. Rejected and undersized clusters remain `미분류`.
+For every family, pairwise cosine values derive a bounded threshold from their median and median absolute deviation. Stable centroid grouping and refinement then choose the number of clusters automatically; an evidence-free sample stays separate rather than being forced into a generic topic.
+
+The optional local tagger sends only family, bounded filenames, and top extracted terms to Gemma 3 1B. It returns strict JSON containing `cluster_id`, `topic`, and `tags`. The model and pinned llama.cpp CPU runtime are downloaded only after Gemma-terms consent, verified by size and SHA-256, run on a temporary `127.0.0.1` port, and terminated after one request. Invalid output, timeout, refusal, or installation failure falls back to deterministic top-term names.
+
+The calibration board has separate immutable-family tabs. Users can drag sample files between cards, create or rename topics, edit tags, split selected files, merge checked topics, or explicitly exclude samples. No profile is written until the final confirmation. Rerunning calibration retains existing profiles and offers them as destination cards.
+
+After calibration, the app analyzes the requested full batch. The preview topic selector permits confirmation, correction, or creation of a user topic. Learning occurs only after a successful approved move: confirmation adds positive evidence, while changing A to B adds positive evidence to B and negative evidence to A. Canceled, unchecked, failed, and `미분류` rows do not learn.
 
 ## Existing-folder migration
 

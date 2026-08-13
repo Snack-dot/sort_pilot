@@ -19,8 +19,6 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -30,7 +28,6 @@ from .classifier_engine.hierarchy import TYPE_FAMILIES
 from .classifier_engine.topics import (
     TopicProfile,
     TopicProfileStore,
-    TopicProposal,
     normalize_tag,
     validate_topic_name,
 )
@@ -254,63 +251,4 @@ class TopicManagerDialog(QDialog):
             QMessageBox.warning(self, "프로필 저장 불가", str(exc))
             return
         self.request = ProfileEditRequest(profile, self.examples.paths())
-        self.accept()
-
-
-class TopicProposalDialog(QDialog):
-    """Let users name, approve, or skip current-batch TF-IDF clusters."""
-
-    def __init__(self, proposals: list[TopicProposal], existing: list[TopicProfile], parent=None) -> None:
-        """Show cluster evidence with unchecked approval and editable topic names."""
-        super().__init__(parent)
-        self.proposals = proposals
-        self.existing = existing
-        self.approved: list[tuple[TopicProposal, str]] = []
-        self.setWindowTitle("Sort Pilot - 새 주제 제안")
-        self.resize(900, 500)
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("현재 분석 묶음에서 발견한 주제입니다. 승인할 항목의 이름을 확인하세요."))
-        self.table = QTableWidget(len(proposals), 5)
-        self.table.setHorizontalHeaderLabels(["승인", "유형", "파일 수", "핵심 단어 / 예시", "주제 이름"])
-        for row, proposal in enumerate(proposals):
-            check = QTableWidgetItem()
-            check.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
-            check.setCheckState(Qt.CheckState.Unchecked)
-            self.table.setItem(row, 0, check)
-            self.table.setItem(row, 1, QTableWidgetItem(proposal.family))
-            self.table.setItem(row, 2, QTableWidgetItem(str(len(proposal.record_indexes))))
-            evidence = ", ".join(proposal.top_terms)
-            examples = " / ".join(proposal.representative_files)
-            item = QTableWidgetItem(f"{evidence}\n{examples}")
-            item.setToolTip(item.text())
-            self.table.setItem(row, 3, item)
-            default_name = "_".join(proposal.top_terms[:2])
-            self.table.setItem(row, 4, QTableWidgetItem(default_name))
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
-        buttons = QDialogButtonBox()
-        apply_button = buttons.addButton("선택 주제 저장 및 적용", QDialogButtonBox.ButtonRole.AcceptRole)
-        skip_button = buttons.addButton("모두 건너뛰기", QDialogButtonBox.ButtonRole.RejectRole)
-        apply_button.clicked.connect(self._confirm)
-        skip_button.clicked.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def _confirm(self) -> None:
-        """Validate selected names against existing and peer profiles before approval."""
-        approved: list[tuple[TopicProposal, str]] = []
-        used = {(profile.family, profile.name.casefold()) for profile in self.existing}
-        try:
-            for row, proposal in enumerate(self.proposals):
-                if self.table.item(row, 0).checkState() != Qt.CheckState.Checked:
-                    continue
-                name = validate_topic_name(self.table.item(row, 4).text())
-                key = proposal.family, name.casefold()
-                if key in used:
-                    raise ValueError(f"'{proposal.family}'에 '{name}' 주제가 이미 있습니다.")
-                used.add(key)
-                approved.append((proposal, name))
-        except ValueError as exc:
-            QMessageBox.warning(self, "주제 승인 불가", str(exc))
-            return
-        self.approved = approved
         self.accept()
