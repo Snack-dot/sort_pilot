@@ -22,6 +22,7 @@ class AppController:
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         self.history = HistoryStore(app_data / "history.json")
         self.downloads_folder = Path.home() / "Downloads"
+        self.selected_user_type: str | None = None
         self.tray = TrayIcon(
             self.organize_all,
             self.organize_desktop,
@@ -72,9 +73,15 @@ class AppController:
         self.app.quit()
 
     def _show_preview(self, suggestions) -> None:
-        dialog = PreviewDialog(suggestions, self._desktop_folder(), self.downloads_folder)
+        dialog = PreviewDialog(
+            suggestions,
+            self._desktop_folder(),
+            self.downloads_folder,
+            self.selected_user_type,
+        )
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
             return
+        self.selected_user_type = dialog.selected_user_type()
         operations = [
             build_operation(item, self._destination_root(item.destination_root, item.suggestion.source))
             for item in dialog.approved_changes()
