@@ -243,7 +243,7 @@ class CalibrationDialog(QDialog):
         layout.addWidget(
             QLabel(
                 "표본 분석 결과를 확인하세요. 파일을 주제 사이로 끌어 옮기고 이름과 태그를 수정할 수 있습니다. "
-                "이 단계에서는 파일을 이동하지 않습니다."
+                "확인하면 시드 파일이 즉시 새 주제 폴더로 이동하며, 나머지 파일은 다음 검토에서 처리합니다."
             )
         )
         self.tabs = QTabWidget()
@@ -276,6 +276,8 @@ class CalibrationDialog(QDialog):
                 if key in names:
                     raise ValueError(f"같은 파일 유형에 중복된 주제 이름이 있습니다: {cluster.topic}")
                 names.add(key)
+            if not names:
+                raise ValueError("시드 파일이 포함된 주제를 하나 이상 남겨야 합니다.")
             self.draft.clusters = clusters
         except ValueError as exc:
             QMessageBox.warning(self, "주제 보정", str(exc))

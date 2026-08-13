@@ -1,5 +1,6 @@
 from pathlib import Path
 from unittest.mock import patch
+import zipfile
 
 import numpy as np
 
@@ -73,6 +74,38 @@ def test_text_extraction(tmp_path):
     path.write_text("meeting agenda 회의록을", encoding="utf-8")
     vector = extract(path)
     assert {feature.t for feature in vector.features} >= {"회의록", "meeting", "agenda", "txt"}
+
+
+def test_text_extraction_preserves_a_large_body_vocabulary(tmp_path):
+    path = tmp_path / "rich-context.txt"
+    expected = {
+        f"contextword{chr(97 + first)}{chr(97 + second)}"
+        for first in range(5)
+        for second in range(24)
+    }
+    path.write_text(" ".join(sorted(expected)), encoding="utf-8")
+
+    vector = extract(path)
+    body = {feature.t for feature in vector.features if feature.src == "body"}
+
+    assert expected <= body
+
+
+def test_odt_extraction_reads_the_actual_content_payload(tmp_path):
+    path = tmp_path / "project.odt"
+    xml = """<?xml version='1.0' encoding='UTF-8'?>
+    <office:document-content
+      xmlns:office='urn:oasis:names:tc:opendocument:xmlns:office:1.0'
+      xmlns:text='urn:oasis:names:tc:opendocument:xmlns:text:1.0'>
+      <office:body><office:text><text:p>nebula roadmap milestone context</text:p></office:text></office:body>
+    </office:document-content>"""
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("content.xml", xml)
+
+    vector = extract(path)
+    body = {feature.t for feature in vector.features if feature.src == "body"}
+
+    assert {"nebula", "roadmap", "milestone", "context"} <= body
 
 
 def test_vision_postprocess_and_derived():

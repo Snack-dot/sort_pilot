@@ -11,7 +11,8 @@ Tray action (Desktop / Downloads / both)
 → real Pipeline Tier-1 / Naive Bayes decision and persistence
 → fixed file type + user-created topic profile resolution
 → first-run sample calibration when no user topics exist
-→ full-batch editable topic review
+→ approved seed files immediately create/populate topic folders
+→ remaining-file editable topic review
 → cancellable progress dialog
 → editable destination preview
 → explicit user approval
@@ -64,16 +65,17 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
 - User-created topic names, tags, enable/disable state, and learn-only example files.
-- First-run calibration samples up to 3 safe top-level files per type, prioritizes extensions and roots fairly, and never moves sample files. One or two available files still start calibration.
+- First-run calibration samples up to 3 safe top-level files per type and still works with one or two. Approval immediately creates `<유형>/<주제>` folders and moves those seed files into them.
 - Adaptive TF-IDF grouping proposes topics; an optional local Google Gemma 3 1B model improves names and tag lists after explicit terms/download consent.
 - The calibration board supports moving files between topics, renaming, editing tags, splitting, merging, and excluding samples.
 - The final batch review uses an editable topic selector. Confirmed predictions reinforce a profile; corrections reinforce the chosen profile and demote the rejected profile.
-- Profile data is version 3 and stores independent positive and negative aggregate evidence without raw contents or example paths.
+- Profile data is version 3 and stores a broad bounded vocabulary: base-word weights plus up to 120 weighted within-file co-occurrence pairs per seed. It also stores independent negative correction evidence without raw contents or example paths.
 - Manual previewed migration from a user-named flat folder such as `직접선택` to `문서/직접선택` or `이미지/직접선택`.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable progress with no partial preview after cancellation.
 - Local document, archive, image, OCR, and optional ONNX object features.
+- Actual contents are read locally for TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, and XLSX; ZIP entry names and image OCR/object evidence are also extracted. Up to 160 distinct body terms are retained per readable document. Legacy binary DOC/XLS files currently contribute filename/metadata only.
 - Editable destination root and relative folder for every file.
 - Original filenames are preserved; collisions receive numeric suffixes.
 - No move occurs before final approval.

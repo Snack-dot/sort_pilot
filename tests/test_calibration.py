@@ -17,8 +17,11 @@ from sort_pilot.classifier_engine.topics import (
     AnalysisRecord,
     TopicClassifier,
     TopicProfileStore,
+    contextual_terms,
 )
+from sort_pilot.history import HistoryStore
 from sort_pilot.local_tagger import DownloadArtifact, LocalModelInstaller, LocalTagger
+from sort_pilot.organizer import build_operation, execute_batch
 
 
 def make_record(name: str, family: str, terms: dict[str, float]) -> AnalysisRecord:
@@ -78,6 +81,93 @@ def test_calibration_draft_persists_only_user_confirmed_topics(tmp_path):
     profiles = service.save_draft(draft)
     assert [(profile.family, profile.name) for profile in profiles] == [("문서", "세금 자료")]
     assert profiles[0].example_count == 2
+
+
+def test_calibration_builds_large_vocabulary_and_cooccurrence_context(tmp_path):
+    store = TopicProfileStore(tmp_path / "profiles.json")
+    service = CalibrationService(TopicClassifier(), store)
+    words = {f"word{index}": float(50 - index) for index in range(30)}
+    records = [make_record("rich.pdf", "문서", words)]
+
+    draft = service.build_draft(records)
+    profiles = service.profiles_from_draft(draft)
+
+    assert len(draft.clusters[0].tags) == 30
+    assert len(profiles[0].example_weights) > 100
+    assert any(term.startswith("co:") for term in profiles[0].example_weights)
+    assert len(contextual_terms(words)) > len(words)
+
+
+def test_calibration_tags_are_words_extracted_from_seed_files(tmp_path):
+    store = TopicProfileStore(tmp_path / "profiles.json")
+    service = CalibrationService(TopicClassifier(), store)
+    records = [make_record("seed.txt", "문서", {"nebula": 3, "orbit": 2, "telescope": 1})]
+    proposal = service.classifier.discover(records)[0]
+    suggestions = {
+        service.cluster_id(proposal): ("Space", ("nebula", "hallucinated-synonym"))
+    }
+
+    draft = service.build_draft(records, suggestions)
+
+    assert "nebula" in draft.clusters[0].tags
+    assert "hallucinated-synonym" not in draft.clusters[0].tags
+    assert set(draft.clusters[0].tags) == {"nebula", "orbit", "telescope"}
+
+
+def test_actual_file_body_reaches_the_calibration_profile(tmp_path):
+    from sort_pilot.classifier_engine.analyzer import ClassifierEngine
+    from sort_pilot.classifier_engine.config import Config
+    from sort_pilot.classifier_engine.pipeline import Pipeline
+
+    path = tmp_path / "opaque-name.txt"
+    path.write_text("nebula roadmap milestone telescope orbit context", encoding="utf-8")
+    store = TopicProfileStore(tmp_path / "profiles.json")
+    engine = ClassifierEngine(
+        Pipeline(Config(destination_root=str(tmp_path / "sorted")), tmp_path / "engine"),
+        store,
+    )
+    try:
+        record = engine.analyze_record(path)
+        service = CalibrationService(TopicClassifier(), store)
+        draft = service.build_draft([record])
+        draft.clusters[0].topic = "Space Project"
+        profile = service.profiles_from_draft(draft)[0]
+    finally:
+        engine.close()
+
+    assert {"nebula", "roadmap", "milestone", "telescope", "orbit", "context"} <= set(profile.tags)
+    assert "co:nebula|roadmap" in profile.example_weights or "co:roadmap|nebula" in profile.example_weights
+
+
+def test_calibration_seed_changes_move_seeds_before_remaining_review(tmp_path):
+    desktop = tmp_path / "Desktop"
+    downloads = tmp_path / "Downloads"
+    desktop.mkdir()
+    downloads.mkdir()
+    first = downloads / "seed-one.txt"
+    second = downloads / "seed-two.txt"
+    remaining = downloads / "remaining.txt"
+    for path in (first, second, remaining):
+        path.write_text("project alpha context", encoding="utf-8")
+    records = [
+        make_record(str(first), "문서", {"project": 3, "alpha": 2}),
+        make_record(str(second), "문서", {"project": 3, "context": 2}),
+    ]
+    service = CalibrationService(TopicClassifier(), TopicProfileStore(tmp_path / "profiles.json"))
+    draft = service.build_draft(records)
+    draft.clusters[0].topic = "Alpha Project"
+    changes = service.seed_changes(draft, desktop, downloads)
+
+    completed = execute_batch(
+        [build_operation(change, downloads) for change in changes],
+        HistoryStore(tmp_path / "history.json"),
+    )
+
+    assert len(completed) == 2
+    assert (downloads / "문서" / "Alpha Project" / first.name).is_file()
+    assert (downloads / "문서" / "Alpha Project" / second.name).is_file()
+    assert remaining.is_file()
+    assert {path.name for path in downloads.iterdir() if path.is_file()} == {remaining.name}
 
 
 def test_signed_correction_reinforces_choice_and_demotes_prediction(tmp_path):

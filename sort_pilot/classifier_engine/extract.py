@@ -14,6 +14,7 @@ from .types import Feature, FeatureVector, path_id
 IN_PROGRESS = {".crdownload", ".part", ".tmp", ".download"}
 KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "처럼", "보다", "은", "는", "이", "가", "을", "를", "에", "의", "도", "와", "과")
 STOP = {"the", "and", "for", "with", "from", "this", "that", "그리고", "합니다", "있는", "없는"}
+MAX_BODY_TERMS = 160
 _KIWI = None
 _OCR_LOCAL = threading.local()
 
@@ -68,6 +69,13 @@ def _docx(path: Path, limit: int) -> str:
     """Extract bounded text directly from a DOCX document XML payload."""
     with zipfile.ZipFile(path) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
+    return " ".join(node.text or "" for node in root.iter())[:limit]
+
+
+def _odt(path: Path, limit: int) -> str:
+    """Extract bounded paragraph and table text from an ODT content payload."""
+    with zipfile.ZipFile(path) as archive:
+        root = ElementTree.fromstring(archive.read("content.xml"))
     return " ".join(node.text or "" for node in root.iter())[:limit]
 
 
@@ -153,12 +161,14 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             if suffix in {".txt", ".md", ".csv", ".rtf"}: text = _read_text(path, max_chars)
             elif suffix == ".pdf": text = _pdf(path, max_chars)
             elif suffix == ".docx": text = _docx(path, max_chars)
+            elif suffix == ".odt": text = _odt(path, max_chars)
             elif suffix == ".pptx": text = _pptx(path, max_chars)
             elif suffix == ".xlsx": text = _xlsx(path, max_chars)
             elif suffix == ".zip": text = _archive(path)
         except Exception:
             partial = True
-    for token, count in Counter(tokenize(text)).most_common(30): features.append(Feature(token, "body", float(count)))
+    for token, count in Counter(tokenize(text)).most_common(MAX_BODY_TERMS):
+        features.append(Feature(token, "body", float(count)))
     mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     route = "text" if text else "metadata"
     if mime.startswith("image/"):
