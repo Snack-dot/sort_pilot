@@ -7,13 +7,11 @@ from PyQt6.QtCore import QStandardPaths
 from PyQt6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 
 from .classifier import RuleBasedAnalyzer
-from .filters import is_safe_candidate
 from .history import HistoryStore
 from .organizer import build_operation, execute_batch, undo_latest
 from .preview import PreviewDialog
 from .scanner import scan_folder
 from .tray import TrayIcon
-from .watcher import FolderWatcher
 
 
 class AppController:
@@ -23,34 +21,27 @@ class AppController:
         self.analyzer = RuleBasedAnalyzer()
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         self.history = HistoryStore(app_data / "history.json")
-        self.watch_folder = Path.home() / "Downloads"
-        self.watcher = FolderWatcher(self.watch_folder)
-        self.watcher.file_ready.connect(self._new_file)
-        self.watcher.error.connect(lambda message: self.tray.notify("감시 오류", message))
+        self.downloads_folder = Path.home() / "Downloads"
         self.tray = TrayIcon(
             self.organize_all,
             self.organize_desktop,
             self.organize_downloads,
-            self.toggle_watch,
             self.undo,
             self.quit,
         )
 
     def start(self) -> None:
         self.tray.show()
-        self.watcher.start()
-        self.tray.set_watching(True)
-        self.tray.notify("Sort Pilot", "다운로드 폴더 감시를 시작했습니다.")
 
     def organize_desktop(self) -> None:
         self._organize_existing_files(self._desktop_folder(), "바탕화면")
 
     def organize_downloads(self) -> None:
-        self._organize_existing_files(self.watch_folder, "다운로드 폴더")
+        self._organize_existing_files(self.downloads_folder, "다운로드 폴더")
 
     def organize_all(self) -> None:
         suggestions = scan_folder(self._desktop_folder(), self.analyzer)
-        suggestions.extend(scan_folder(self.watch_folder, self.analyzer))
+        suggestions.extend(scan_folder(self.downloads_folder, self.analyzer))
         if not suggestions:
             QMessageBox.information(None, "Sort Pilot", "바탕화면과 다운로드 폴더에 정리할 파일이 없습니다.")
             return
@@ -67,13 +58,6 @@ class AppController:
             return
         self._show_preview(suggestions)
 
-    def toggle_watch(self) -> None:
-        if self.watcher.running:
-            self.watcher.stop()
-        else:
-            self.watcher.start()
-        self.tray.set_watching(self.watcher.running)
-
     def undo(self) -> None:
         if QMessageBox.question(None, "실행 취소", "마지막 정리 작업을 원래 위치로 되돌릴까요?") != QMessageBox.StandardButton.Yes:
             return
@@ -84,14 +68,8 @@ class AppController:
     def quit(self) -> None:
         if QMessageBox.question(None, "프로그램 종료", "Sort Pilot을 종료할까요?") != QMessageBox.StandardButton.Yes:
             return
-        self.watcher.stop()
         self.tray.hide()
         self.app.quit()
-
-    def _new_file(self, path: Path) -> None:
-        if is_safe_candidate(path):
-            suggestion = self.analyzer.analyze(path)
-            self._show_preview([suggestion])
 
     def _show_preview(self, suggestions) -> None:
         dialog = PreviewDialog(suggestions)
