@@ -16,7 +16,7 @@ from .calibration import (
     learn_correction,
     merge_profile_evidence,
 )
-from .calibration_dialog import CalibrationDialog, ensure_local_model
+from .calibration_dialog import CalibrationDialog, ensure_local_model, ensure_semantic_vectors
 from .classifier_engine.config import data_dir
 from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC
 from .classifier_engine.topics import (
@@ -25,6 +25,7 @@ from .classifier_engine.topics import (
     TopicProfile,
     TopicProfileStore,
 )
+from .embeddings_installer import EmbeddingsInstaller
 from .history import HistoryStore
 from .instance_lock import SingleInstanceLock
 from .local_tagger import LocalModelInstaller, LocalTagger
@@ -53,6 +54,7 @@ class AppController(QObject):
         self.calibration_sampler = CalibrationSampler(data_dir() / "calibration_state.json", per_family=20)
         self.model_installer = LocalModelInstaller(data_dir() / "local_ai")
         self.local_tagger = LocalTagger(self.model_installer)
+        self.embeddings_installer = EmbeddingsInstaller(data_dir() / "local_ai")
         self.downloads_folder = Path.home() / "Downloads"
         self.analysis = BatchAnalysisController(self)
         self.analysis.progress.connect(self._update_progress)
@@ -246,6 +248,7 @@ class AppController(QObject):
             )
             self._pending_organize = None
             return
+        ensure_semantic_vectors(None, self.embeddings_installer)
         proposals = self.topic_classifier.discover(content_records)
         suggestions = {}
         if proposals and ensure_local_model(None, self.model_installer):

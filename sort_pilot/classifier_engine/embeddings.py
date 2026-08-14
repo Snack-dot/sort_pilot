@@ -9,17 +9,20 @@ SEMANTIC_MATCH_THRESHOLD = 0.30
 VECTOR_PATH = Path(__file__).parents[2] / "data" / "models" / "word_vectors.npz"
 
 _VOCAB: dict[str, np.ndarray] | None = None
-_VOCAB_LOADED = False
 
 
 def load_vocab() -> dict[str, np.ndarray] | None:
-    """Lazily load the bundled pretrained word-vector vocabulary, once per process."""
-    global _VOCAB, _VOCAB_LOADED
-    if not _VOCAB_LOADED:
-        _VOCAB_LOADED = True
-        if VECTOR_PATH.exists():
-            data = np.load(VECTOR_PATH)
-            _VOCAB = dict(zip(data["words"].tolist(), data["vectors"].astype(np.float32)))
+    """Lazily load the bundled pretrained word-vector vocabulary, caching only a successful load.
+
+    Deliberately re-checks ``VECTOR_PATH.exists()`` (one cheap stat call) every
+    time the vocabulary hasn't loaded yet, rather than caching the absence
+    permanently, so a vocabulary installed mid-session (via the consent flow
+    in ``embeddings_installer.py``) is picked up without an app restart.
+    """
+    global _VOCAB
+    if _VOCAB is None and VECTOR_PATH.exists():
+        data = np.load(VECTOR_PATH)
+        _VOCAB = dict(zip(data["words"].tolist(), data["vectors"].astype(np.float32)))
     return _VOCAB
 
 

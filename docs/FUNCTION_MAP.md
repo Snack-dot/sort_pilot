@@ -146,6 +146,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `FamilyCalibrationPage.split_selected`, `merge_selected`, `export` | `sort_pilot/calibration_dialog.py` | Split or merge user-selected groups and validate nonempty cards for persistence. |
 | `CalibrationDialog.__init__`, `_confirm` | `sort_pilot/calibration_dialog.py` | Build family tabs and require every sample to be assigned or explicitly excluded. |
 | `ensure_local_model` | `sort_pilot/calibration_dialog.py` | Obtain Gemma-terms consent and run cancellable, progress-reported local installation. |
+| `ensure_semantic_vectors` | `sort_pilot/calibration_dialog.py` | Obtain consent and run cancellable, progress-reported semantic-vocabulary installation. |
 
 ### Local tag generation
 
@@ -157,6 +158,9 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `LocalTagger.__init__`, `propose` | `sort_pilot/local_tagger.py` | Start one loopback-only CPU server, request all cluster labels once, and always terminate it. |
 | `LocalTagger._wait_until_ready`, `_post_json`, `_request_payload` | `sort_pilot/local_tagger.py` | Bound server startup, send local JSON, and treat filenames/terms as untrusted prompt data. |
 | `LocalTagger._validate_response`, `cluster_id`, `_free_port` | `sort_pilot/local_tagger.py` | Enforce complete strict output, correlate opaque cluster IDs, and allocate a temporary loopback port. |
+| `FastTextSource`, `InstallCancelled` (embeddings) | `sort_pilot/embeddings_installer.py` | Describe one official fastText source and distinguish a user cancellation from installation failure. |
+| `EmbeddingsInstaller.__init__`, `ready`, `has_consent`, `record_consent` | `sort_pilot/embeddings_installer.py` | Resolve the target vector path and consent record, and report installation readiness. |
+| `EmbeddingsInstaller.install`, `_stream_top_words`, `_build`, `reference_digest` | `sort_pilot/embeddings_installer.py` | Stream only the top-frequency words per language from official sources without downloading the full release, then atomically build and structurally verify the local vector bundle. |
 
 ### Existing topic and migration UI
 

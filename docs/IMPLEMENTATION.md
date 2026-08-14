@@ -16,7 +16,7 @@ Hierarchical classification routes each file into a fixed Korean type family and
 
 ## Local model setup
 
-The YOLO ONNX model is generated from the official Ultralytics YOLOv8n checkpoint at 640×640 with opset 17. The semantic-rescue word vectors are pretrained fastText vectors (Korean + English), quantized to float16 and bundled as `data/models/word_vectors.npz`. Binary model files are excluded from Git. Copy `yolov8n.onnx` to `data/models/yolov8n.onnx` and `word_vectors.npz` to `data/models/word_vectors.npz`; the classifier discovers both automatically and degrades gracefully (no object detection, no semantic rescue) when either is absent.
+The YOLO ONNX model is generated from the official Ultralytics YOLOv8n checkpoint at 640×640 with opset 17 and is committed at `data/models/yolov8n.onnx` (~13MB, under GitHub's 100MB limit) — no setup needed. The semantic-rescue word vectors are pretrained fastText vectors (Korean + English), quantized to float16 and built locally at `data/models/word_vectors.npz` (~112MB, over GitHub's limit) by `embeddings_installer.py` after a consent prompt in the calibration flow, streaming only the most frequent words from Meta's official releases rather than downloading them whole. The classifier discovers both automatically and degrades gracefully (no object detection, no semantic rescue) when either is absent.
 
 ## Verification
 
