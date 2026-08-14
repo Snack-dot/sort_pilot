@@ -12,9 +12,14 @@ class FakeBackend:
     def __init__(self) -> None:
         self.calls = 0
 
-    def classify_files(self, requests):
+    def classify_files(self, requests, progress=None, cancelled=None):
         self.calls += 1
-        return {item["id"]: ("학업/운영체제/과제", "운영체제 과제 문서") for item in requests}
+        results = {}
+        for completed, item in enumerate(requests, 1):
+            results[item["id"]] = ("학업/운영체제/과제", "운영체제 과제 문서")
+            if progress:
+                progress(completed, len(requests))
+        return results
 
 
 class LlmFileClassifierTests(unittest.TestCase):
@@ -53,6 +58,22 @@ class LlmFileClassifierTests(unittest.TestCase):
 
     def test_one_level_llm_result_is_scoped_to_role_default(self):
         self.assertEqual(LlmFileClassifier.validate_folder("과제", "학생"), "학업/과제")
+
+    def test_progress_includes_cached_and_new_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_path = root / "first.txt"
+            second_path = root / "second.txt"
+            first_path.write_text("첫 파일", encoding="utf-8")
+            second_path.write_text("둘째 파일", encoding="utf-8")
+            backend = FakeBackend()
+            classifier = LlmFileClassifier(backend, ClassificationCache(root / "cache.json"))
+            first = AnalysisRecord(str(first_path), first_path.name, first_path.name, "문서", {"첫": 1})
+            second = AnalysisRecord(str(second_path), second_path.name, second_path.name, "문서", {"둘": 1})
+            classifier.classify([first], "학생")
+            updates = []
+            classifier.classify([first, second], "학생", lambda done, total: updates.append((done, total)))
+            self.assertEqual(updates, [(1, 2), (2, 2)])
 
 
 if __name__ == "__main__":

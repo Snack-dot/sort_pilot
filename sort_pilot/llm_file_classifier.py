@@ -54,24 +54,36 @@ class LlmFileClassifier:
         self.backend = backend
         self.cache = cache
 
-    def classify(self, records: list[AnalysisRecord], user_type: str) -> list[FileSuggestion]:
+    def classify(self, records: list[AnalysisRecord], user_type: str, progress=None, cancelled=None) -> list[FileSuggestion]:
         if user_type not in ROLE_TEMPLATES:
             raise ValueError("지원하지 않는 사용자 유형입니다.")
         entries = self.cache.load()
         suggestions: dict[int, FileSuggestion] = {}
         requests: list[dict] = []
         request_indexes: dict[str, tuple[int, str]] = {}
+        completed = 0
         for index, record in enumerate(records):
+            if cancelled and cancelled():
+                raise RuntimeError("LLM 분류가 취소되었습니다.")
             key = self.cache_key(record.source, user_type)
             cached = entries.get(key)
             if cached:
                 suggestions[index] = self._suggestion(record, cached["folder"], cached["reason"], "캐시")
+                completed += 1
+                if progress:
+                    progress(completed, len(records))
                 continue
             request_id = hashlib.sha256(f"{key}:{index}".encode()).hexdigest()[:16]
             requests.append(self._request(request_id, record, user_type))
             request_indexes[request_id] = (index, key)
 
-        results = self.backend.classify_files(requests) if requests else {}
+        def backend_progress(done: int, _total: int) -> None:
+            if progress:
+                progress(completed + done, len(records))
+
+        results = self.backend.classify_files(requests, backend_progress, cancelled) if requests else {}
+        if cancelled and cancelled():
+            raise RuntimeError("LLM 분류가 취소되었습니다.")
         changed = False
         for request_id, (index, key) in request_indexes.items():
             record = records[index]

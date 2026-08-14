@@ -6,6 +6,7 @@ import os
 import shutil
 import socket
 import subprocess
+import threading
 import tempfile
 import threading
 import time
@@ -185,6 +186,8 @@ class LocalTagger:
         """Bind a verified installation and bounded per-request inference timeout."""
         self.installer = installer
         self.timeout = timeout
+        self._process_lock = threading.Lock()
+        self._active_file_process: subprocess.Popen | None = None
 
     def propose(self, proposals: Iterable[TopicProposal]) -> dict[str, tuple[str, tuple[str, ...]]]:
         """Generate one topic and tag list per cluster, skipping any cluster the model fails on."""
@@ -234,7 +237,7 @@ class LocalTagger:
                 process.kill()
                 process.wait(timeout=5)
 
-    def classify_files(self, requests: list[dict]) -> dict[str, tuple[str, str]]:
+    def classify_files(self, requests: list[dict], progress=None, cancelled=None) -> dict[str, tuple[str, str]]:
         """Classify multiple files in one model-server session."""
         if not requests or not self.installer.ready:
             return {}
@@ -247,10 +250,16 @@ class LocalTagger:
             stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
+        with self._process_lock:
+            self._active_file_process = process
         try:
+            if cancelled and cancelled():
+                return {}
             self._wait_until_ready(process, port)
             results = {}
-            for item in requests:
+            for completed, item in enumerate(requests, 1):
+                if cancelled and cancelled():
+                    break
                 try:
                     response = self._post_json(
                         f"http://127.0.0.1:{port}/v1/chat/completions",
@@ -261,14 +270,28 @@ class LocalTagger:
                     results[str(item["id"])] = (str(data["folder"]), str(data["reason"]))
                 except Exception:
                     continue
+                finally:
+                    if progress:
+                        progress(completed, len(requests))
             return results
         finally:
-            process.terminate()
+            with self._process_lock:
+                if self._active_file_process is process:
+                    self._active_file_process = None
+            if process.poll() is None:
+                process.terminate()
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
+
+    def cancel_file_classification(self) -> None:
+        """Stop the active file-classification server so application shutdown can finish."""
+        with self._process_lock:
+            process = self._active_file_process
+        if process is not None and process.poll() is None:
+            process.terminate()
 
     @staticmethod
     def _file_request_payload(item: dict) -> dict:

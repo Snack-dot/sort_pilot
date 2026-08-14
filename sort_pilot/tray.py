@@ -14,9 +14,7 @@ class TrayIcon:
         organize_all: Callable[[], None],
         organize_desktop: Callable[[], None],
         organize_downloads: Callable[[], None],
-        calibrate_topics: Callable[[], None],
-        manage_topics: Callable[[], None],
-        migrate_folders: Callable[[], None],
+        select_user_type: Callable[[], None],
         undo: Callable[[], None],
         quit_program: Callable[[], None],
     ) -> None:
@@ -30,12 +28,8 @@ class TrayIcon:
         self.desktop_action.triggered.connect(organize_desktop)
         self.downloads_action = QAction("다운로드 폴더 정리", self.menu)
         self.downloads_action.triggered.connect(organize_downloads)
-        self.calibrate_action = QAction("주제 다시 보정", self.menu)
-        self.calibrate_action.triggered.connect(calibrate_topics)
-        self.topics_action = QAction("폴더/태그 관리", self.menu)
-        self.topics_action.triggered.connect(manage_topics)
-        self.migration_action = QAction("기존 폴더 계층화", self.menu)
-        self.migration_action.triggered.connect(migrate_folders)
+        self.user_type_action = QAction("사용자 유형 선택 (미선택)", self.menu)
+        self.user_type_action.triggered.connect(select_user_type)
         self.undo_action = QAction("마지막 정리 실행 취소", self.menu)
         self.undo_action.triggered.connect(undo)
         self.quit_action = QAction("프로그램 종료", self.menu)
@@ -44,9 +38,7 @@ class TrayIcon:
         self.menu.addAction(self.desktop_action)
         self.menu.addAction(self.downloads_action)
         self.menu.addSeparator()
-        self.menu.addAction(self.calibrate_action)
-        self.menu.addAction(self.topics_action)
-        self.menu.addAction(self.migration_action)
+        self.menu.addAction(self.user_type_action)
         self.menu.addSeparator()
         self.menu.addAction(self.undo_action)
         self.menu.addSeparator()
@@ -59,12 +51,15 @@ class TrayIcon:
             self.batch_action,
             self.desktop_action,
             self.downloads_action,
-            self.calibrate_action,
-            self.topics_action,
-            self.migration_action,
+            self.user_type_action,
             self.undo_action,
         ):
             action.setEnabled(not busy)
+
+    def set_user_type(self, user_type: str | None) -> None:
+        """Show the active role directly in the tray menu."""
+        label = user_type or "미선택"
+        self.user_type_action.setText(f"사용자 유형 선택 ({label})")
 
     def notify(self, title: str, message: str) -> None:
         """Show a short informational system notification."""

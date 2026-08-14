@@ -18,8 +18,8 @@ from PyQt6.QtWidgets import (
 )
 
 from .models import ApprovedFileMove, FileSuggestion
-from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, route_type
-from .classifier_engine.topics import TopicProfile, validate_topic_name
+from .classifier_engine.hierarchy import UNSORTED_TOPIC
+from .classifier_engine.topics import validate_topic_name
 
 
 class PreviewDialog(QDialog):
@@ -37,7 +37,6 @@ class PreviewDialog(QDialog):
         suggestions: list[FileSuggestion],
         desktop_folder: Path,
         downloads_folder: Path,
-        profiles: list[TopicProfile] | None = None,
         user_type: str | None = None,
         parent=None,
     ) -> None:
@@ -47,7 +46,6 @@ class PreviewDialog(QDialog):
             suggestions,
             key=lambda suggestion: (suggestion.folder.casefold(), suggestion.file_name.casefold()),
         )
-        self.profiles = profiles or []
         self.setWindowTitle("Sort Pilot - AI 추천 검토")
         self.resize(900, 460)
 
@@ -61,10 +59,10 @@ class PreviewDialog(QDialog):
         if user_type in self.USER_TYPES:
             self.user_type_combo.setCurrentIndex(self.user_type_combo.findData(user_type))
         self.confirmed_user_type = user_type if user_type in self.USER_TYPES else None
-        self.user_type_combo.currentIndexChanged.connect(self._reset_user_type_confirmation)
+        self.user_type_combo.setEnabled(False)
         controls.addWidget(self.user_type_combo)
         confirm_type = QPushButton("확인")
-        confirm_type.clicked.connect(self._confirm_user_type)
+        confirm_type.setVisible(False)
         controls.addWidget(confirm_type)
         self.user_type_status = QLabel(
             f"{self.confirmed_user_type} 선택됨" if self.confirmed_user_type else ""
@@ -84,7 +82,7 @@ class PreviewDialog(QDialog):
 
         self.table = QTableWidget(len(suggestions), 6)
         self.table.setHorizontalHeaderLabels(
-            ["파일명", "현재 위치", "기준 위치", "파일 유형", "주제 / 하위 경로", "이동"]
+            ["파일명", "현재 위치", "기준 위치", "주제", "하위 경로", "이동"]
         )
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -113,7 +111,7 @@ class PreviewDialog(QDialog):
             destination_selector.setCurrentIndex(destination_selector.findData(default_destination))
             self.table.setCellWidget(row, 2, destination_selector)
             parts = Path(suggestion.folder).parts
-            family = parts[0] if parts and parts[0] in TYPE_FAMILIES else route_type(suggestion.source)
+            family = parts[0] if parts else "기타"
             topic_path = Path(*parts[1:]).as_posix() if len(parts) > 1 else UNSORTED_TOPIC
             family_item = QTableWidgetItem(family)
             family_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
@@ -121,11 +119,8 @@ class PreviewDialog(QDialog):
             topic_selector = QComboBox()
             topic_selector.setEditable(True)
             topic_selector.addItem(UNSORTED_TOPIC)
-            topic_selector.addItems(
-                profile.name
-                for profile in self.profiles
-                if profile.enabled and profile.family == family
-            )
+            if topic_path != UNSORTED_TOPIC:
+                topic_selector.addItem(topic_path)
             topic_selector.setCurrentText(topic_path)
             self.table.setCellWidget(row, 4, topic_selector)
             self.table.setItem(row, 5, self._checked_item())
@@ -167,13 +162,17 @@ class PreviewDialog(QDialog):
         return approved
 
     def _hierarchical_folder(self, row: int) -> str:
-        """Reconstruct an approved path while keeping the first-level type immutable."""
+        """Reconstruct an approved path while keeping the LLM's role topic intact."""
         family = self.table.item(row, 3).text()
         selector = self.table.cellWidget(row, 4)
         topic = selector.currentText().strip() if isinstance(selector, QComboBox) else ""
         if not topic or topic == UNSORTED_TOPIC:
             return f"{family}/{UNSORTED_TOPIC}"
-        return f"{family}/{validate_topic_name(topic)}"
+        parts = Path(topic.replace("\\", "/")).parts
+        if not 1 <= len(parts) <= 3:
+            raise ValueError("하위 경로는 1~3단계로 입력해 주세요.")
+        validated = "/".join(validate_topic_name(part) for part in parts)
+        return f"{family}/{validated}"
 
     def selected_user_type(self) -> str | None:
         return self.confirmed_user_type

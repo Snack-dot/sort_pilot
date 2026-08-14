@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 import sys
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QStandardPaths, Qt, QTimer
+from PyQt6.QtCore import QObject, QStandardPaths, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QInputDialog, QMessageBox, QProgressDialog, QSystemTrayIcon
 
 from .analysis_queue import BatchAnalysisController
@@ -42,6 +43,8 @@ from .tray import TrayIcon
 class AppController(QObject):
     """Coordinate tray actions, hierarchical analysis, profile learning, moves, and Undo."""
 
+    llm_progress = pyqtSignal(int, int)
+
     def __init__(self, app: QApplication) -> None:
         """Initialize application services without starting file analysis."""
         super().__init__()
@@ -67,6 +70,10 @@ class AppController(QObject):
         self.analysis.completed.connect(self._analysis_completed)
         self.analysis.cancelled.connect(self._analysis_cancelled)
         self.analysis.busy_changed.connect(self._set_busy)
+        self.llm_progress.connect(self._update_progress)
+        self._llm_executor = ThreadPoolExecutor(max_workers=1)
+        self._llm_future = None
+        self._llm_cancel_event = threading.Event()
         self.progress_dialog: QProgressDialog | None = None
         self._analysis_mode = "organize"
         self._profile_snapshot: list[TopicProfile] = []
@@ -77,9 +84,7 @@ class AppController(QObject):
             self.organize_all,
             self.organize_desktop,
             self.organize_downloads,
-            self.calibrate_topics,
-            self.manage_topics,
-            self.migrate_folders,
+            self.select_user_type,
             self.undo,
             self.quit,
         )
@@ -181,17 +186,25 @@ class AppController(QObject):
         """Require one role before classification so it can influence the LLM prompt."""
         if self.selected_user_type in ROLE_TEMPLATES:
             return True
+        return self.select_user_type()
+
+    def select_user_type(self) -> bool:
+        """Let the user choose or change the role used by future classifications."""
+        options = list(ROLE_TEMPLATES)
+        current = options.index(self.selected_user_type) if self.selected_user_type in options else 0
         value, accepted = QInputDialog.getItem(
             None,
             "사용자 유형 선택",
             "파일을 어떤 관점으로 분류할까요?",
-            list(ROLE_TEMPLATES),
-            0,
+            options,
+            current,
             False,
         )
         if not accepted:
             return False
         self.selected_user_type = str(value)
+        self.tray.set_user_type(self.selected_user_type)
+        self.tray.notify("Sort Pilot", f"사용자 유형을 '{self.selected_user_type}'(으)로 변경했습니다.")
         return True
 
     def _start_analysis(self, paths, mode: str, label: str) -> None:
@@ -220,18 +233,21 @@ class AppController(QObject):
             label = self.progress_dialog.property("task_label") or "AI 분석"
             self.progress_dialog.setMaximum(total)
             self.progress_dialog.setValue(completed)
-            self.progress_dialog.setLabelText(f"{label}: {completed}/{total}")
+            percent = round(completed * 100 / total) if total else 100
+            self.progress_dialog.setLabelText(f"{label}: {percent}% ({completed}/{total})")
 
     def _analysis_completed(self, results: list, errors: list[tuple[str, str]]) -> None:
         """Dispatch completed extraction records to their requested workflow."""
-        self._close_progress()
         self._report_analysis_errors(errors)
         records = [result for result in results if isinstance(result, AnalysisRecord)]
         if self._analysis_mode == "profile":
+            self._close_progress()
             self._complete_profile_learning(records)
         elif self._analysis_mode == "calibration":
+            self._close_progress()
             self._complete_calibration(records)
         elif self._analysis_mode == "migration":
+            self._close_progress()
             self._complete_migration(records)
         else:
             self._complete_organization(records)
@@ -244,8 +260,37 @@ class AppController(QObject):
         if self.selected_user_type not in ROLE_TEMPLATES:
             QMessageBox.warning(None, "Sort Pilot", "사용자 유형이 선택되지 않았습니다.")
             return
+        if self.progress_dialog is None:
+            self._show_progress(len(records), "LLM 파일 분류")
+        else:
+            self.progress_dialog.setRange(0, len(records))
+            self.progress_dialog.setValue(0)
+            self.progress_dialog.setCancelButton(None)
+            self.progress_dialog.setProperty("task_label", "LLM 파일 분류")
+            self.progress_dialog.setLabelText("LLM 파일 분류: 0% (0/{})".format(len(records)))
+        self._set_busy(True)
+        self._llm_cancel_event.clear()
+        user_type = self.selected_user_type
+        self._llm_future = self._llm_executor.submit(
+            self.llm_classifier.classify,
+            records,
+            user_type,
+            lambda done, total: self.llm_progress.emit(done, total),
+            self._llm_cancel_event.is_set,
+        )
+        QTimer.singleShot(100, lambda: self._poll_llm_result(records))
+
+    def _poll_llm_result(self, records: list[AnalysisRecord]) -> None:
+        """Finish background LLM classification without blocking the tray event loop."""
+        future = self._llm_future
+        if future is None or not future.done():
+            QTimer.singleShot(100, lambda: self._poll_llm_result(records))
+            return
+        self._llm_future = None
+        self._close_progress()
+        self._set_busy(False)
         try:
-            suggestions = self.llm_classifier.classify(records, self.selected_user_type)
+            suggestions = future.result()
         except (OSError, ValueError, RuntimeError) as exc:
             QMessageBox.critical(None, "LLM 분류 실패", str(exc))
             return
@@ -434,6 +479,9 @@ class AppController(QObject):
             return
         self._close_progress()
         self.analysis.shutdown(-1)
+        self._llm_cancel_event.set()
+        self.local_tagger.cancel_file_classification()
+        self._llm_executor.shutdown(wait=True, cancel_futures=True)
         self.tray.hide()
         self.app.quit()
 
@@ -447,7 +495,6 @@ class AppController(QObject):
             suggestions,
             self._desktop_folder(),
             self.downloads_folder,
-            self.profile_store.load(),
             self.selected_user_type,
         )
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
