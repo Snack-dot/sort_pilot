@@ -17,8 +17,10 @@ eval/labels.csv
 
 # Downloaded/generated model artifacts
 *.pt
-*.onnx
-data/models/
+# yolov8n.onnx is small enough (~13MB) to commit directly; word_vectors.npz
+# stays excluded and is built locally via embeddings_installer.py instead.
+data/models/*
+!data/models/yolov8n.onnx
 
 # Platform/editor files
 .DS_Store

@@ -28,6 +28,8 @@ from PyQt6.QtWidgets import (
 from .calibration import CalibrationCluster, CalibrationDraft
 from .classifier_engine.hierarchy import TYPE_FAMILIES
 from .classifier_engine.topics import TopicProfile, normalize_tag, validate_topic_name
+from .embeddings_installer import VOCAB_PER_LANGUAGE, EmbeddingsInstaller
+from .embeddings_installer import InstallCancelled as EmbeddingsInstallCancelled
 from .local_tagger import GEMMA_TERMS_URL, MODEL, InstallCancelled, LocalModelInstaller
 
 
@@ -324,4 +326,50 @@ def ensure_local_model(parent, installer: LocalModelInstaller) -> bool:
     except Exception as exc:
         progress.close()
         QMessageBox.warning(parent, "로컬 AI 모델", f"모델 설치에 실패했습니다. TF-IDF 제안을 사용합니다.\n{exc}")
+        return False
+
+
+def ensure_semantic_vectors(parent, installer: EmbeddingsInstaller) -> bool:
+    """Ask for consent and build the bundled semantic-matching word vectors with a cancellable progress dialog."""
+    if installer.ready:
+        return True
+    message = QMessageBox(parent)
+    message.setWindowTitle("의미 유사도 어휘 설치")
+    message.setText(
+        "정확히 일치하는 단어가 없는 문서도 연결할 수 있도록, 사전학습된 한국어·영어 단어 벡터"
+        "(약 200MB 다운로드)를 이 PC에만 설치합니다. 설치하시겠습니까?"
+    )
+    message.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    if message.exec() != QMessageBox.StandardButton.Yes:
+        return False
+    installer.record_consent()
+    cancelled = threading.Event()
+    total = VOCAB_PER_LANGUAGE * 2
+    progress = QProgressDialog("의미 유사도 어휘 준비 중", "취소", 0, total, parent)
+    progress.setWindowTitle("Sort Pilot")
+    progress.setMinimumDuration(0)
+    seen_languages: list[str] = []
+
+    def update(language: str, current: int, language_total: int) -> None:
+        if language not in seen_languages:
+            seen_languages.append(language)
+        offset = (len(seen_languages) - 1) * language_total
+        progress.setValue(offset + min(current, language_total))
+        progress.setLabelText(f"{language}: {current}/{language_total} words")
+        QApplication.processEvents()
+        if progress.wasCanceled():
+            cancelled.set()
+
+    try:
+        installer.install(update, cancelled)
+        progress.close()
+        return True
+    except EmbeddingsInstallCancelled:
+        progress.close()
+        return False
+    except Exception as exc:
+        progress.close()
+        QMessageBox.warning(
+            parent, "의미 유사도 어휘", f"설치에 실패했습니다. 정확히 일치하는 항목만 사용합니다.\n{exc}"
+        )
         return False

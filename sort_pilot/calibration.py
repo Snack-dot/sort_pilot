@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from .classifier_engine.extract import supports_content_analysis
 from .classifier_engine.hierarchy import TYPE_FAMILIES, route_type
 from .classifier_engine.topics import (
     AnalysisRecord,
@@ -18,6 +19,7 @@ from .classifier_engine.topics import (
     TopicProfileStore,
     TopicProposal,
     contextual_terms,
+    humanize_term,
     normalize_tag,
     validate_topic_name,
 )
@@ -45,6 +47,11 @@ class CalibrationDraft:
     records: list[AnalysisRecord]
     clusters: list[CalibrationCluster]
 
+    def surfaced_records(self) -> list[AnalysisRecord]:
+        """Return only the records referenced by a surfaced cluster, in index order."""
+        used = sorted({index for cluster in self.clusters for index in cluster.record_indexes})
+        return [self.records[index] for index in used]
+
 
 class CalibrationSampler:
     """Choose bounded, extension-diverse top-level samples and remember prior files."""
@@ -62,7 +69,8 @@ class CalibrationSampler:
             if not root.is_dir():
                 continue
             for path in collect_candidates(root):
-                candidates.append((root_index, path.resolve()))
+                if supports_content_analysis(path):
+                    candidates.append((root_index, path.resolve()))
         seen = self._load_seen()
         selected: list[Path] = []
         for family in TYPE_FAMILIES:
@@ -141,10 +149,16 @@ class CalibrationService:
         self,
         records: list[AnalysisRecord],
         suggestions: dict[str, tuple[str, tuple[str, ...]]] | None = None,
+        min_cluster_size: int = 1,
     ) -> CalibrationDraft:
-        """Convert automatic clusters into editable topic groups."""
+        """Convert automatic clusters of at least ``min_cluster_size`` records into editable topic groups."""
         clusters: list[CalibrationCluster] = []
-        for proposal in self.classifier.discover(records):
+        proposals = [
+            proposal
+            for proposal in self.classifier.discover(records)
+            if len(proposal.record_indexes) >= min_cluster_size
+        ]
+        for proposal in proposals:
             cluster_id = self.cluster_id(proposal)
             suggested = (suggestions or {}).get(cluster_id)
             topic = suggested[0] if suggested else self.fallback_topic(proposal)
@@ -253,8 +267,13 @@ class CalibrationService:
 
     @staticmethod
     def fallback_topic(proposal: TopicProposal) -> str:
-        """Create a deterministic human-editable fallback without built-in semantics."""
-        source = " ".join(proposal.top_terms[:2]).strip()
+        """Create a deterministic human-editable fallback, preferring collocation phrases over loose terms."""
+        collocation = next(
+            (humanize_term(term) for term in proposal.top_terms if term.startswith(("bi:", "tri:"))),
+            None,
+        )
+        humanized = [word for word in (humanize_term(term) for term in proposal.top_terms) if word]
+        source = collocation or " ".join(humanized[:2]).strip()
         if not source and proposal.representative_files:
             source = Path(proposal.representative_files[0]).stem
         cleaned = "".join("_" if char in '<>:"/\\|?*' else char for char in source).strip(" ._")

@@ -12,6 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+import numpy as np
+
+from .embeddings import SEMANTIC_MATCH_THRESHOLD, doc_vectors, load_vocab, semantic_similarity
+from .extract import SEMANTIC_FEATURE_SOURCES
 from .hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC, hierarchical_folder
 from .types import FeatureVector
 
@@ -24,6 +28,8 @@ WINDOWS_INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 GENERIC_PREFIXES = ("image:", "aspect:", "color:", "n_person:", "n_objects:", "subject:")
 GENERIC_TERMS = {"needs_content", "kakao_export", "no_ext"}
 CONTEXT_PREFIX = "co:"
+PAIR_WEIGHT_SCALE = 0.1
+SMALL_BATCH_FLOOR_SCALE = 0.2
 
 def utc_now() -> str:
     """Return a stable UTC timestamp for profile persistence."""
@@ -121,14 +127,25 @@ def tag_tokens(value: str) -> list[str]:
     return re.findall(r"[가-힣]+|[a-z][a-z0-9]*", normalize_tag(value))
 
 
+def humanize_term(term: str) -> str | None:
+    """Convert a feature token into a human-readable word or phrase, or None if not nameable."""
+    if term.startswith(("bi:", "tri:")):
+        return term.split(":", 1)[1]
+    if term.startswith("obj:"):
+        return term[len("obj:"):].replace("_", " ")
+    if term.startswith(("pair:", "co:")):
+        return None
+    return term
+
+
 def vector_terms(vector: FeatureVector, source_weights: dict[str, float]) -> dict[str, float]:
-    """Convert extracted features into semantic weighted terms for topic scoring."""
+    """Convert only body/OCR/object evidence into terms used for semantic topics."""
     terms: Counter[str] = Counter()
     for feature in vector.features:
         token = normalize_tag(feature.t)
         if not token or token in GENERIC_TERMS or token.startswith(GENERIC_PREFIXES):
             continue
-        if feature.src in {"ext", "meta"}:
+        if feature.src not in SEMANTIC_FEATURE_SOURCES:
             continue
         terms[token] += float(feature.n) * float(source_weights.get(feature.src, 1.0))
     return dict(terms)
@@ -149,8 +166,9 @@ def contextual_terms(
     pairs: list[tuple[float, str]] = []
     for position, (left, left_weight) in enumerate(ranked):
         for right, right_weight in ranked[position + 1:]:
-            pair = f"{CONTEXT_PREFIX}{left}|{right}"
-            pairs.append((math.sqrt(left_weight * right_weight) * 0.5, pair))
+            first, second = sorted((left, right))
+            pair = f"{CONTEXT_PREFIX}{first}|{second}"
+            pairs.append((math.sqrt(left_weight * right_weight) * PAIR_WEIGHT_SCALE, pair))
     for weight, pair in sorted(pairs, key=lambda item: (-item[0], item[1]))[:max_pairs]:
         expanded[pair] = weight
     return dict(expanded)
@@ -293,7 +311,10 @@ class TopicClassifier:
             if profile.enabled and profile.origin in USER_ORIGINS
         ]
         for family in TYPE_FAMILIES:
-            family_records = [record for record in records if record.family == family]
+            family_records = [
+                record for record in records
+                if record.family == family and record.terms
+            ]
             family_profiles = [profile for profile in enabled if profile.family == family]
             if not family_records or not family_profiles:
                 continue
@@ -311,6 +332,15 @@ class TopicClassifier:
                 profile.id: self._tfidf(profile.negative_terms(), idf)
                 for profile in family_profiles
             }
+            vocab = load_vocab()
+            semantic_profile_vectors = (
+                {
+                    profile.id: doc_vectors(profile.pseudo_terms(), vocab, idf)
+                    for profile in family_profiles
+                }
+                if vocab
+                else {}
+            )
             for record in family_records:
                 record_vector = self._tfidf(contextual_records[id(record)], idf)
                 profile, score, tag_match = self._best_profile(
@@ -323,18 +353,55 @@ class TopicClassifier:
                         f"사용자 태그 '{profile.name}' 일치" if tag_match
                         else f"{profile.name} 주제 유사도 {score:.3f}"
                     )
+                elif vocab:
+                    profile, score = self._semantic_match(
+                        contextual_records[id(record)], family_profiles, semantic_profile_vectors, vocab, idf
+                    )
+                    if profile is not None:
+                        record.topic = profile.name
+                        record.score = score
+                        record.reason = f"{profile.name} 의미 유사도 {score:.3f} (사전학습 단어 벡터)"
         return records
+
+    @staticmethod
+    def _semantic_match(
+        raw_terms: dict[str, float],
+        profiles: list[TopicProfile],
+        semantic_profile_vectors: dict[str, list[np.ndarray]],
+        vocab: dict[str, np.ndarray],
+        idf: dict[str, float],
+    ) -> tuple[TopicProfile | None, float]:
+        """Rescue an unmatched record using pretrained word-vector similarity."""
+        record_vectors = doc_vectors(raw_terms, vocab, idf)
+        if not record_vectors:
+            return None, 0.0
+        scored = [
+            (semantic_similarity(record_vectors, semantic_profile_vectors.get(profile.id, [])), profile)
+            for profile in profiles
+        ]
+        if not scored:
+            return None, 0.0
+        score, profile = max(scored, key=lambda item: (item[0], item[1].name.casefold()))
+        return (profile, score) if score >= SEMANTIC_MATCH_THRESHOLD else (None, 0.0)
 
     def discover(self, records: list[AnalysisRecord]) -> list[TopicProposal]:
         """Propose every unmatched file, grouping similar documents and images."""
         proposals: list[TopicProposal] = []
         for family in TYPE_FAMILIES:
-            indexed = [(index, record) for index, record in enumerate(records) if record.family == family and not record.topic]
+            indexed = [
+                (index, record)
+                for index, record in enumerate(records)
+                if record.family == family and not record.topic and record.terms
+            ]
             if not indexed:
                 continue
             expanded = {index: contextual_terms(record.terms) for index, record in indexed}
             idf = self._idf(list(expanded.values()))
             vectors = {index: self._tfidf(expanded[index], idf) for index, _ in indexed}
+            vocab = load_vocab()
+            semantic_vectors = (
+                {index: doc_vectors(expanded[index], vocab, idf) for index, _ in indexed} if vocab else {}
+            )
             clusters = self._stable_clusters(
                 indexed,
                 vectors,
@@ -342,6 +409,7 @@ class TopicClassifier:
                     vectors,
                     DISCOVERY_THRESHOLDS.get(family, OTHER_PROFILE_THRESHOLD),
                 ),
+                semantic_vectors,
             )
             for indexes in clusters:
                 aggregate = self.aggregate_terms(records[index].terms for index in indexes)
@@ -406,15 +474,10 @@ class TopicClassifier:
 
     @staticmethod
     def _tag_matches(record: AnalysisRecord, profile: TopicProfile) -> bool:
-        """Return whether every token of any explicit tag occurs in the record."""
+        """Return whether every token of any explicit tag occurs in content evidence."""
         record_terms = set(record.terms)
-        filename = Path(record.file_name).stem.casefold()
         return any(
-            tokens
-            and (
-                set(tokens) <= record_terms
-                or normalize_tag(tag).replace(" ", "") in filename.replace(" ", "")
-            )
+            tokens and set(tokens) <= record_terms
             for tag, tokens in ((tag, tag_tokens(tag)) for tag in profile.tags)
         )
 
@@ -466,41 +529,58 @@ class TopicClassifier:
                     similarities.append(similarity)
         if not similarities:
             return 1.0
+        if len(vectors) <= 3:
+            return floor * SMALL_BATCH_FLOOR_SCALE
         ordered = sorted(similarities)
         median = ordered[len(ordered) // 2]
         deviations = sorted(abs(value - median) for value in ordered)
         mad = deviations[len(deviations) // 2]
-        return min(0.75, max(floor * 0.7, median + 0.5 * mad))
+        return min(0.75, max(floor, median - mad))
 
     def _stable_clusters(
         self,
         indexed: list[tuple[int, AnalysisRecord]],
         vectors: dict[int, dict[str, float]],
         threshold: float,
+        semantic_vectors: dict[int, list[np.ndarray]] | None = None,
     ) -> list[list[int]]:
-        """Build deterministic greedy centroid clusters and refine assignments."""
+        """Build deterministic complete-linkage clusters for user review.
+
+        Two records connect if either their lexical co-occurrence cosine clears
+        ``threshold`` or, when pretrained word vectors are loaded, their
+        distinctive-word embedding similarity clears ``SEMANTIC_MATCH_THRESHOLD``.
+        Clusters only merge when every cross-pair connects, not just one path
+        through the group, so one weak transitive link can't chain together an
+        entire unrelated batch (single-linkage's classic failure at scale).
+        """
+        semantic_vectors = semantic_vectors or {}
         ordered = [index for index, _ in sorted(indexed, key=lambda item: item[1].file_path.casefold())]
-        clusters: list[list[int]] = []
-        for index in ordered:
-            similarities = [self._cosine(vectors[index], self._centroid([vectors[item] for item in cluster])) for cluster in clusters]
-            if similarities and max(similarities) >= threshold:
-                best = max(range(len(clusters)), key=lambda position: (similarities[position], -position))
-                clusters[best].append(index)
-            else:
-                clusters.append([index])
-        for _ in range(5):
-            centroids = [self._centroid([vectors[index] for index in cluster]) for cluster in clusters]
-            reassigned: list[list[int]] = [[] for _ in clusters]
-            for index in ordered:
-                similarities = [self._cosine(vectors[index], centroid) for centroid in centroids]
-                best = max(range(len(centroids)), key=lambda position: (similarities[position], -position))
-                if similarities[best] >= threshold:
-                    reassigned[best].append(index)
-                else:
-                    reassigned.append([index])
-                    centroids.append(vectors[index])
-            reassigned = [cluster for cluster in reassigned if cluster]
-            if reassigned == clusters:
-                break
-            clusters = reassigned
+        connected: set[tuple[int, int]] = set()
+        for position, left in enumerate(ordered):
+            for right in ordered[position + 1:]:
+                if (
+                    self._cosine(vectors[left], vectors[right]) >= threshold
+                    or semantic_similarity(
+                        semantic_vectors.get(left, []), semantic_vectors.get(right, [])
+                    )
+                    >= SEMANTIC_MATCH_THRESHOLD
+                ):
+                    connected.add((left, right))
+
+        def linked(a: int, b: int) -> bool:
+            return (a, b) in connected or (b, a) in connected
+
+        clusters: list[list[int]] = [[index] for index in ordered]
+        merged = True
+        while merged:
+            merged = False
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    if all(linked(a, b) for a in clusters[i] for b in clusters[j]):
+                        clusters[i] = sorted(clusters[i] + clusters[j])
+                        del clusters[j]
+                        merged = True
+                        break
+                if merged:
+                    break
         return clusters

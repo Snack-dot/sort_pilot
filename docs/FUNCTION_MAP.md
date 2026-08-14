@@ -98,30 +98,33 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
+| `supports_content_analysis` | `classifier_engine/extract.py` | Gate calibration candidates to formats with a bundled semantic-content extractor. |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
+| `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
 | `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
 | `_ocr_engine`, `_ocr` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
+| `load_vocab`, `doc_vectors`, `semantic_similarity`, `_resolve` | `classifier_engine/embeddings.py` | Lazily load the bundled pretrained word-vector vocabulary, expand YOLO object labels into plain words, and greedily match each document's most distinctive words against their closest counterpart instead of averaging them. |
 
 ## Hierarchy, profiles, and TF-IDF
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `route_type`, `hierarchical_folder` | `classifier_engine/hierarchy.py` | Map extension/MIME to one fixed Korean root and build the reserved two-level fallback path. |
-| `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens` | `classifier_engine/topics.py` | Normalize profile metadata and reject unsafe/reserved topic names. |
+| `utc_now`, `normalize_tag`, `validate_topic_name`, `tag_tokens`, `humanize_term` | `classifier_engine/topics.py` | Normalize profile metadata, reject unsafe/reserved topic names, and convert a raw feature token into a human-readable name component. |
 | `TopicProfile`, `pseudo_terms`, `negative_terms` | `classifier_engine/topics.py` | Persist one family-specific topic and expose boosted positive/tag and negative correction evidence. |
 | `AnalysisRecord.source`, `folder` | `classifier_engine/topics.py` | Represent reusable extracted terms, persisted engine decision metadata, and current hierarchical assignment. |
 | `TopicProposal` | `classifier_engine/topics.py` | Carry an automatic sample cluster, evidence, membership, and aggregate weights into calibration and local label generation. |
-| `vector_terms`, `contextual_terms` | `classifier_engine/topics.py` | Convert engine features into base terms and bounded weighted co-occurrence context pairs. |
+| `vector_terms`, `contextual_terms` | `classifier_engine/topics.py` | Retain body/OCR/object terms only and create canonical bounded weighted co-occurrence pairs. |
 | `TopicProfileStore.__init__`, `load`, `save` | `classifier_engine/topics.py` | Initialize built-ins and atomically read/write the versioned profile document. |
 | `upsert`, `delete`, `new_profile`, `_validate_profiles` | `classifier_engine/topics.py` | Maintain validated independent user profiles; loading migrates legacy built-ins out of version-1 documents. |
 | `TopicClassifier.assign_existing` | `classifier_engine/topics.py` | Match only user-created or explicitly user-approved profiles under family-specific thresholds. |
-| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose every unmatched record, TF-IDF-group similar documents/images, and calculate persistent example centroids. |
-| `_best_profile`, `_tag_matches` | `classifier_engine/topics.py` | Enforce precedence, explicit tag override, and threshold gating. |
-| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Dependency-free sparse TF-IDF math, adaptive granularity, and deterministic centroid clustering/refinement. |
+| `discover`, `aggregate_terms` | `classifier_engine/topics.py` | Propose content-backed unmatched records, TF-IDF-group related samples, and calculate persistent example centroids. |
+| `_best_profile`, `_tag_matches`, `TopicClassifier._semantic_match` | `classifier_engine/topics.py` | Enforce content-only tag matching, signed evidence, threshold gating, and a pretrained-embedding rescue when lexical matching finds nothing. |
+| `_idf`, `_tfidf`, `_cosine`, `_centroid`, `_adaptive_threshold`, `_stable_clusters` | `classifier_engine/topics.py` | Provide sparse TF-IDF math, conservative small-batch thresholds, and deterministic similarity-connected groups. |
 
 ## Topic and migration UI
 
@@ -129,7 +132,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `CalibrationCluster`, `CalibrationDraft` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction. |
+| `CalibrationCluster`, `CalibrationDraft`, `CalibrationDraft.surfaced_records` | `sort_pilot/calibration.py` | Hold editable sample membership and the unpersisted calibration transaction, and expose only the records referenced by a surfaced cluster. |
 | `CalibrationSampler.__init__`, `select`, `remember`, `remember_fingerprints` | `sort_pilot/calibration.py` | Configure the per-family limit, choose source/extension-diverse samples, and atomically remember fingerprints captured before seed moves. |
 | `CalibrationSampler._stratified`, `_load_seen`, `fingerprint` | `sort_pilot/calibration.py` | Round-robin randomized buckets, tolerate corrupt state, and hash path metadata without storing readable paths. |
 | `CalibrationService.__init__`, `build_draft`, `save_draft`, `profiles_from_draft` | `sort_pilot/calibration.py` | Convert proposals into an editable draft, build rich profiles without side effects, and persist confirmed groups. |
@@ -143,6 +146,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `FamilyCalibrationPage.split_selected`, `merge_selected`, `export` | `sort_pilot/calibration_dialog.py` | Split or merge user-selected groups and validate nonempty cards for persistence. |
 | `CalibrationDialog.__init__`, `_confirm` | `sort_pilot/calibration_dialog.py` | Build family tabs and require every sample to be assigned or explicitly excluded. |
 | `ensure_local_model` | `sort_pilot/calibration_dialog.py` | Obtain Gemma-terms consent and run cancellable, progress-reported local installation. |
+| `ensure_semantic_vectors` | `sort_pilot/calibration_dialog.py` | Obtain consent and run cancellable, progress-reported semantic-vocabulary installation. |
 
 ### Local tag generation
 
@@ -154,6 +158,9 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `LocalTagger.__init__`, `propose` | `sort_pilot/local_tagger.py` | Start one loopback-only CPU server, request all cluster labels once, and always terminate it. |
 | `LocalTagger._wait_until_ready`, `_post_json`, `_request_payload` | `sort_pilot/local_tagger.py` | Bound server startup, send local JSON, and treat filenames/terms as untrusted prompt data. |
 | `LocalTagger._validate_response`, `cluster_id`, `_free_port` | `sort_pilot/local_tagger.py` | Enforce complete strict output, correlate opaque cluster IDs, and allocate a temporary loopback port. |
+| `FastTextSource`, `InstallCancelled` (embeddings) | `sort_pilot/embeddings_installer.py` | Describe one official fastText source and distinguish a user cancellation from installation failure. |
+| `EmbeddingsInstaller.__init__`, `ready`, `has_consent`, `record_consent` | `sort_pilot/embeddings_installer.py` | Resolve the target vector path and consent record, and report installation readiness. |
+| `EmbeddingsInstaller.install`, `_stream_top_words`, `_build`, `reference_digest` | `sort_pilot/embeddings_installer.py` | Stream only the top-frequency words per language from official sources without downloading the full release, then atomically build and structurally verify the local vector bundle. |
 
 ### Existing topic and migration UI
 
