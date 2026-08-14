@@ -19,12 +19,14 @@
 
 ## Model artifacts
 
-| Artifact | Official source | SHA-256 |
-| --- | --- | --- |
-| `data/models/yolov8n.pt` | Ultralytics assets v8.4.0 | `F59B3D833E2FF32E194B5BB8E08D211DC7C5BDF144B90D2C8412C47CCFC83B36` |
-| `data/models/yolov8n.onnx` | Locally exported at 640 px, opset 17 | `4231E9DDD9B09C3850FD9EACF9E27CA3F08C37038287C4F2EA91E0557660DE3A` |
-| `gemma-3-1b-it-Q4_K_M.gguf` | `ggml-org/gemma-3-1b-it-GGUF` (Google Gemma terms) | `8CCC5CD1F1B3602548715AE25A66ED73FD5DC68A210412EEA643EB20EB75A135` |
-| `llama-b10405-bin-win-cpu-x64.zip` | `ggml-org/llama.cpp` release `b10405` (MIT) | `31F3BCC3F7645715B3ED8E845AB338D94659AA0E512B2211B8D94B9C8EB24758` |
-| `data/models/word_vectors.npz` | Locally built from Meta AI's official `fasttext` `cc.ko.300.vec.gz`/`cc.en.300.vec.gz` releases (CC BY-SA 3.0), top 150,000 words by frequency per language, float16-quantized | `AEE86795E9892825DA0A7D02C67D5AC7F66C4EA16360D642C9DDF1F58828B972` |
+| Artifact | Official source | SHA-256 | Committed? |
+| --- | --- | --- | --- |
+| `data/models/yolov8n.pt` | Ultralytics assets v8.4.0 | `F59B3D833E2FF32E194B5BB8E08D211DC7C5BDF144B90D2C8412C47CCFC83B36` | No (dev-only export input) |
+| `data/models/yolov8n.onnx` | Locally exported at 640 px, opset 17 | `9A7B7B813051D0C529B41E229FF1FF799EC93286618AC51533EF15DA3E51B2E5` | **Yes** (~13MB, under GitHub's 100MB limit) |
+| `gemma-3-1b-it-Q4_K_M.gguf` | `ggml-org/gemma-3-1b-it-GGUF` (Google Gemma terms) | `8CCC5CD1F1B3602548715AE25A66ED73FD5DC68A210412EEA643EB20EB75A135` | No (downloaded, consent-gated) |
+| `llama-b10405-bin-win-cpu-x64.zip` | `ggml-org/llama.cpp` release `b10405` (MIT) | `31F3BCC3F7645715B3ED8E845AB338D94659AA0E512B2211B8D94B9C8EB24758` | No (downloaded, consent-gated) |
+| `data/models/word_vectors.npz` | Locally built from Meta AI's official `fasttext` `cc.ko.300.vec.gz`/`cc.en.300.vec.gz` releases (CC BY-SA 3.0), top 150,000 words by frequency per language, float16-quantized | `AEE86795E9892825DA0A7D02C67D5AC7F66C4EA16360D642C9DDF1F58828B972` | No (~112MB — over GitHub's 100MB limit) |
 
-Neural model and runtime files are not committed. Gemma and llama.cpp are downloaded only after explicit terms consent and are verified against the pinned digests above. `word_vectors.npz` is optional — the semantic rescue layer no-ops when it is absent.
+ONNX export is not bit-reproducible across toolchains, so `yolov8n.onnx`'s hash reflects this repository's own committed bytes, not a value anyone re-exporting the checkpoint should expect to match — `yolov8n.pt`'s hash is what verifies you have the authentic upstream weights.
+
+Gemma and llama.cpp are downloaded only after explicit terms consent and are verified against the pinned digests above before use. `word_vectors.npz` is optional — the semantic rescue layer no-ops when it is absent.
