@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from sort_pilot.classifier_engine.topics import AnalysisRecord
+from sort_pilot.llm_file_classifier import ClassificationCache, LlmFileClassifier
+
+
+class FakeBackend:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def classify_files(self, requests):
+        self.calls += 1
+        return {item["id"]: ("학업/운영체제/과제", "운영체제 과제 문서") for item in requests}
+
+
+class LlmFileClassifierTests(unittest.TestCase):
+    def test_same_content_and_policy_uses_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "과제.txt"
+            path.write_text("프로세스 스케줄링 과제", encoding="utf-8")
+            record = AnalysisRecord(str(path), path.name, path.name, "문서", {"과제": 3})
+            backend = FakeBackend()
+            classifier = LlmFileClassifier(backend, ClassificationCache(root / "cache.json"))
+            first = classifier.classify([record], "학생")
+            second = classifier.classify([record], "학생")
+            self.assertEqual(first[0].folder, "학업/운영체제/과제")
+            self.assertEqual(second[0].folder, first[0].folder)
+            self.assertEqual(backend.calls, 1)
+            self.assertIn("[캐시]", second[0].reason)
+
+    def test_content_or_user_type_change_reclassifies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "과제.txt"
+            path.write_text("초안", encoding="utf-8")
+            backend = FakeBackend()
+            classifier = LlmFileClassifier(backend, ClassificationCache(root / "cache.json"))
+            record = AnalysisRecord(str(path), path.name, path.name, "문서", {"과제": 1})
+            classifier.classify([record], "학생")
+            path.write_text("수정된 내용", encoding="utf-8")
+            classifier.classify([record], "학생")
+            teacher = classifier.classify([record], "선생님")
+            self.assertEqual(teacher[0].folder, "기타/확인필요")
+            self.assertEqual(backend.calls, 3)
+
+    def test_unsafe_folder_is_rejected(self):
+        self.assertRaises(ValueError, LlmFileClassifier.validate_folder, "../../Windows", "학생")
+
+    def test_one_level_llm_result_is_scoped_to_role_default(self):
+        self.assertEqual(LlmFileClassifier.validate_folder("과제", "학생"), "학업/과제")
+
+
+if __name__ == "__main__":
+    unittest.main()

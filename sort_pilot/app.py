@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QStandardPaths, Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QMessageBox, QProgressDialog, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QInputDialog, QMessageBox, QProgressDialog, QSystemTrayIcon
 
 from .analysis_queue import BatchAnalysisController
 from .calibration import (
@@ -29,6 +29,7 @@ from .embeddings_installer import EmbeddingsInstaller
 from .history import HistoryStore
 from .instance_lock import SingleInstanceLock
 from .local_tagger import LocalModelInstaller, LocalTagger
+from .llm_file_classifier import ClassificationCache, LlmFileClassifier, ROLE_TEMPLATES
 from .migration import MigrationCandidate, collect_migration_candidates
 from .models import FileSuggestion
 from .organizer import build_operation, execute_batch, undo_latest
@@ -54,6 +55,10 @@ class AppController(QObject):
         self.calibration_sampler = CalibrationSampler(data_dir() / "calibration_state.json", per_family=20)
         self.model_installer = LocalModelInstaller(data_dir() / "local_ai")
         self.local_tagger = LocalTagger(self.model_installer)
+        self.llm_classifier = LlmFileClassifier(
+            self.local_tagger,
+            ClassificationCache(data_dir() / "classification_cache.json"),
+        )
         self.embeddings_installer = EmbeddingsInstaller(data_dir() / "local_ai")
         self.downloads_folder = Path.home() / "Downloads"
         self.selected_user_type: str | None = None
@@ -84,12 +89,6 @@ class AppController(QObject):
         self.tray.show()
         if self.history.migrated_legacy_batch:
             self.tray.notify("Sort Pilot", "기존 실행 취소 기록을 JSON 형식으로 이전했습니다.")
-        if not self.profile_store.load():
-            self._pending_organize = (
-                [self._desktop_folder(), self.downloads_folder],
-                "바탕화면과 다운로드 폴더",
-            )
-            QTimer.singleShot(0, self.calibrate_topics)
 
     def calibrate_topics(self) -> None:
         """Analyze a bounded random sample without moving files."""
@@ -160,15 +159,11 @@ class AppController(QObject):
         return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation))
 
     def _organize_existing_files(self, folders: list[Path], label: str) -> None:
-        """Collect candidates quickly and start a hierarchical background batch."""
-        if not self.profile_store.load():
-            self._pending_organize = (folders, label)
-            QMessageBox.information(
-                None,
-                "Sort Pilot",
-                "먼저 표본 파일로 사용자 주제를 보정합니다. 보정 후 전체 분석을 계속합니다.",
-            )
-            self.calibrate_topics()
+        """Collect candidates and start extraction before role-aware LLM classification."""
+        if not self._ensure_user_type():
+            return
+        if not ensure_local_model(None, self.model_installer):
+            QMessageBox.warning(None, "Sort Pilot", "로컬 LLM이 준비되지 않아 분류를 시작하지 않았습니다.")
             return
         paths: list[Path] = []
         try:
@@ -180,8 +175,24 @@ class AppController(QObject):
         if not paths:
             QMessageBox.information(None, "Sort Pilot", f"{label}에 정리할 파일이 없습니다.")
             return
-        self._profile_snapshot = self.profile_store.load()
-        self._start_analysis(paths, "organize", "AI 계층 분석")
+        self._start_analysis(paths, "organize", "LLM 분류용 내용 추출")
+
+    def _ensure_user_type(self) -> bool:
+        """Require one role before classification so it can influence the LLM prompt."""
+        if self.selected_user_type in ROLE_TEMPLATES:
+            return True
+        value, accepted = QInputDialog.getItem(
+            None,
+            "사용자 유형 선택",
+            "파일을 어떤 관점으로 분류할까요?",
+            list(ROLE_TEMPLATES),
+            0,
+            False,
+        )
+        if not accepted:
+            return False
+        self.selected_user_type = str(value)
+        return True
 
     def _start_analysis(self, paths, mode: str, label: str) -> None:
         """Start one queue session with an explicit completion mode and progress label."""
@@ -226,17 +237,20 @@ class AppController(QObject):
             self._complete_organization(records)
 
     def _complete_organization(self, records: list[AnalysisRecord]) -> None:
-        """Match saved topics and open an editable full-batch review."""
+        """Let the local LLM perform final role-aware classification, then preview."""
         if not records:
             QMessageBox.information(None, "Sort Pilot", "분석 결과가 없습니다.")
             return
-        profiles = self._profile_snapshot or self.profile_store.load()
-        self.topic_classifier.assign_existing(records, profiles)
+        if self.selected_user_type not in ROLE_TEMPLATES:
+            QMessageBox.warning(None, "Sort Pilot", "사용자 유형이 선택되지 않았습니다.")
+            return
+        try:
+            suggestions = self.llm_classifier.classify(records, self.selected_user_type)
+        except (OSError, ValueError, RuntimeError) as exc:
+            QMessageBox.critical(None, "LLM 분류 실패", str(exc))
+            return
         record_map = {self._path_key(record.source): record for record in records}
-        self._show_preview(
-            [self._record_suggestion(record) for record in records],
-            record_map,
-        )
+        self._show_preview(suggestions, record_map)
 
     def _complete_calibration(self, records: list[AnalysisRecord]) -> None:
         """Generate local labels, review the sample, then persist approved topics."""
