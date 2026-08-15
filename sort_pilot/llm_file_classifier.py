@@ -81,15 +81,16 @@ class LlmFileClassifier:
             if progress:
                 progress(completed + done, len(records))
 
-        def cache_result(request_id: str, raw_folder: str) -> None:
+        def cache_result(request_id: str, raw_folder: str) -> bool:
             index, key = request_indexes[request_id]
             try:
                 folder = self.validate_folder(raw_folder, user_type)
             except ValueError:
-                return
+                return False
             entries[key] = {"folder": folder}
             self.cache.save(entries)
             suggestions[index] = self._suggestion(records[index], folder)
+            return True
 
         results = self.backend.classify_files(
             requests, backend_progress, cancelled, cache_result

@@ -194,6 +194,7 @@ class LocalTagger:
         "additionalProperties": False,
     }
     FILE_BATCH_SIZE = 5
+    FILE_BATCH_RETRIES = 2
 
     def __init__(self, installer: LocalModelInstaller, timeout: float = 90.0) -> None:
         """Bind a verified installation and bounded per-request inference timeout."""
@@ -271,33 +272,44 @@ class LocalTagger:
                 return {}
             self._wait_until_ready(process, port)
             results = {}
-            completed = 0
+            finished_ids: set[str] = set()
             for offset in range(0, len(requests), self.FILE_BATCH_SIZE):
                 if cancelled and cancelled():
                     break
                 batch = requests[offset:offset + self.FILE_BATCH_SIZE]
-                try:
-                    response = self._post_json(
-                        f"http://127.0.0.1:{port}/v1/chat/completions",
-                        self._file_request_payload(batch),
-                    )
-                    content = response["choices"][0]["message"]["content"]
-                    data = json.loads(content.strip().strip("`"))
-                    requested_ids = {str(item["id"]) for item in batch}
-                    for item in data["results"]:
-                        request_id = str(item["id"])
-                        if request_id not in requested_ids:
-                            continue
-                        folder = str(item["folder"])
-                        results[request_id] = folder
-                        if result_callback:
-                            result_callback(request_id, folder)
-                except Exception:
-                    continue
-                finally:
-                    completed += len(batch)
+                pending = {str(item["id"]): item for item in batch}
+                for _attempt in range(self.FILE_BATCH_RETRIES + 1):
+                    if not pending or (cancelled and cancelled()):
+                        break
+                    retry_batch = list(pending.values())
+                    try:
+                        response = self._post_json(
+                            f"http://127.0.0.1:{port}/v1/chat/completions",
+                            self._file_request_payload(retry_batch),
+                        )
+                        content = response["choices"][0]["message"]["content"]
+                        data = json.loads(content.strip().strip("`"))
+                        for item in data["results"]:
+                            request_id = str(item["id"])
+                            if request_id not in pending:
+                                continue
+                            folder = str(item["folder"])
+                            accepted = result_callback(request_id, folder) if result_callback else True
+                            if accepted is False:
+                                continue
+                            results[request_id] = folder
+                            pending.pop(request_id, None)
+                            finished_ids.add(request_id)
+                            if progress:
+                                progress(len(finished_ids), len(requests))
+                    except Exception:
+                        continue
+                for request_id in pending:
+                    if request_id in finished_ids:
+                        continue
+                    finished_ids.add(request_id)
                     if progress:
-                        progress(completed, len(requests))
+                        progress(len(finished_ids), len(requests))
             return results
         finally:
             with self._process_lock:

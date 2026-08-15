@@ -3,9 +3,12 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from sort_pilot.classifier_engine.topics import AnalysisRecord
 from sort_pilot.llm_file_classifier import ClassificationCache, LlmFileClassifier
+from sort_pilot.local_tagger import LocalTagger
 
 
 class FakeBackend:
@@ -110,6 +113,32 @@ class LlmFileClassifierTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 classifier.classify([record], "학생")
             self.assertTrue(cache.load())
+
+    def test_batch_retries_only_missing_files(self):
+        installer = SimpleNamespace(ready=True, server_path=Path("llama-server"), model_path=Path("model"))
+        tagger = LocalTagger(installer)
+        tagger._free_port = lambda: 12345
+        tagger._wait_until_ready = lambda process, port: None
+        responses = iter([
+            {"choices": [{"message": {"content": '{"results":[{"id":"a","folder":"학업/강의자료"}]}'}}]},
+            {"choices": [{"message": {"content": '{"results":[{"id":"b","folder":"학업/필기"}]}'}}]},
+        ])
+        tagger._post_json = Mock(side_effect=responses)
+        process = Mock()
+        process.poll.return_value = 0
+        progress = []
+        requests = [{"id": "a"}, {"id": "b"}]
+        with patch("sort_pilot.local_tagger.subprocess.Popen", return_value=process):
+            results = tagger.classify_files(
+                requests,
+                lambda done, total: progress.append((done, total)),
+            )
+        self.assertEqual(results, {"a": "학업/강의자료", "b": "학업/필기"})
+        self.assertEqual(tagger._post_json.call_count, 2)
+        second_payload = tagger._post_json.call_args_list[1].args[1]
+        self.assertIn('"id": "b"', second_payload["messages"][0]["content"])
+        self.assertNotIn('"id": "a"', second_payload["messages"][0]["content"])
+        self.assertEqual(progress, [(1, 2), (2, 2)])
 
 
 if __name__ == "__main__":
