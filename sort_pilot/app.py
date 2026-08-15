@@ -74,6 +74,7 @@ class AppController(QObject):
         self._llm_executor = ThreadPoolExecutor(max_workers=1)
         self._llm_future = None
         self._llm_cancel_event = threading.Event()
+        self._cached_organization_suggestions: list[FileSuggestion] = []
         self.progress_dialog: QProgressDialog | None = None
         self._analysis_mode = "organize"
         self._profile_snapshot: list[TopicProfile] = []
@@ -180,6 +181,16 @@ class AppController(QObject):
         if not paths:
             QMessageBox.information(None, "Sort Pilot", f"{label}에 정리할 파일이 없습니다.")
             return
+        try:
+            cached, paths = self.llm_classifier.partition_cached(paths, self.selected_user_type)
+        except OSError as exc:
+            QMessageBox.critical(None, "캐시 확인 실패", str(exc))
+            return
+        self._cached_organization_suggestions = cached
+        if not paths:
+            self._cached_organization_suggestions = []
+            self._show_preview(cached)
+            return
         self._start_analysis(paths, "organize", "LLM 분류용 내용 추출")
 
     def _ensure_user_type(self) -> bool:
@@ -255,6 +266,12 @@ class AppController(QObject):
     def _complete_organization(self, records: list[AnalysisRecord]) -> None:
         """Let the local LLM perform final role-aware classification, then preview."""
         if not records:
+            if self._cached_organization_suggestions:
+                cached = self._cached_organization_suggestions
+                self._cached_organization_suggestions = []
+                self._close_progress()
+                self._show_preview(cached)
+                return
             QMessageBox.information(None, "Sort Pilot", "분석 결과가 없습니다.")
             return
         if self.selected_user_type not in ROLE_TEMPLATES:
@@ -290,10 +307,12 @@ class AppController(QObject):
         self._close_progress()
         self._set_busy(False)
         try:
-            suggestions = future.result()
+            suggestions = self._cached_organization_suggestions + future.result()
         except (OSError, ValueError, RuntimeError) as exc:
             QMessageBox.critical(None, "LLM 분류 실패", str(exc))
             return
+        finally:
+            self._cached_organization_suggestions = []
         record_map = {self._path_key(record.source): record for record in records}
         self._show_preview(suggestions, record_map)
 
@@ -451,6 +470,7 @@ class AppController(QObject):
             self._pending_organize = None
         self._pending_profile_request = None
         self._migration_candidates = {}
+        self._cached_organization_suggestions = []
         self.tray.notify("Sort Pilot", "파일 분석을 취소했습니다.")
 
     def _close_progress(self) -> None:

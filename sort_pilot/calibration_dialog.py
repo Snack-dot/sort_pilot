@@ -30,7 +30,13 @@ from .classifier_engine.hierarchy import TYPE_FAMILIES
 from .classifier_engine.topics import TopicProfile, normalize_tag, validate_topic_name
 from .embeddings_installer import VOCAB_PER_LANGUAGE, EmbeddingsInstaller
 from .embeddings_installer import InstallCancelled as EmbeddingsInstallCancelled
-from .local_tagger import GEMMA_TERMS_URL, MODEL, InstallCancelled, LocalModelInstaller
+from .local_tagger import (
+    MODEL,
+    MODEL_DISPLAY_NAME,
+    MODEL_TERMS_URL,
+    InstallCancelled,
+    LocalModelInstaller,
+)
 
 
 class CalibrationFileList(QListWidget):
@@ -288,15 +294,15 @@ class CalibrationDialog(QDialog):
 
 
 def ensure_local_model(parent, installer: LocalModelInstaller) -> bool:
-    """Ask for Gemma consent and install with a cancellable progress dialog."""
+    """Ask for model-license consent and install with a cancellable progress dialog."""
     if installer.ready:
         return True
     message = QMessageBox(parent)
     message.setWindowTitle("로컬 AI 모델 설치")
     message.setTextFormat(Qt.TextFormat.RichText)
     message.setText(
-        f"주제 이름과 태그 제안을 위해 Google Gemma 3 1B 모델({MODEL.size / 1_000_000:.0f}MB)을 "
-        f"이 PC에만 설치합니다.<br><a href='{GEMMA_TERMS_URL}'>Gemma 사용 조건</a>에 동의하시겠습니까?"
+        f"파일 분류를 위해 {MODEL_DISPLAY_NAME} 모델({MODEL.size / 1_000_000:.0f}MB)을 "
+        f"이 PC에만 설치합니다.<br><a href='{MODEL_TERMS_URL}'>모델 사용 조건</a>에 동의하시겠습니까?"
     )
     message.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
     if message.exec() != QMessageBox.StandardButton.Yes:

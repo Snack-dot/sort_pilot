@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -80,18 +80,17 @@ class PreviewDialog(QDialog):
         layout.addLayout(controls)
         layout.addWidget(QLabel("파일별 기준 위치와 정리 폴더를 확인한 뒤 승인하세요."))
 
-        self.table = QTableWidget(len(suggestions), 6)
+        self.table = QTableWidget(len(suggestions), 5)
         self.table.setHorizontalHeaderLabels(
-            ["파일명", "현재 위치", "기준 위치", "주제", "하위 경로", "이동"]
+            ["파일명", "현재 위치", "기준 위치", "정리 경로", "이동"]
         )
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
 
         for row, suggestion in enumerate(self.suggestions):
             original_name = QTableWidgetItem(suggestion.file_name)
@@ -110,20 +109,16 @@ class PreviewDialog(QDialog):
             )
             destination_selector.setCurrentIndex(destination_selector.findData(default_destination))
             self.table.setCellWidget(row, 2, destination_selector)
-            parts = Path(suggestion.folder).parts
-            family = parts[0] if parts else "기타"
-            topic_path = Path(*parts[1:]).as_posix() if len(parts) > 1 else UNSORTED_TOPIC
-            family_item = QTableWidgetItem(family)
-            family_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            self.table.setItem(row, 3, family_item)
-            topic_selector = QComboBox()
-            topic_selector.setEditable(True)
-            topic_selector.addItem(UNSORTED_TOPIC)
-            if topic_path != UNSORTED_TOPIC:
-                topic_selector.addItem(topic_path)
-            topic_selector.setCurrentText(topic_path)
-            self.table.setCellWidget(row, 4, topic_selector)
-            self.table.setItem(row, 5, self._checked_item())
+            parts = PurePosixPath(suggestion.folder.replace("\\", "/")).parts
+            organization_path = (
+                "/".join(parts) if len(parts) >= 2 else f"{parts[0] if parts else '기타'}/{UNSORTED_TOPIC}"
+            )
+            path_selector = QComboBox()
+            path_selector.setEditable(True)
+            path_selector.addItem(organization_path)
+            path_selector.setCurrentText(organization_path)
+            self.table.setCellWidget(row, 3, path_selector)
+            self.table.setItem(row, 4, self._checked_item())
 
         layout.addWidget(self.table)
         buttons = QDialogButtonBox()
@@ -145,7 +140,7 @@ class PreviewDialog(QDialog):
         """Translate checked table rows into validated move requests."""
         approved: list[ApprovedFileMove] = []
         for row, original in enumerate(self.suggestions):
-            move_approved = self.table.item(row, 5).checkState() == Qt.CheckState.Checked
+            move_approved = self.table.item(row, 4).checkState() == Qt.CheckState.Checked
             if not move_approved:
                 continue
             selector = self.table.cellWidget(row, 2)
@@ -155,29 +150,28 @@ class PreviewDialog(QDialog):
                 ApprovedFileMove(
                     suggestion=original,
                     destination_root=str(selector.currentData()),
-                    folder=self._hierarchical_folder(row),
+                    folder=self._organization_path(row),
                     move_approved=move_approved,
                 )
             )
         return approved
 
-    def _hierarchical_folder(self, row: int) -> str:
-        """Reconstruct an approved path while keeping the LLM's role topic intact."""
-        family = self.table.item(row, 3).text()
-        selector = self.table.cellWidget(row, 4)
-        topic = selector.currentText().strip() if isinstance(selector, QComboBox) else ""
-        if not topic or topic == UNSORTED_TOPIC:
-            return f"{family}/{UNSORTED_TOPIC}"
-        parts = Path(topic.replace("\\", "/")).parts
-        if not 1 <= len(parts) <= 2:
-            raise ValueError("전체 폴더 경로는 최대 3단계로 입력해 주세요.")
-        validated = "/".join(validate_topic_name(part) for part in parts)
-        return f"{family}/{validated}"
+    def _organization_path(self, row: int) -> str:
+        """Validate and return one editable full relative organization path."""
+        selector = self.table.cellWidget(row, 3)
+        value = selector.currentText().strip() if isinstance(selector, QComboBox) else ""
+        path = PurePosixPath(value.replace("\\", "/"))
+        parts = path.parts
+        if path.is_absolute() or Path(value).is_absolute() or not 2 <= len(parts) <= 3:
+            raise ValueError("정리 경로는 2~3단계 상대 경로로 입력해 주세요.")
+        return "/".join(validate_topic_name(part) for part in parts)
 
     def selected_user_type(self) -> str | None:
+        """Return the user type confirmed before opening this preview."""
         return self.confirmed_user_type
 
     def _apply_bulk_location(self) -> None:
+        """Apply the selected destination root to every preview row."""
         destination = self.bulk_location_combo.currentData()
         if destination is None:
             return
@@ -189,10 +183,12 @@ class PreviewDialog(QDialog):
                     selector.setCurrentIndex(index)
 
     def _reset_user_type_confirmation(self) -> None:
+        """Clear the legacy user-type confirmation state."""
         self.confirmed_user_type = None
         self.user_type_status.clear()
 
     def _confirm_user_type(self) -> None:
+        """Confirm the currently selected legacy user type when enabled."""
         user_type = self.user_type_combo.currentData()
         if user_type is None:
             QMessageBox.information(self, "사용자 유형 선택", "사용자 유형을 선택해 주세요.")
@@ -205,7 +201,7 @@ class PreviewDialog(QDialog):
         try:
             changes = self.approved_changes()
         except ValueError as exc:
-            QMessageBox.warning(self, "잘못된 주제 이름", str(exc))
+            QMessageBox.warning(self, "잘못된 정리 경로", str(exc))
             return
         count = len(changes)
         if count == 0:

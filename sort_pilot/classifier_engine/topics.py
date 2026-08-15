@@ -99,6 +99,7 @@ class AnalysisRecord:
     engine_action: str = "unsorted"
     engine_tier: str = ""
     decision_id: int | None = None
+    content_extraction_failed: bool = False
 
     @property
     def source(self) -> Path:

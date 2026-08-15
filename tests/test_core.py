@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from sort_pilot.classifier_engine import ClassifierEngine
 from sort_pilot.classifier_engine.config import Config
+from sort_pilot.classifier_engine.extract import _ipynb, supports_content_analysis
 from sort_pilot.classifier_engine.pipeline import Pipeline
 from sort_pilot.classifier_engine.topics import TopicProfileStore
 from sort_pilot.filters import is_safe_candidate
@@ -50,14 +52,43 @@ class CoreTests(unittest.TestCase):
             partial = root / "download.crdownload"
             hwp = root / "legacy.hwp"
             hwpx = root / "legacy.hwpx"
+            archive = root / "backup.zip"
+            winmd = root / "Microsoft.Services.Store.winmd"
             document = root / "notes.txt"
-            for path in (shortcut, partial, hwp, hwpx, document):
+            for path in (shortcut, partial, hwp, hwpx, archive, winmd, document):
                 path.touch()
             self.assertFalse(is_safe_candidate(shortcut))
             self.assertFalse(is_safe_candidate(partial))
             self.assertFalse(is_safe_candidate(hwp))
             self.assertFalse(is_safe_candidate(hwpx))
+            self.assertFalse(is_safe_candidate(archive))
+            self.assertFalse(is_safe_candidate(winmd))
             self.assertTrue(is_safe_candidate(document))
+
+    def test_ipynb_extracts_cells_without_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            notebook = Path(directory) / "analysis.ipynb"
+            notebook.write_text(
+                json.dumps(
+                    {
+                        "cells": [
+                            {"cell_type": "markdown", "source": ["데이터 분석 보고서"]},
+                            {
+                                "cell_type": "code",
+                                "source": ["sales_dataframe.groupby('region')"],
+                                "outputs": [{"text": ["민감한 출력"]}],
+                            },
+                        ]
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            extracted = _ipynb(notebook, 20_000)
+            self.assertTrue(supports_content_analysis(notebook))
+            self.assertIn("데이터 분석 보고서", extracted)
+            self.assertIn("sales_dataframe", extracted)
+            self.assertNotIn("민감한 출력", extracted)
 
     def test_execute_and_undo_batch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import math
 import mimetypes
 import re
+import sys
 import threading
 import time
 import zipfile
@@ -24,7 +26,7 @@ MIN_COLLOCATION_PMI = 2.0
 COLLOCATION_PREFIXES = {2: "bi:", 3: "tri:"}
 SEMANTIC_FEATURE_SOURCES = frozenset({"body", "ocr", "obj", "pair"})
 CONTENT_ANALYSIS_SUFFIXES = frozenset({
-    ".txt", ".md", ".csv", ".rtf", ".pdf", ".docx", ".odt", ".pptx", ".xlsx",
+    ".txt", ".md", ".csv", ".rtf", ".ipynb", ".pdf", ".docx", ".odt", ".pptx", ".xlsx",
     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic",
 })
 _KIWI = None
@@ -43,25 +45,26 @@ def normalize_filename(path: Path) -> list[str]:
     if stem.lower().rstrip("_") == "kakaotalk":
         return ["kakaotalk"]
     stem = re.sub(r"([a-z])([A-Z])", r"\1 \2", stem)
-    return tokenize(re.sub(r"[_\-.]+", " ", stem))
+    return tokenize(re.sub(r"[_\-.]+", " ", stem), use_kiwi=False)
 
 
-def tokenize(text: str) -> list[str]:
+def tokenize(text: str, use_kiwi: bool = True) -> list[str]:
     """Tokenize Korean and Latin text using Kiwi with a regex fallback."""
     global _KIWI
-    try:
-        if _KIWI is None:
-            from kiwipiepy import Kiwi
-            _KIWI = Kiwi()
-        result = []
-        for token in _KIWI.tokenize(text):
-            if token.tag.startswith(("NN", "VV", "VA")) or token.tag in {"SL"}:
-                form = token.form.lower()
-                if form not in STOP and (len(form) >= 2 or re.search(r"[가-힣]", form)):
-                    result.append(form)
-        return result
-    except ImportError:
-        pass
+    if use_kiwi:
+        try:
+            if _KIWI is None:
+                from kiwipiepy import Kiwi
+                _KIWI = Kiwi()
+            result = []
+            for token in _KIWI.tokenize(text):
+                if token.tag.startswith(("NN", "VV", "VA")) or token.tag in {"SL"}:
+                    form = token.form.lower()
+                    if form not in STOP and (len(form) >= 2 or re.search(r"[가-힣]", form)):
+                        result.append(form)
+            return result
+        except ImportError:
+            pass
     raw = re.findall(r"[가-힣]+|[A-Za-z][A-Za-z0-9]*", text.lower())
     result = []
     for token in raw:
@@ -102,6 +105,27 @@ def _read_text(path: Path, limit: int) -> str:
         try: return path.read_text(encoding=encoding)[:limit]
         except (UnicodeError, OSError): continue
     return ""
+
+
+def _ipynb(path: Path, limit: int) -> str:
+    """Extract bounded Markdown and code cell sources without reading notebook outputs."""
+    document = json.loads(path.read_text(encoding="utf-8-sig"))
+    chunks: list[str] = []
+    length = 0
+    for cell in document.get("cells", [])[:200]:
+        if not isinstance(cell, dict) or cell.get("cell_type") not in {"markdown", "code"}:
+            continue
+        source = cell.get("source", "")
+        text = "".join(str(part) for part in source) if isinstance(source, list) else str(source)
+        if not text:
+            continue
+        remaining = limit - length
+        if remaining <= 0:
+            break
+        bounded = text[:remaining]
+        chunks.append(bounded)
+        length += len(bounded)
+    return "\n".join(chunks)
 
 
 def _docx(path: Path, limit: int) -> str:
@@ -198,6 +222,7 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
     if not partial:
         try:
             if suffix in {".txt", ".md", ".csv", ".rtf"}: text = _read_text(path, max_chars)
+            elif suffix == ".ipynb": text = _ipynb(path, max_chars)
             elif suffix == ".pdf": text = _pdf(path, max_chars)
             elif suffix == ".docx": text = _docx(path, max_chars)
             elif suffix == ".odt": text = _odt(path, max_chars)
@@ -206,7 +231,7 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             elif suffix == ".zip": text = _archive(path)
         except Exception:
             partial = True
-    body_tokens = tokenize(text)
+    body_tokens = tokenize(text) if text else []
     for token, count in Counter(body_tokens).most_common(MAX_BODY_TERMS):
         features.append(Feature(token, "body", float(count)))
     for n in (2, 3):
@@ -219,7 +244,9 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             route, image_features = _image_features(path); features.extend(image_features)
             if route in {"screenshot", "ambiguous"}: features.extend(_ocr(path))
             model_path = Path(__file__).parents[2] / "data" / "models" / "yolov8n.onnx"
-            if model_path.exists():
+            # onnxruntime 1.27 can terminate CPython 3.14 on Windows while creating
+            # this optional YOLO session. Keep image metadata/OCR and skip only YOLO.
+            if model_path.exists() and sys.version_info < (3, 14):
                 from .vision import infer
                 vision_features, _ = infer(path, model_path); features.extend(vision_features)
         except Exception:

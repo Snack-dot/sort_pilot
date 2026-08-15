@@ -5,6 +5,7 @@ from typing import Iterable, Protocol
 
 from ..models import FileSuggestion
 from .config import data_dir
+from .extract import supports_content_analysis
 from .hierarchy import UNSORTED_TOPIC, route_type
 from .pipeline import Pipeline
 from .topics import (
@@ -42,12 +43,13 @@ class ClassifierEngine:
         vector, decision, decision_id = self.pipeline.safe_classify(file_path)
         family = route_type(file_path)
         reason = self._decision_reason(decision)
+        terms = vector_terms(vector, self.pipeline.config.source_weights)
         return AnalysisRecord(
             file_path=str(file_path.resolve()),
             file_name=file_path.name,
             suggested_name=file_path.name,
             family=family,
-            terms=vector_terms(vector, self.pipeline.config.source_weights),
+            terms=terms,
             topic=None,
             score=float(decision.margin),
             reason=reason,
@@ -55,6 +57,10 @@ class ClassifierEngine:
             engine_action=decision.action,
             engine_tier=decision.tier,
             decision_id=decision_id,
+            content_extraction_failed=(
+                bool(vector.partial)
+                or (supports_content_analysis(file_path) and not terms)
+            ),
         )
 
     def analyze(self, file_path: Path) -> FileSuggestion:

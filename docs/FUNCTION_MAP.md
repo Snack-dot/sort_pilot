@@ -13,10 +13,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
 | `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
 | `_organize_existing_files` | `sort_pilot/app.py` | Collects safe paths and starts one queue session. |
+| `_ensure_user_type`, `select_user_type` | `sort_pilot/app.py` | Require or update the active role used by role-aware classification. |
 | `_start_analysis` | `sort_pilot/app.py` | Records the organize/profile/migration mode and starts a shared queue session. |
 | `_show_progress`, `_update_progress`, `_close_progress` | `sort_pilot/app.py` | Own the cancellable analysis progress dialog. |
 | `_analysis_completed`, `_analysis_cancelled` | `sort_pilot/app.py` | Consume final queue signals; errors are reported and only complete successful sessions reach preview. |
 | `_complete_organization`, `_complete_calibration`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Dispatch extracted records into full review, calibration, learn-only example updates, or prescribed migration previews. |
+| `_poll_llm_result` | `sort_pilot/app.py` | Poll the background local-model future without blocking the Qt event loop. |
 | `_report_analysis_errors` | `sort_pilot/app.py` | Reports bounded per-file errors without discarding successful records. |
 | `_set_busy` | `sort_pilot/app.py` | Disables conflicting tray actions during analysis. |
 | `_show_preview`, `_destination_root` | `sort_pilot/app.py` | Convert approved UI rows into allowed-root move operations. |
@@ -59,7 +61,8 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `collect_candidates` | `sort_pilot/scanner.py` | Fast top-level path collection used by the app before background analysis. |
 | `scan_folder` | `sort_pilot/scanner.py` | Compatibility synchronous analyzer used by scripts/tests. |
 | `PreviewDialog.__init__` | `sort_pilot/preview.py` | Builds current/root/folder/move controls for completed suggestions. |
-| `_checked_item`, `approved_changes`, `_hierarchical_folder`, `_confirm` | `sort_pilot/preview.py` | Keep the type root immutable, translate editable topic paths to `ApprovedFileMove`, and require confirmation. |
+| `_checked_item`, `approved_changes`, `_organization_path`, `_confirm` | `sort_pilot/preview.py` | Validate one editable full relative path, translate it to `ApprovedFileMove`, and require confirmation. |
+| `selected_user_type`, `_apply_bulk_location`, `_reset_user_type_confirmation`, `_confirm_user_type` | `sort_pilot/preview.py` | Expose the active role and maintain preview-wide destination and legacy role controls. |
 | `build_operation` | `sort_pilot/organizer.py` | Preserves original filename, validates folder, and selects collision-free destination. |
 | `execute_batch` | `sort_pilot/organizer.py` | Moves atomically at batch level; reverses completed moves on failure. |
 | `undo_latest` | `sort_pilot/organizer.py` | Restores newest active batch and removes only recorded empty directories. |
@@ -78,7 +81,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `latest_batch`, `mark_undone` | `sort_pilot/history.py` | Supply Undo data and deactivate restored/rolled-back batches. |
 | `_legacy_data` | `sort_pilot/history.py` | Reads, closes, and converts the latest active SQLite batch without modifying it. |
 | `_read`, `_write`, `_batch` | `sort_pilot/history.py` | Validate, atomically persist, and create/find JSON batch records. |
-| `TrayIcon.__init__`, `set_busy` | `sort_pilot/tray.py` | Construct actions and gate conflicting actions during analysis. |
+| `TrayIcon.__init__`, `set_busy`, `set_user_type` | `sort_pilot/tray.py` | Construct actions, gate conflicting actions, and display the active role. |
 | `notify`, `show`, `hide`, `_icon` | `sort_pilot/tray.py` | Tray presentation and generated icon helpers. |
 | `SingleInstanceLock.__init__`, `acquire`, `release` | `sort_pilot/instance_lock.py` | Own the process-level Qt lock used by `run`. |
 
@@ -101,7 +104,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `supports_content_analysis` | `classifier_engine/extract.py` | Gate calibration candidates to formats with a bundled semantic-content extractor. |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
 | `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
-| `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
+| `_read_text`, `_ipynb`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type; notebook outputs are excluded. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
 | `_ocr_engine`, `_ocr` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
@@ -156,6 +159,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `LocalModelInstaller.__init__`, `ready`, `has_consent` | `sort_pilot/local_tagger.py` | Resolve versioned paths and report exact-model consent/installation readiness. |
 | `LocalModelInstaller.record_consent`, `install`, `_download`, `_extract_runtime` | `sort_pilot/local_tagger.py` | Persist consent, stream checksummed artifacts, reject ZIP traversal, and atomically stage llama.cpp. |
 | `LocalTagger.__init__`, `propose` | `sort_pilot/local_tagger.py` | Start one loopback-only CPU server, request all cluster labels once, and always terminate it. |
+| `ClassificationCache` | `sort_pilot/llm_file_classifier.py` | Atomically persist successful role-aware file classifications by content and policy hash. |
+| `LlmFileClassifier` | `sort_pilot/llm_file_classifier.py` | Partition cached records, bypass failed extraction, invoke local inference, and return ordered suggestions. |
+| `LlmFileClassifier.partition_cached`, `LlmFileClassifier.cache_key`, `LlmFileClassifier.validate_folder` | `sort_pilot/llm_file_classifier.py` | Skip previously classified content, version cache identity, and validate role-relative paths. |
+| `LocalTagger.classify_files`, `LocalTagger.cancel_file_classification` | `sort_pilot/local_tagger.py` | Run bounded file batches in one server session and terminate active inference on cancellation. |
+| `LocalTagger._file_request_payload`, `LocalTagger._file_batch_result_schema`, `LocalTagger._parse_file_batch_response` | `sort_pilot/local_tagger.py` | Build exact-position structured output, parse it, and map batch positions back to request IDs. |
+| `LocalTagger._document_area_map`, `LocalTagger._validated_topic` | `sort_pilot/local_tagger.py` | Read trusted Markdown taxonomy ownership and reject ungrounded or filename-derived topics. |
 | `LocalTagger._wait_until_ready`, `_post_json`, `_request_payload` | `sort_pilot/local_tagger.py` | Bound server startup, send local JSON, and treat filenames/terms as untrusted prompt data. |
 | `LocalTagger._validate_response`, `cluster_id`, `_free_port` | `sort_pilot/local_tagger.py` | Enforce complete strict output, correlate opaque cluster IDs, and allocate a temporary loopback port. |
 | `FastTextSource`, `InstallCancelled` (embeddings) | `sort_pilot/embeddings_installer.py` | Describe one official fastText source and distinguish a user cancellation from installation failure. |

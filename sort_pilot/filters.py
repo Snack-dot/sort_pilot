@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 BLOCKED_SUFFIXES = {
-    ".lnk", ".url", ".exe", ".msi", ".bat", ".cmd", ".com", ".scr", ".ps1", ".ini"
+    ".lnk", ".url", ".exe", ".msi", ".bat", ".cmd", ".com", ".scr", ".ps1", ".ini", ".zip", ".winmd"
 }
 TEMP_SUFFIXES = {".tmp", ".part", ".crdownload", ".download"}
 UNSUPPORTED_CONTENT_SUFFIXES = {".hwp", ".hwpx"}

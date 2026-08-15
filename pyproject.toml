@@ -19,6 +19,9 @@ test = ["pytest==9.1.1", "ultralytics==8.4.56", "onnx==1.22.0"]
 [tool.setuptools.packages.find]
 include = ["sort_pilot*"]
 
+[tool.setuptools.package-data]
+"sort_pilot.prompts" = ["*.md"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]

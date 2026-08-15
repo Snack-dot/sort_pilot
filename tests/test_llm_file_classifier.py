@@ -114,20 +114,64 @@ class LlmFileClassifierTests(unittest.TestCase):
                 classifier.classify([record], "학생")
             self.assertTrue(cache.load())
 
+    def test_extraction_failure_skips_llm_and_is_not_cached(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "unreadable.pdf"
+            path.write_bytes(b"not a readable PDF")
+            backend = FakeBackend()
+            cache = ClassificationCache(root / "cache.json")
+            classifier = LlmFileClassifier(backend, cache)
+            record = AnalysisRecord(
+                str(path),
+                path.name,
+                path.name,
+                "문서",
+                {},
+                content_extraction_failed=True,
+            )
+            progress = []
+            result = classifier.classify(
+                [record], "학생", lambda done, total: progress.append((done, total))
+            )
+            self.assertEqual(result[0].folder, "기타/확인필요")
+            self.assertEqual(backend.calls, 0)
+            self.assertEqual(cache.load(), {})
+            self.assertEqual(progress, [(1, 1)])
+
+    def test_cached_files_are_partitioned_before_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cached_path = root / "cached.txt"
+            new_path = root / "new.txt"
+            cached_path.write_text("이미 분석됨", encoding="utf-8")
+            new_path.write_text("새 파일", encoding="utf-8")
+            cache = ClassificationCache(root / "cache.json")
+            classifier = LlmFileClassifier(FakeBackend(), cache)
+            key = classifier.cache_key(cached_path, "학생")
+            cache.save({key: {"folder": "학업/필기"}})
+            cached, uncached = classifier.partition_cached([cached_path, new_path], "학생")
+            self.assertEqual([item.source for item in cached], [cached_path])
+            self.assertEqual(cached[0].folder, "학업/필기")
+            self.assertEqual(uncached, [new_path])
+
     def test_batch_retries_only_missing_files(self):
         installer = SimpleNamespace(ready=True, server_path=Path("llama-server"), model_path=Path("model"))
         tagger = LocalTagger(installer)
         tagger._free_port = lambda: 12345
         tagger._wait_until_ready = lambda process, port: None
         responses = iter([
-            {"choices": [{"message": {"content": '{"results":[{"id":"a","folder":"학업/강의자료"}]}'}}]},
-            {"choices": [{"message": {"content": '{"results":[{"id":"b","folder":"학업/필기"}]}'}}]},
+            {"choices": [{"message": {"content": '{"0":{"area":"학업","topic":"","document_type":"강의자료"}}'}}]},
+            {"choices": [{"message": {"content": '{"0":{"area":"학업","topic":"","document_type":"필기"}}'}}]},
         ])
         tagger._post_json = Mock(side_effect=responses)
         process = Mock()
         process.poll.return_value = 0
         progress = []
-        requests = [{"id": "a"}, {"id": "b"}]
+        requests = [
+            {"id": "a", "user_type": "학생", "allowed_roots": ["학업"], "file_name": "a.pdf"},
+            {"id": "b", "user_type": "학생", "allowed_roots": ["학업"], "file_name": "b.pdf"},
+        ]
         with patch("sort_pilot.local_tagger.subprocess.Popen", return_value=process):
             results = tagger.classify_files(
                 requests,
@@ -136,9 +180,99 @@ class LlmFileClassifierTests(unittest.TestCase):
         self.assertEqual(results, {"a": "학업/강의자료", "b": "학업/필기"})
         self.assertEqual(tagger._post_json.call_count, 2)
         second_payload = tagger._post_json.call_args_list[1].args[1]
-        self.assertIn('"id": "b"', second_payload["messages"][0]["content"])
-        self.assertNotIn('"id": "a"', second_payload["messages"][0]["content"])
+        self.assertIn('"file_name": "b.pdf"', second_payload["messages"][0]["content"])
+        self.assertNotIn('"file_name": "a.pdf"', second_payload["messages"][0]["content"])
+        self.assertNotIn('"id"', second_payload["messages"][0]["content"])
         self.assertEqual(progress, [(1, 2), (2, 2)])
+
+    def test_role_markdown_guide_is_included_once_per_batch(self):
+        allowed_roots = ["학업", "학교생활", "취업준비", "개인", "기타"]
+        payload = LocalTagger._file_request_payload([
+            {"id": "a", "user_type": "학생", "allowed_roots": allowed_roots},
+            {"id": "b", "user_type": "학생", "allowed_roots": allowed_roots},
+        ])
+        prompt = payload["messages"][0]["content"]
+        self.assertEqual(prompt.count("# 학생 파일 분류 지침"), 1)
+        self.assertIn("명확한 근거가 있을 때만 `과제`", prompt)
+        self.assertNotIn("reason", prompt)
+        schema = payload["response_format"]["json_schema"]["schema"]
+        self.assertEqual(schema["required"], ["0", "1"])
+        self.assertEqual(set(schema["properties"]), {"0", "1"})
+        self.assertEqual(
+            schema["properties"]["0"]["required"],
+            ["area", "topic", "document_type"],
+        )
+        self.assertFalse(schema["properties"]["0"]["additionalProperties"])
+        document_types = schema["properties"]["0"]["properties"]["document_type"]["enum"]
+        self.assertIn("강의자료", document_types)
+        self.assertIn("필기", document_types)
+        self.assertIn("확인필요", document_types)
+
+    def test_fixed_position_response_builds_two_or_three_level_folders(self):
+        items = [
+            {
+                "id": "a",
+                "user_type": "학생",
+                "allowed_roots": ["학업", "기타"],
+                "content_terms": ["운영체제"],
+            },
+            {"id": "b", "user_type": "학생", "allowed_roots": ["학업", "기타"]},
+            {"id": "c", "user_type": "학생", "allowed_roots": ["학업", "기타"]},
+        ]
+        content = (
+            '{"0":{"area":"학업","topic":"운영체제","document_type":"강의자료"},'
+            '"1":{"area":"학업","topic":"","document_type":"과제"},'
+            '"2":{"area":"기타","topic":"","document_type":"확인필요"}}'
+        )
+        self.assertEqual(
+            LocalTagger._parse_file_batch_response(content, items),
+            {
+                "a": "학업/운영체제/강의자료",
+                "b": "학업/과제",
+                "c": "기타/확인필요",
+            },
+        )
+
+    def test_invalid_component_is_left_pending_for_retry(self):
+        items = [
+            {"id": "a", "user_type": "학생", "allowed_roots": ["학업", "기타"]},
+            {"id": "b", "user_type": "학생", "allowed_roots": ["학업", "기타"]},
+        ]
+        content = (
+            '{"0":{"area":"학업","topic":"운영체제/과제","document_type":"강의자료"},'
+            '"1":{"area":"학업","topic":"","document_type":"필기"}}'
+        )
+        self.assertEqual(
+            LocalTagger._parse_file_batch_response(content, items),
+            {"b": "학업/필기"},
+        )
+
+    def test_guide_repairs_area_and_drops_ungrounded_topic(self):
+        items = [
+            {
+                "id": "a",
+                "user_type": "학생",
+                "allowed_roots": ["학업", "학교생활", "취업준비", "개인", "기타"],
+                "file_name": "notes.txt",
+                "content_terms": ["운영체제", "요약", "필기"],
+            }
+        ]
+        content = (
+            '{"0":{"area":"기타","topic":"강의",'
+            '"document_type":"필기"}}'
+        )
+        self.assertEqual(
+            LocalTagger._parse_file_batch_response(content, items),
+            {"a": "학업/필기"},
+        )
+
+    def test_topic_rejects_whole_file_name_and_extension(self):
+        file_name = "대구 해외 유사지역 비교연구와 초기 후보군 선정.pdf"
+        item = {"file_name": file_name, "content_terms": ["대구", "유사지역", "비교연구"]}
+        self.assertEqual(LocalTagger._validated_topic(file_name, item), "")
+        self.assertEqual(LocalTagger._validated_topic(Path(file_name).stem, item), "")
+        self.assertEqual(LocalTagger._validated_topic("지역 비교연구.pdf", item), "")
+        self.assertEqual(LocalTagger._validated_topic("비교연구", item), "비교연구")
 
 
 if __name__ == "__main__":
