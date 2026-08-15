@@ -169,8 +169,8 @@ class PreviewDialog(QDialog):
         if not topic or topic == UNSORTED_TOPIC:
             return f"{family}/{UNSORTED_TOPIC}"
         parts = Path(topic.replace("\\", "/")).parts
-        if not 1 <= len(parts) <= 3:
-            raise ValueError("하위 경로는 1~3단계로 입력해 주세요.")
+        if not 1 <= len(parts) <= 2:
+            raise ValueError("전체 폴더 경로는 최대 3단계로 입력해 주세요.")
         validated = "/".join(validate_topic_name(part) for part in parts)
         return f"{family}/{validated}"
 

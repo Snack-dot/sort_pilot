@@ -9,7 +9,7 @@ from pathlib import Path, PurePosixPath
 from .classifier_engine.topics import AnalysisRecord, humanize_term
 from .models import FileSuggestion
 
-PROMPT_VERSION = 1
+PROMPT_VERSION = 3
 TEMPLATE_VERSION = 1
 MODEL_ID = "gemma-3-1b-it"
 
@@ -68,7 +68,7 @@ class LlmFileClassifier:
             key = self.cache_key(record.source, user_type)
             cached = entries.get(key)
             if cached:
-                suggestions[index] = self._suggestion(record, cached["folder"], cached["reason"], "캐시")
+                suggestions[index] = self._suggestion(record, cached["folder"])
                 completed += 1
                 if progress:
                     progress(completed, len(records))
@@ -81,28 +81,39 @@ class LlmFileClassifier:
             if progress:
                 progress(completed + done, len(records))
 
-        results = self.backend.classify_files(requests, backend_progress, cancelled) if requests else {}
+        def cache_result(request_id: str, raw_folder: str) -> None:
+            index, key = request_indexes[request_id]
+            try:
+                folder = self.validate_folder(raw_folder, user_type)
+            except ValueError:
+                return
+            entries[key] = {"folder": folder}
+            self.cache.save(entries)
+            suggestions[index] = self._suggestion(records[index], folder)
+
+        results = self.backend.classify_files(
+            requests, backend_progress, cancelled, cache_result
+        ) if requests else {}
         if cancelled and cancelled():
             raise RuntimeError("LLM 분류가 취소되었습니다.")
-        changed = False
         for request_id, (index, key) in request_indexes.items():
+            if index in suggestions:
+                continue
             record = records[index]
             result = results.get(request_id)
             if result is None:
-                suggestions[index] = self._suggestion(record, "기타/확인필요", "로컬 LLM 분류 실패", "LLM")
+                suggestions[index] = self._suggestion(record, "기타/확인필요")
                 continue
-            folder, reason = result
+            folder = result
             try:
                 folder = self.validate_folder(folder, user_type)
-            except ValueError as exc:
+            except ValueError:
                 fallback = f"{ROLE_TEMPLATES[user_type][-1]}/확인필요"
-                suggestions[index] = self._suggestion(record, fallback, str(exc), "LLM")
+                suggestions[index] = self._suggestion(record, fallback)
                 continue
-            entries[key] = {"folder": folder, "reason": reason}
-            changed = True
-            suggestions[index] = self._suggestion(record, folder, reason, "LLM")
-        if changed:
+            entries[key] = {"folder": folder}
             self.cache.save(entries)
+            suggestions[index] = self._suggestion(record, folder)
         return [suggestions[index] for index in range(len(records))]
 
     @staticmethod
@@ -119,7 +130,7 @@ class LlmFileClassifier:
         normalized = folder.strip().replace("\\", "/")
         path = PurePosixPath(normalized)
         parts = path.parts
-        if path.is_absolute() or not 1 <= len(parts) <= 4 or any(part in {"", ".", ".."} for part in parts):
+        if path.is_absolute() or not 1 <= len(parts) <= 3 or any(part in {"", ".", ".."} for part in parts):
             raise ValueError("LLM이 안전하지 않은 폴더 경로를 반환했습니다.")
         if len(parts) == 1:
             parts = (ROLE_TEMPLATES[user_type][0], parts[0])
@@ -137,14 +148,26 @@ class LlmFileClassifier:
             "file_name": record.file_name,
             "file_family": record.family,
             "content_terms": evidence,
+            "student_document_types": [
+                "강의자료",
+                "과제",
+                "필기",
+                "시험자료",
+                "프로젝트",
+                "참고자료",
+                "공지",
+                "신청서",
+                "이력서",
+                "자기소개서",
+            ] if user_type == "학생" else [],
         }
 
     @staticmethod
-    def _suggestion(record: AnalysisRecord, folder: str, reason: str, source: str) -> FileSuggestion:
+    def _suggestion(record: AnalysisRecord, folder: str) -> FileSuggestion:
         return FileSuggestion(
             record.file_path,
             record.file_name,
             record.suggested_name,
             folder,
-            f"[{source}] {reason}",
+            "",
         )

@@ -12,11 +12,13 @@ class FakeBackend:
     def __init__(self) -> None:
         self.calls = 0
 
-    def classify_files(self, requests, progress=None, cancelled=None):
+    def classify_files(self, requests, progress=None, cancelled=None, result_callback=None):
         self.calls += 1
         results = {}
         for completed, item in enumerate(requests, 1):
-            results[item["id"]] = ("학업/운영체제/과제", "운영체제 과제 문서")
+            results[item["id"]] = "학업/운영체제/과제"
+            if result_callback:
+                result_callback(item["id"], results[item["id"]])
             if progress:
                 progress(completed, len(requests))
         return results
@@ -36,7 +38,7 @@ class LlmFileClassifierTests(unittest.TestCase):
             self.assertEqual(first[0].folder, "학업/운영체제/과제")
             self.assertEqual(second[0].folder, first[0].folder)
             self.assertEqual(backend.calls, 1)
-            self.assertIn("[캐시]", second[0].reason)
+            self.assertEqual(second[0].reason, "")
 
     def test_content_or_user_type_change_reclassifies(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -59,6 +61,21 @@ class LlmFileClassifierTests(unittest.TestCase):
     def test_one_level_llm_result_is_scoped_to_role_default(self):
         self.assertEqual(LlmFileClassifier.validate_folder("과제", "학생"), "학업/과제")
 
+    def test_two_and_three_level_paths_are_allowed(self):
+        self.assertEqual(LlmFileClassifier.validate_folder("학업/강의자료", "학생"), "학업/강의자료")
+        self.assertEqual(
+            LlmFileClassifier.validate_folder("학업/운영체제/강의자료", "학생"),
+            "학업/운영체제/강의자료",
+        )
+
+    def test_four_level_path_is_rejected(self):
+        self.assertRaises(
+            ValueError,
+            LlmFileClassifier.validate_folder,
+            "학업/컴퓨터공학/운영체제/강의자료",
+            "학생",
+        )
+
     def test_progress_includes_cached_and_new_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -74,6 +91,25 @@ class LlmFileClassifierTests(unittest.TestCase):
             updates = []
             classifier.classify([first, second], "학생", lambda done, total: updates.append((done, total)))
             self.assertEqual(updates, [(1, 2), (2, 2)])
+
+    def test_each_result_is_cached_immediately(self):
+        class InterruptedBackend(FakeBackend):
+            def classify_files(self, requests, progress=None, cancelled=None, result_callback=None):
+                first = requests[0]
+                if result_callback:
+                    result_callback(first["id"], "학업/강의자료")
+                raise RuntimeError("중단")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "lecture.pdf"
+            path.write_bytes(b"lecture")
+            cache = ClassificationCache(root / "cache.json")
+            classifier = LlmFileClassifier(InterruptedBackend(), cache)
+            record = AnalysisRecord(str(path), path.name, path.name, "문서", {"강의": 1})
+            with self.assertRaises(RuntimeError):
+                classifier.classify([record], "학생")
+            self.assertTrue(cache.load())
 
 
 if __name__ == "__main__":
