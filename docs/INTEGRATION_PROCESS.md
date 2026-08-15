@@ -1,4 +1,6 @@
-# App Branch and Classifier Engine Integration Record
+# App Branch and Classifier Engine Integration Record (Historical)
+
+> This document records superseded integration work. It is not the current runtime design. Tier1, Naive Bayes, topic-profile calibration, semantic-vector matching, and folder migration were removed from the active product. See `../ARCHITECTURE.md`, `../README.md`, and `IMPLEMENTATION.md` for the current extraction → local LLM workflow.
 
 ## Baseline and source
 

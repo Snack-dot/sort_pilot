@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-15 — Legacy classifier cleanup
+
+- Removed the unused Tier-1, Naive Bayes, SQLite decision/review, topic calibration, semantic-vector, watcher, and folder-migration stacks.
+- Reduced `ClassifierEngine` to the extraction and compatibility interface actually used by the application.
+- Kept the consent-gated, checksum-verified local Gemma installation and the active role-aware batch classifier.
+- Updated tests and architecture documents to describe the single extraction → local LLM workflow.
+
 ## 2026-08-14 — Real-data recall/precision correction and semantic rescue
 
 - Fixed near-zero real-world topic coverage: rebalanced co-occurrence pair weight against base-word weight (`PAIR_WEIGHT_SCALE`) and scaled the small-batch discovery threshold to what real seed vocabulary actually achieves (`SMALL_BATCH_FLOOR_SCALE`), verified against real document pairs with the fix reverted and reapplied.

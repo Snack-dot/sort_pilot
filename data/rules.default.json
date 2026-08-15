@@ -1,8 +1,0 @@
-{
-  "rules": [
-    {"id": "installers", "ext": ["exe", "msi", "dmg", "pkg", "appimage"], "category": "Installers"},
-    {"id": "kakao-export", "regex": "^KakaoTalk_\\d{8}_\\d{6}", "mark": ["kakao_export", "needs_content"]},
-    {"id": "coursework", "regex": "(과제|report|assignment|hw\\d|lab\\d)", "mark": ["topic_hint:coursework"]},
-    {"id": "bank-statements", "regex": "(거래내역|명세서|statement|invoice|세금계산서|영수증)", "mark": ["topic_hint:finance"]}
-  ]
-}

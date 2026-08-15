@@ -11,9 +11,7 @@ from PyQt6.QtCore import QCoreApplication, QEventLoop, QTimer
 from sort_pilot.analysis_queue import BatchAnalysisController
 from sort_pilot.classifier_engine import ClassifierEngine
 from sort_pilot.classifier_engine.config import Config
-from sort_pilot.classifier_engine.pipeline import Pipeline
-from sort_pilot.classifier_engine.topics import AnalysisRecord, TopicProfileStore
-from sort_pilot.models import FileSuggestion
+from sort_pilot.classifier_engine.topics import AnalysisRecord
 
 
 class _SharedAnalyzer:
@@ -24,7 +22,7 @@ class _SharedAnalyzer:
     maximum = 0
     analyzed: list[str] = []
 
-    def analyze(self, path: Path) -> FileSuggestion:
+    def analyze_record(self, path: Path) -> AnalysisRecord:
         with self.lock:
             type(self).active += 1
             type(self).maximum = max(type(self).maximum, type(self).active)
@@ -32,7 +30,7 @@ class _SharedAnalyzer:
         time.sleep(0.04)
         with self.lock:
             type(self).active -= 1
-        return FileSuggestion(str(path), path.name, path.name, "테스트", "queue")
+        return AnalysisRecord(str(path), path.name, path.name, "문서", {})
 
 
 class AnalysisQueueTests(unittest.TestCase):
@@ -84,10 +82,7 @@ class AnalysisQueueTests(unittest.TestCase):
             root = Path(directory)
             path = root / "운영체제과제.pdf"
             path.write_bytes(b"not-a-real-pdf")
-            analyzer = ClassifierEngine(
-                Pipeline(Config(destination_root=str(root / "sorted")), root / "engine"),
-                TopicProfileStore(root / "profiles.json"),
-            )
+            analyzer = ClassifierEngine(Config(), root / "engine")
             factory = lambda: analyzer
             controller = BatchAnalysisController(analyzer_factory=factory, worker_count=1)
             loop = QEventLoop()
@@ -103,9 +98,9 @@ class AnalysisQueueTests(unittest.TestCase):
                 results, errors = received[0]
                 self.assertEqual(errors, [])
                 self.assertIsInstance(results[0], AnalysisRecord)
-                self.assertIsNotNone(results[0].decision_id)
-                self.assertEqual(results[0].engine_tier, "t2a")
+                self.assertTrue(results[0].content_extraction_failed)
                 self.assertEqual(results[0].folder, "문서/미분류")
+                self.assertFalse((root / "engine" / "state.db").exists())
             finally:
                 controller.shutdown()
                 analyzer.close()

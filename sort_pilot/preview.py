@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -51,23 +50,8 @@ class PreviewDialog(QDialog):
 
         layout = QVBoxLayout(self)
         controls = QHBoxLayout()
-        controls.addWidget(QLabel("사용자 유형:"))
-        self.user_type_combo = QComboBox()
-        self.user_type_combo.addItem("유형 선택", None)
-        for option in self.USER_TYPES:
-            self.user_type_combo.addItem(option, option)
-        if user_type in self.USER_TYPES:
-            self.user_type_combo.setCurrentIndex(self.user_type_combo.findData(user_type))
         self.confirmed_user_type = user_type if user_type in self.USER_TYPES else None
-        self.user_type_combo.setEnabled(False)
-        controls.addWidget(self.user_type_combo)
-        confirm_type = QPushButton("확인")
-        confirm_type.setVisible(False)
-        controls.addWidget(confirm_type)
-        self.user_type_status = QLabel(
-            f"{self.confirmed_user_type} 선택됨" if self.confirmed_user_type else ""
-        )
-        controls.addWidget(self.user_type_status)
+        controls.addWidget(QLabel(f"사용자 유형: {self.confirmed_user_type or '미선택'}"))
         controls.addSpacing(20)
         controls.addWidget(QLabel("폴더 위치:"))
         self.bulk_location_combo = QComboBox()
@@ -181,20 +165,6 @@ class PreviewDialog(QDialog):
                 index = selector.findData(destination)
                 if index >= 0:
                     selector.setCurrentIndex(index)
-
-    def _reset_user_type_confirmation(self) -> None:
-        """Clear the legacy user-type confirmation state."""
-        self.confirmed_user_type = None
-        self.user_type_status.clear()
-
-    def _confirm_user_type(self) -> None:
-        """Confirm the currently selected legacy user type when enabled."""
-        user_type = self.user_type_combo.currentData()
-        if user_type is None:
-            QMessageBox.information(self, "사용자 유형 선택", "사용자 유형을 선택해 주세요.")
-            return
-        self.confirmed_user_type = str(user_type)
-        self.user_type_status.setText(f"{user_type} 선택됨")
 
     def _confirm(self) -> None:
         """Require at least one move and explicit final confirmation."""

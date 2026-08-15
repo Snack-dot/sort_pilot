@@ -42,13 +42,12 @@ class _AnalysisJob(QRunnable):
         self.analyzer_factory = analyzer_factory
 
     def run(self) -> None:
-        """Run classification unless canceled and always signal job completion."""
+        """Run extraction unless canceled and always signal job completion."""
         try:
             if self.cancelled.is_set():
                 return
             analyzer = self._thread_analyzer()
-            analyze_record = getattr(analyzer, "analyze_record", None)
-            suggestion = analyze_record(self.path) if analyze_record else analyzer.analyze(self.path)
+            suggestion = analyzer.analyze_record(self.path)
             if not self.cancelled.is_set():
                 self.signals.result.emit(self.token, self.index, suggestion)
         except Exception as exc:  # A failed file must not abort the batch.

@@ -9,24 +9,15 @@ from pathlib import Path
 
 @dataclass
 class Config:
-    """Serializable thresholds, paths, exclusions, and engine safety settings."""
+    """Serializable settings used by local content extraction."""
 
-    watched_paths: list[str] = field(default_factory=lambda: [str(Path.home() / "Downloads")])
-    destination_root: str = str(Path.home() / "Documents" / "Sorted")
     exclusions: list[str] = field(default_factory=list)
-    no_ocr_paths: list[str] = field(default_factory=list)
-    settle_seconds: float = 5.0
     max_content_mb: int = 200
-    extractor_timeout: float = 10.0
-    theta_auto: float = 0.55
-    theta_suggest: float = 0.15
-    min_evidence: float = 3.0
-    dry_run: bool = True
-    allow_cloud_moves: bool = False
-    tier3_enabled: bool = False
     source_weights: dict[str, float] = field(default_factory=lambda: {
-        "filename": 3.0, "meta": 2.0, "pair": 1.5,
-        "body": 1.0, "obj": 0.8, "ocr": 0.6, "ext": 2.0,
+        "body": 1.0,
+        "pair": 1.5,
+        "obj": 0.8,
+        "ocr": 0.6,
     })
 
     @classmethod

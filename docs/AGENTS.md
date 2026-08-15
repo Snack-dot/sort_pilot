@@ -2,21 +2,20 @@
 
 ## Project Structure & Module Organization
 
-The application lives in `ai-file-organizer-team-mvp-fixed/`. `main.py` starts the PyQt6 tray application, `app.py` coordinates manual Desktop/Downloads organization, and `analysis_queue.py` runs a cancellable two-worker classifier queue. `classifier_engine/analyzer.py` owns the public JSON contract and is the sole classifier implementation; `organizer.py` performs approved moves. Tests live under `tests/`, and the complete callable map is in `docs/FUNCTION_MAP.md`.
+The application lives at the repository root. `main.py` starts the PyQt6 tray application, `app.py` coordinates manual Desktop/Downloads organization, and `analysis_queue.py` runs a cancellable two-worker extraction queue. `classifier_engine/analyzer.py` owns the extraction/public JSON contract, `llm_file_classifier.py` owns role-aware classification policy, and `organizer.py` performs approved moves. Tests live under `tests/`, and the complete callable map is in `docs/FUNCTION_MAP.md`.
 
 ## Build, Test, and Development Commands
 
 Run commands from the application directory:
 
 ```powershell
-cd ai-file-organizer-team-mvp-fixed
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python main.py
+python -m pip install -e ".[test]"
+python -m pytest -q
 ```
 
-The first two commands create and activate an isolated environment; installation provides the pinned local classifier stack. `python main.py` launches the system-tray application and `python -m pytest -q` runs the configured test suite. Installing packages, models, runtimes, or executables requires explicit approval; identify the source and exact version first.
+The first two commands create and activate an isolated environment; installation provides the pinned local classifier stack. Tests do not need the large model. On first classification, the application requests Gemma-terms consent and installs the pinned model/runtime under its private data directory. Installing packages, models, runtimes, or executables requires explicit approval; identify the source and exact version first.
 
 ## Coding Style & Naming Conventions
 

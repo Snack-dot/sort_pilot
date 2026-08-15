@@ -8,8 +8,6 @@ from pathlib import Path
 from sort_pilot.classifier_engine import ClassifierEngine
 from sort_pilot.classifier_engine.config import Config
 from sort_pilot.classifier_engine.extract import _ipynb, supports_content_analysis
-from sort_pilot.classifier_engine.pipeline import Pipeline
-from sort_pilot.classifier_engine.topics import TopicProfileStore
 from sort_pilot.filters import is_safe_candidate
 from sort_pilot.history import HistoryStore
 from sort_pilot.models import ApprovedFileMove, FileSuggestion
@@ -17,22 +15,16 @@ from sort_pilot.organizer import build_operation, execute_batch, undo_latest
 
 
 class CoreTests(unittest.TestCase):
-    def test_real_engine_result_creates_named_hierarchical_folder(self) -> None:
+    def test_extraction_result_preserves_public_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / "incoming" / "불투명한 이름.txt"
             path.parent.mkdir()
             path.write_text("운영체제 과제 보고서", encoding="utf-8")
-            analyzer = ClassifierEngine(
-                Pipeline(Config(destination_root=str(root / "organized")), root / "engine"),
-                TopicProfileStore(root / "profiles.json"),
-            )
+            analyzer = ClassifierEngine(Config(), root / "engine")
             try:
-                analyzer.profile_store.upsert(
-                    analyzer.profile_store.new_profile("문서", "과제모음", ["과제"])
-                )
                 result = analyzer.analyze(path)
-                self.assertEqual(result.folder, "문서/과제모음")
+                self.assertEqual(result.folder, "문서/미분류")
                 self.assertEqual(
                     set(result.to_dict()),
                     {"file_path", "file_name", "suggested_name", "folder", "reason"},
@@ -40,7 +32,7 @@ class CoreTests(unittest.TestCase):
                 change = ApprovedFileMove(result, "current", result.folder, True)
                 operation = build_operation(change, root / "organized")
                 execute_batch([operation], HistoryStore(root / "history.json"))
-                self.assertTrue((root / "organized" / "문서" / "과제모음" / path.name).is_file())
+                self.assertTrue((root / "organized" / "문서" / "미분류" / path.name).is_file())
                 self.assertFalse(path.exists())
             finally:
                 analyzer.close()
