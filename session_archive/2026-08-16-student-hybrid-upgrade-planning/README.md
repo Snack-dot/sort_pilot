@@ -1,7 +1,9 @@
 # Student Hybrid Upgrade Planning Session Archive
 
-Date: 2026-08-16 (Asia/Seoul)  
-Repository: `https://github.com/Snack-dot/sort_pilot.git`  
+Date: 2026-08-16 (Asia/Seoul)
+
+Repository: `https://github.com/Snack-dot/sort_pilot.git`
+
 Active branch: `architecture-srs-implementation`
 
 ## Purpose

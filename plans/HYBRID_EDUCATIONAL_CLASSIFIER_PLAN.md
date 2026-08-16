@@ -1,7 +1,9 @@
 # Sort Pilot Student Hybrid Classifier — Final MVP Plan
 
-Status: authoritative implementation plan  
-Date: 2026-08-16  
+Status: authoritative implementation plan
+
+Date: 2026-08-16
+
 Supersedes: every document under `plans/superseded/`
 
 ## 1. Product boundary

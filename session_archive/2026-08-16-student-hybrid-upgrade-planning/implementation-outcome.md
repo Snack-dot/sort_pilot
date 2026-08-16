@@ -48,6 +48,13 @@ The implementation and planning work is committed first as one named checkpoint.
 
 No commit from this session is pushed without a new explicit user request.
 
+## Recorded checkpoint
+
+- Branch: `architecture-srs-implementation`
+- Commit: `c9706d38fef1fff570af612349520ee8646a5beb`
+- Subject: `Checkpoint student hybrid classifier plan`
+- Remote state: not pushed
+
 ## Pre-checkpoint verification
 
 - Full automated suite: 66 passed in 9.21 seconds; command exit code 0.
