@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-16 — Full real-world validation run and reversal
+
+No code changes this session; recorded here so the next reviewer has the full picture of what was actually run against real user data before this branch's fixes were pushed.
+
+- Pushed the 10 commits from the 2026-08-14 recall/precision session to `origin/architecture-srs-implementation` after independent verification (fresh clone, fresh install, integration check).
+- Ran the full pipeline end-to-end against a real, non-synthetic `~/Downloads` folder (760 files, previously used only for read-only dry runs) via an ad hoc script driving the same `ClassifierEngine` / `CalibrationService` / `organizer.execute_batch` path the app uses, with the destination review already confirmed by the folder owner beforehand (26 files in a weak/generic cluster excluded and left in place; the remaining 223 unmatched files included).
+- Result: 734/734 planned moves succeeded, 26 correctly excluded, 101 topic profiles saved, 107 destination folders created — matching the previously-reviewed dry-run plan exactly.
+- Getting to that clean run took three aborted attempts, each caught before any file was touched by a pre-move safety check that reproduces the confirmed exclusion set and hard-aborts (`RuntimeError`) on any mismatch: a diagnostic counting bug (accumulator overwritten instead of summed across multiple same-named clusters), a macOS NFC/NFD Unicode filename-normalization mismatch (real filenames on disk were NFD-decomposed, the confirmed list was NFC), and one borderline file whose cluster assignment wasn't stable run-to-run. The exclusion mechanism was rewritten to match confirmed filenames directly, independent of clustering output, to make the last case a non-issue going forward.
+- The folder owner then asked for a full reversal. `organizer.undo_latest` against the batch's `HistoryStore` restored all 734 files to their original paths; the folders it created were removed once empty. `~/Downloads` was confirmed back to its original layout, files-only diff, before and after.
+- Operational finding worth carrying forward: `HistoryStore`'s location comes from `QStandardPaths.AppDataLocation`, which is keyed off `QApplication`'s application name (`sort_pilot/app.py` sets `"Sort Pilot"`). A script that constructs `QApplication` without calling `setApplicationName` gets a different AppData folder (named after the script file), so its move history is invisible to the packaged app's own Undo action. Anything that drives `organizer.execute_batch` outside `app.py`'s entry point should set the same application name first, or Undo silently splits across two history files.
+
 ## 2026-08-14 — Real-data recall/precision correction and semantic rescue
 
 - Fixed near-zero real-world topic coverage: rebalanced co-occurrence pair weight against base-word weight (`PAIR_WEIGHT_SCALE`) and scaled the small-batch discovery threshold to what real seed vocabulary actually achieves (`SMALL_BATCH_FLOOR_SCALE`), verified against real document pairs with the fix reverted and reapplied.
