@@ -196,6 +196,26 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `Tier3Stub.classify` | `classifier_engine/types.py` | Current no-op Tier 3 extension point. |
 | `path_id` | `classifier_engine/types.py` | Derives versioned SHA-1 identity from resolved path metadata. |
 
+## Educational hybrid foundation
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `SchoolLevel`, `Semester` | `curriculum/profiles.py` | Define stable onboarding and folder labels for the Korean middle/high-school MVP. |
+| `CurriculumProfile`, `CurriculumProfile.__post_init__`, `subject_candidates`, `requires_migration`, `to_dict`, `from_dict` | `curriculum/profiles.py` | Validate and serialize versioned curriculum constraints while retaining explicit extracurricular and unknown candidates. |
+| `CurriculumProfileStore.__init__`, `load`, `save` | `curriculum/profiles.py` | Atomically persist the active onboarding profile and report corrupt or stale-version state. |
+| `default_profile` | `curriculum/profiles.py` | Build the initial editable subject space for one school level, grade, and semester. |
+| `DecisionSource`, `Activity` | `classification/result.py` | Define observable classifier authority and the stable user-facing activity axis. |
+| `CandidateScore` | `classification/result.py` | Carry an inspectable raw candidate score without claiming calibrated probability. |
+| `AxisDecision`, `AxisDecision.__post_init__` | `classification/result.py` | Represent and validate one independently resolved subject, activity, or document-type decision. |
+| `EducationalClassificationResult`, `EducationalClassificationResult.__post_init__` | `classification/result.py` | Combine bounded educational axes while keeping rich classification state separate from folder layout. |
+| `EducationalClassificationResult.needs_review`, `folder`, `to_dict` | `classification/result.py` | Expose review state, render the six-component student hierarchy, and serialize complete provenance. |
+| `SubjectProfile`, `SubjectProfile.__post_init__`, `SubjectEvidence` | `classification/subject.py` | Define versioned global subject prototypes and bounded natural/lexical evidence for one file. |
+| `SubjectClassifier.classify` | `classification/subject.py` | Require local subject implementations to return an observable curriculum-bounded axis decision. |
+| `eligible_subject_profiles` | `classification/subject.py` | Filter global profiles into the active curriculum candidate order before scoring. |
+| `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate provisional raw-score/margin gates. |
+| `AxisRoutingDecision` | `classification/policy.py` | Preserve the local decision, routing reason, and policy version passed to the next stage. |
+| `route_axis` | `classification/policy.py` | Accept decisive local evidence, escalate only plausible ambiguity to Gemma, and abstain on weak evidence. |
+
 ## Maintenance rule
 
 Any new or renamed callable under `sort_pilot/` must include a source docstring and be added to the relevant table above. The test/documentation audit should fail review if either layer is missing.

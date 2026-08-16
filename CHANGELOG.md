@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-16 — Final student-hybrid MVP plan
+
+- Finalized one student-only hierarchy using `중학생`/`고등학생`, grades 1–3, semesters 1–2, a constrained 2026 MVP subject catalog, and exactly five templates: `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.
+- Clarified that curriculum material is a practical subject-list reference, not a legal, institutional, timetable, or year-by-year revision engine.
+- Defined `Needs Review` as non-folder workflow state and prohibited artificial fallback subjects or a sixth template.
+- Preserved superseded prompts and the exploratory ADR under `plans/superseded/`, added the authoritative plan under `plans/`, and archived the complete planning session.
+- Recorded mandatory Phase 0 remediation for exploratory contracts that still contain superseded assumptions; the active application remains unchanged.
+
+## 2026-08-16 — Educational hybrid foundation
+
+- Recorded the decision to evolve the existing statistical classifier into a curriculum-constrained middle/high-school hybrid, with local decisions authoritative at high confidence and Gemma restricted to ambiguous per-axis fallback.
+- Added versioned onboarding contracts for school level, grade, semester, editable subject candidates, and explicit extracurricular/common/unknown fallbacks.
+- Added atomic onboarding-profile persistence with explicit corruption and curriculum-migration reporting.
+- Defined the subject-profile, bounded evidence, curriculum filtering, and local subject-classifier interfaces required by the later E5 implementation.
+- Added an explicit per-axis policy contract that routes decisive local evidence to acceptance, plausible ambiguity to Gemma, and weak or abstained evidence to review.
+- Added an observable multidimensional result contract that keeps subject and activity decisions, scores, margins, evidence, provenance, and review state separate from the rendered folder hierarchy.
+- Added the initial `학생/<학교급>/<학년>/<학기>/<과목>/<활동>` renderer and contract tests without changing the active classifier or UI workflow yet.
+
 ## 2026-08-16 — Full real-world validation run and reversal
 
 No code changes this session; recorded here so the next reviewer has the full picture of what was actually run against real user data before this branch's fixes were pushed.
