@@ -188,6 +188,26 @@ class E5SubjectClassifier:
             for profile in profiles
         }
 
+    @staticmethod
+    def _filename_scores(
+        evidence: SubjectEvidence,
+        profiles: tuple[SubjectProfile, ...],
+    ) -> dict[str, float]:
+        """Score exactly one subject 1.0 via longest catalog-bounded alias match in the filename."""
+        stem = Path(evidence.file_name).stem.casefold().strip()
+        matches = [
+            (len(alias), profile.label)
+            for profile in profiles
+            for alias in (value.casefold().strip() for value in profile.keywords)
+            if alias and alias in stem
+        ]
+        if not matches:
+            return {profile.label: 0.0 for profile in profiles}
+        longest = max(length for length, _label in matches)
+        winners = {label for length, label in matches if length == longest}
+        winner = next(iter(winners)) if len(winners) == 1 else None
+        return {profile.label: 1.0 if profile.label == winner else 0.0 for profile in profiles}
+
     def classify(
         self,
         evidence: SubjectEvidence,
@@ -197,11 +217,13 @@ class E5SubjectClassifier:
         query_embedding: Sequence[float] | None = None,
         personal_example_weight: float = 0.0,
         lexical_weight: float = 0.0,
+        filename_weight: float = 0.0,
     ) -> AxisDecision:
         """Rank catalog subjects with cosine and separate structured evidence."""
         for value, name in (
             (personal_example_weight, "개인 예시"),
             (lexical_weight, "Kiwi 어휘"),
+            (filename_weight, "파일명 별칭"),
         ):
             if (
                 isinstance(value, bool)
@@ -231,38 +253,43 @@ class E5SubjectClassifier:
             if item.label in student.allowed_subjects
         }
         lexical = self._lexical_scores(evidence, profiles)
+        filename = self._filename_scores(evidence, profiles)
         ranked = sorted(
             (
                 (
                     profile,
                     float(similarity),
                     float(lexical.get(profile.label, 0.0)),
+                    float(filename.get(profile.label, 0.0)),
                     float(similarity)
                     + float(personal_example_weight) * personal.get(profile.label, 0.0)
-                    + float(lexical_weight) * lexical.get(profile.label, 0.0),
+                    + float(lexical_weight) * lexical.get(profile.label, 0.0)
+                    + float(filename_weight) * filename.get(profile.label, 0.0),
                 )
                 for profile, similarity in zip(eligible, similarities, strict=True)
             ),
-            key=lambda item: -item[3],
+            key=lambda item: -item[4],
         )
         candidates = tuple(
             CandidateScore(profile.label, adjusted)
-            for profile, _similarity, _lexical, adjusted in ranked
+            for profile, _similarity, _lexical, _filename, adjusted in ranked
         )
         top_score = candidates[0].raw_score
         margin = top_score - candidates[1].raw_score if len(candidates) > 1 else 0.0
-        top_profile, top_similarity, top_lexical, _adjusted = ranked[0]
+        top_profile, top_similarity, top_lexical, top_filename, _adjusted = ranked[0]
         local_without_personal = max(
             zip(eligible, similarities, strict=True),
             key=lambda item: (
                 float(item[1])
                 + float(lexical_weight) * lexical.get(item[0].label, 0.0)
+                + float(filename_weight) * filename.get(item[0].label, 0.0)
             ),
         )[0].label
         personal_contribution = float(personal_example_weight) * personal.get(
             top_profile.label,
             0.0,
         )
+        filename_contribution = float(filename_weight) * top_filename
         lexical_contribution = float(lexical_weight) * top_lexical
         return AxisDecision(
             label=top_profile.label,
@@ -280,6 +307,11 @@ class E5SubjectClassifier:
                     name="personal_example",
                     value=personal_contribution,
                     detail=f"weight={float(personal_example_weight):.6f}",
+                ),
+                EvidenceContribution(
+                    name="filename_alias",
+                    value=filename_contribution,
+                    detail=f"weight={float(filename_weight):.6f}",
                 ),
                 EvidenceContribution(
                     name="kiwi_lexical",

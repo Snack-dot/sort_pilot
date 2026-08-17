@@ -263,6 +263,7 @@ class EducationalClassificationService:
                 query_embedding=subject_embedding,
                 personal_example_weight=self.personal_policy.subject.weight,
                 lexical_weight=self.optional_evidence.subject_kiwi_lexical_weight,
+                filename_weight=self.optional_evidence.subject_filename_weight,
             )
             template = self.template_classifier.classify(
                 template_evidence,

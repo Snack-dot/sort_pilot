@@ -14,6 +14,7 @@ from sort_pilot.classification import (
     TemplateClassifier,
     TemplateEvidence,
     load_calibrated_policy,
+    load_phase8_optional_evidence,
     load_subject_profiles,
     load_template_profiles,
 )
@@ -62,6 +63,7 @@ def derive_personal_example_policy(
     subject_profiles = load_subject_profiles()
     template_profiles = load_template_profiles()
     policy = load_calibrated_policy()
+    optional_evidence = load_phase8_optional_evidence()
     training_embeddings = encoder.encode(
         tuple(f"query: {SubjectEvidence(case.file_name, case.text).embedding_text}" for case in training)
     )
@@ -84,6 +86,8 @@ def derive_personal_example_policy(
             case.student,
             subject_profiles,
             query_embedding=query,
+            lexical_weight=optional_evidence.subject_kiwi_lexical_weight,
+            filename_weight=optional_evidence.subject_filename_weight,
         )
         template = template_classifier.classify(
             TemplateEvidence(case.file_name, case.text),

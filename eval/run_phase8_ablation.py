@@ -41,6 +41,7 @@ DEFAULT_VISION_MODEL = Path("data/models/yolov8n.onnx")
 DEFAULT_SYNTHETIC_IMAGE = Path("eval/synthetic_phase8_image.ppm")
 RESOURCE_REPETITIONS = 20
 PILOT_SUBJECT_LEXICAL_WEIGHT = 0.05
+PILOT_SUBJECT_FILENAME_WEIGHT = 0.15
 _RESOURCE_MARKER = "PHASE8_RESOURCE="
 
 
@@ -67,6 +68,7 @@ def _variant_outcomes(
     use_pmi: bool,
     use_visual: bool,
     subject_lexical_weight: float,
+    subject_filename_weight: float,
 ) -> tuple[tuple[bool, ...], tuple[bool, ...], tuple[bool, ...]]:
     """Rank one ordered evidence variant and return per-axis correctness values."""
     subject_profiles = load_subject_profiles()
@@ -87,6 +89,7 @@ def _variant_outcomes(
             subject_profiles,
             query_embedding=subject_embedding,
             lexical_weight=subject_lexical_weight,
+            filename_weight=subject_filename_weight,
         )
         template = template_classifier.classify(
             TemplateEvidence(
@@ -226,13 +229,13 @@ def run_ablation(
     layout_embeddings = _embedding_matrix(encoder.encode(layout_texts), len(cases))
 
     variants: dict[str, tuple[tuple[bool, ...], tuple[bool, ...], tuple[bool, ...]]] = {}
-    for name, use_layout, use_pmi, use_visual, subject_lexical_weight in (
-        ("phase7", False, True, True, 0.0),
-        ("full", True, True, True, PILOT_SUBJECT_LEXICAL_WEIGHT),
-        ("without_ocr_layout", False, True, True, 0.0),
-        ("without_pmi", True, False, True, PILOT_SUBJECT_LEXICAL_WEIGHT),
-        ("without_visual", True, True, False, PILOT_SUBJECT_LEXICAL_WEIGHT),
-        ("layout_only", True, False, False, PILOT_SUBJECT_LEXICAL_WEIGHT),
+    for name, use_layout, use_pmi, use_visual, subject_lexical_weight, subject_filename_weight in (
+        ("phase7", False, True, True, 0.0, 0.0),
+        ("full", True, True, True, PILOT_SUBJECT_LEXICAL_WEIGHT, PILOT_SUBJECT_FILENAME_WEIGHT),
+        ("without_ocr_layout", False, True, True, 0.0, 0.0),
+        ("without_pmi", True, False, True, PILOT_SUBJECT_LEXICAL_WEIGHT, PILOT_SUBJECT_FILENAME_WEIGHT),
+        ("without_visual", True, True, False, PILOT_SUBJECT_LEXICAL_WEIGHT, PILOT_SUBJECT_FILENAME_WEIGHT),
+        ("layout_only", True, False, False, PILOT_SUBJECT_LEXICAL_WEIGHT, PILOT_SUBJECT_FILENAME_WEIGHT),
     ):
         variants[name] = _variant_outcomes(
             cases,
@@ -244,6 +247,7 @@ def run_ablation(
             use_pmi=use_pmi,
             use_visual=use_visual,
             subject_lexical_weight=subject_lexical_weight,
+            subject_filename_weight=subject_filename_weight,
         )
 
     full = variants["full"]
@@ -251,8 +255,8 @@ def run_ablation(
     visual_contribution = paired_accuracy(variants["without_visual"][1], full[1])
     if selected_evidence is not None and (
         not selected_evidence.ocr_layout
-        or selected_evidence.subject_kiwi_lexical_weight
-        != PILOT_SUBJECT_LEXICAL_WEIGHT
+        or selected_evidence.subject_kiwi_lexical_weight != PILOT_SUBJECT_LEXICAL_WEIGHT
+        or selected_evidence.subject_filename_weight != PILOT_SUBJECT_FILENAME_WEIGHT
     ):
         raise ValueError("고정된 Phase 8 선택이 개발 측정과 일치하지 않습니다.")
     retain_pmi = (
@@ -309,6 +313,7 @@ def run_ablation(
             "variant": selected_name,
             "ocr_layout": True,
             "subject_kiwi_lexical_weight": PILOT_SUBJECT_LEXICAL_WEIGHT,
+            "subject_filename_weight": PILOT_SUBJECT_FILENAME_WEIGHT,
             "pmi": retain_pmi,
             "yolo_lvis_visual": retain_visual,
             "model_session_scheduling": False,

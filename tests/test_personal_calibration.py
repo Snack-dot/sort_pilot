@@ -28,9 +28,9 @@ def test_packaged_personal_example_policy_has_independent_calibrated_axes() -> N
     policy = load_personal_example_policy()
 
     assert policy.subject.weight == 0.01
-    assert policy.subject.minimum_similarity == pytest.approx(0.8755742311477661)
-    assert policy.template.weight == 0.02
-    assert policy.template.minimum_similarity == pytest.approx(0.8875447511672974)
+    assert policy.subject.minimum_similarity == pytest.approx(0.8699697256088257)
+    assert policy.template.weight == 1.15
+    assert policy.template.minimum_similarity == pytest.approx(0.8862630128860474)
 
 
 def test_calibration_selects_personal_influence_without_changing_route_thresholds() -> None:

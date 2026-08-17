@@ -449,6 +449,168 @@
       "semester": "1학기",
       "subject": "한문",
       "template": "과제"
+    },
+    {
+      "file_name": "언어와 매체 개념 정리.pdf",
+      "text": "매체 자료의 특성과 언어 규범을 분석하여 정확한 표현을 학습하는 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "독서 지문 문제.pdf",
+      "text": "비문학 지문을 읽고 주제와 서술 방식을 파악하는 문제를 풀어 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "과제"
+    },
+    {
+      "file_name": "문학 작품 감상 요약.pdf",
+      "text": "소설 속 인물의 심리 변화와 상징적 표현을 감상하여 정리한 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "화법과 작문 발표 과제.pdf",
+      "text": "설득하는 말하기 전략을 활용하여 발표 원고를 작성해 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "과제"
+    },
+    {
+      "file_name": "화법과작문 정답 해설.pdf",
+      "text": "지난 시간 화법과 작문 활동의 모범 답안과 풀이를 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "통합사회 지속가능발전 문제지.pdf",
+      "text": "환경과 경제 발전이 공존하는 지속가능한 사회를 만들기 위한 정책을 탐구합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합사회",
+      "template": "과제"
+    },
+    {
+      "file_name": "사회 규범과 일탈 요약.pdf",
+      "text": "사회 규범을 어긴 일탈 행동의 원인과 사회적 통제 방식을 정리한 자료입니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "사회",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "한국사 근대화 운동 정리.pdf",
+      "text": "갑신정변과 갑오개혁을 중심으로 근대화 운동의 전개 과정을 정리합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "한국사",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "통합과학 에너지 전환 수능특강.pdf",
+      "text": "역학적 에너지와 전기 에너지가 서로 전환되는 과정을 사례로 설명하는 심화 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합과학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "과학 실험 안전 수칙 요약.pdf",
+      "text": "실험실에서 지켜야 할 기본 안전 수칙과 사고 예방 방법을 정리했습니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "과학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "기말 대비 문제지.pdf",
+      "text": "학기말 평가에 대비하여 단원별 연습 문제를 풀고 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "수학 응용 문제 풀이.pdf",
+      "text": "실생활 상황을 활용한 응용 문제를 풀이 과정과 함께 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "영어 지문 정답 모음.pdf",
+      "text": "지난 모의고사 지문의 정답과 근거 문장을 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "영어 듣기대본 정리.pdf",
+      "text": "영어 듣기 평가에 나온 대화 내용을 문장으로 옮겨 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "수학 수능특강 개념정리.pdf",
+      "text": "수능에 자주 나오는 수열과 극한 개념을 예제와 함께 정리한 심화 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "영어 수능완성 요약.pdf",
+      "text": "빈칸 추론과 어법 유형을 중심으로 핵심 전략을 정리한 마무리 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "국어 문제 해설 모음.pdf",
+      "text": "지난 모의고사 국어 문제에 대한 정답과 상세한 해설을 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "환경 이슈 요약 문제지.pdf",
+      "text": "환경 문제를 다룬 지문을 읽고 핵심 내용을 요약하여 답안을 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "사회",
+      "template": "과제"
     }
   ]
 }

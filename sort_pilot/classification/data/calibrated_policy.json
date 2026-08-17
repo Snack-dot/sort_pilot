@@ -5,13 +5,13 @@
     "gemma_accuracy": 0.5
   },
   "subject": {
-    "high_score": 0.8336313366889954,
-    "high_margin": 0.02738821506500244,
-    "gemma_score": 0.8336313366889954
+    "high_score": 0.8616471886634827,
+    "high_margin": 0.037775516510009766,
+    "gemma_score": 0.8616471886634827
   },
   "template": {
-    "high_score": 0.12044353996004377,
-    "high_margin": 0.00011819601058959961,
-    "gemma_score": 0.12044353996004377
+    "high_score": 0.12044354847499303,
+    "high_margin": 0.14095800263541086,
+    "gemma_score": 0.12044354847499303
   }
 }

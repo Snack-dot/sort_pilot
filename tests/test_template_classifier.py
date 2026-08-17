@@ -164,6 +164,12 @@ def test_template_classifier_ranks_exactly_five_and_retains_weighted_evidence():
     ("evidence", "expected"),
     [
         (TemplateEvidence("과제.pdf", "일반 안내"), Template.ASSIGNMENT),
+        (TemplateEvidence("고2 국어영역 문제.pdf", "일반 안내"), Template.ASSIGNMENT),
+        (TemplateEvidence("고2 국어영역 문제지.pdf", "일반 안내"), Template.ASSIGNMENT),
+        (TemplateEvidence("모의고사 정답.pdf", "일반 안내"), Template.LEARNING_MATERIAL),
+        (TemplateEvidence("영어영역 듣기대본.pdf", "일반 안내"), Template.LEARNING_MATERIAL),
+        (TemplateEvidence("2027 수능특강 문학.pdf", "일반 안내"), Template.LEARNING_MATERIAL),
+        (TemplateEvidence("2026 수능완성 영어.pdf", "일반 안내"), Template.LEARNING_MATERIAL),
         (
             TemplateEvidence("안내.pdf", "일반 안내", lexical_terms=("봉사",)),
             Template.OUT_OF_SCHOOL,

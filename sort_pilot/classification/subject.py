@@ -11,7 +11,7 @@ from sort_pilot.curriculum import StudentProfile, load_subject_catalog
 from .result import AxisDecision, CandidateScore
 
 
-SUBJECT_PROFILE_VERSION = "1"
+SUBJECT_PROFILE_VERSION = "2"
 DEFAULT_SUBJECT_PROFILES_PATH = Path(__file__).with_name("data") / "subject_profiles_ko.json"
 
 
@@ -140,17 +140,39 @@ def load_subject_profiles(
         )
         if set(data["subjects"]) != set(catalog_subjects):
             raise ValueError("과목 프로필 라벨이 과목 카탈로그와 일치하지 않습니다.")
+
+        def _string_list(value: object) -> bool:
+            return isinstance(value, list) and bool(value) and all(
+                isinstance(item, str) for item in value
+            )
+
         if any(
-            not isinstance(data["subjects"][label], list)
-            or not data["subjects"][label]
-            or not all(isinstance(value, str) for value in data["subjects"][label])
+            not isinstance(data["subjects"][label], dict)
+            or set(data["subjects"][label]) != {"prototype_texts", "filename_aliases"}
+            or not _string_list(data["subjects"][label]["prototype_texts"])
+            or not _string_list(data["subjects"][label]["filename_aliases"])
             for label in catalog_subjects
         ):
-            raise ValueError("각 과목 프로필에는 하나 이상의 자연어 설명문이 필요합니다.")
+            raise ValueError(
+                "각 과목 프로필에는 자연어 설명문과 파일명 별칭이 하나 이상 필요합니다."
+            )
+
+        seen_aliases: dict[str, str] = {}
+        for label in catalog_subjects:
+            for alias in data["subjects"][label]["filename_aliases"]:
+                normalized = alias.casefold().strip()
+                owner = seen_aliases.get(normalized)
+                if owner is not None and owner != label:
+                    raise ValueError(
+                        f"파일명 별칭 '{alias}'이(가) 서로 다른 과목({owner}, {label})에 중복 지정되었습니다."
+                    )
+                seen_aliases[normalized] = label
+
         return tuple(
             SubjectProfile(
                 label=label,
-                prototype_texts=tuple(data["subjects"][label]),
+                prototype_texts=tuple(data["subjects"][label]["prototype_texts"]),
+                keywords=tuple(data["subjects"][label]["filename_aliases"]),
                 version=data["version"],
             )
             for label in catalog_subjects

@@ -71,7 +71,7 @@ def test_tracked_held_out_corpus_is_new_made_up_data_covering_both_axes():
     }
 
     assert set(held_out_raw) == {"cases"}
-    assert len(held_out_raw["cases"]) == 50
+    assert len(held_out_raw["cases"]) == 68
     assert all(set(case) == expected_fields for case in held_out_raw["cases"])
     assert not {
         (case["file_name"], case["text"]) for case in held_out_raw["cases"]

@@ -14,6 +14,7 @@ from sort_pilot.classification import (
     TemplateEvidence,
     calibrate_policy,
     load_calibrated_policy,
+    load_phase8_optional_evidence,
     load_subject_profiles,
     load_template_profiles,
 )
@@ -21,6 +22,13 @@ from sort_pilot.evaluation import CorpusCase, load_corpus
 
 
 DEFAULT_MODEL_CACHE = Path("data/models/fastembed")
+# A held-out routing threshold that only clears local-authority precision/accuracy
+# targets via a near-zero top-two margin is not a safe auto-accept gate: it means
+# some pair of candidates in the held-out set is a genuine near-tie. Empirically,
+# 0.02 is comfortably below the real margin both axes settle on once the near-zero
+# candidates are excluded (~0.038 subject, ~0.141 template on the current corpus)
+# while staying well clear of the point where no threshold meets the targets at all.
+MINIMUM_MARGIN_FLOOR = 0.02
 
 
 def derive_policy(
@@ -33,6 +41,7 @@ def derive_policy(
     template_classifier = TemplateClassifier(encoder)
     subject_profiles = load_subject_profiles()
     template_profiles = load_template_profiles()
+    optional_evidence = load_phase8_optional_evidence()
     subject_results: list[HeldOutAxisResult] = []
     template_results: list[HeldOutAxisResult] = []
     for case in corpus:
@@ -40,6 +49,8 @@ def derive_policy(
             SubjectEvidence(case.file_name, case.text),
             case.student,
             subject_profiles,
+            lexical_weight=optional_evidence.subject_kiwi_lexical_weight,
+            filename_weight=optional_evidence.subject_filename_weight,
         )
         template = template_classifier.classify(
             TemplateEvidence(case.file_name, case.text),
@@ -61,7 +72,12 @@ def derive_policy(
                 abstained=template.needs_review,
             )
         )
-    return calibrate_policy(tuple(subject_results), tuple(template_results))
+    return calibrate_policy(
+        tuple(subject_results),
+        tuple(template_results),
+        subject_minimum_margin=MINIMUM_MARGIN_FLOOR,
+        template_minimum_margin=MINIMUM_MARGIN_FLOOR,
+    )
 
 
 def main(arguments: Sequence[str] | None = None) -> int:

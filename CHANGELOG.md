@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid classifier remediation: filename evidence and margin safety
+
+No new phase; this remediates defects found in the shipped Phase 0-8 classifier by a real-data test (62, later 100, real exam-prep files, manually reviewed, screenshotted and separately downloaded for local-only validation — never committed).
+
+- Added a catalog-bounded filename-alias evidence channel to the subject axis (previously template-only), resolving via longest-alias-match so `통합사회`/`통합과학` correctly out-rank the shorter `사회`/`과학` when both appear in the same filename. Reuses the previously-declared-but-unused `SubjectProfile.keywords` field; bumps the subject profile schema to v2.
+- Added missing template filename indicators: `문제`/`문제지` → 과제; `정답`/`듣기대본`/`수능특강`/`수능완성` → 학습자료 (해설 was already present).
+- Fixed the held-out calibration procedure to stop silently preferring the smallest workable accept/margin threshold: flipped the tie-break to prefer larger margins among tied outcomes, then added a hard `minimum_margin` floor (0.02) after discovering the tie-break alone wasn't sufficient — coverage-maximization could still force a near-zero margin. Template margin moved from ~0.000118 to ~0.141 (local precision 95.5% → 100%); subject margin from ~0.0044 to ~0.038 (precision 92.9% → 96.2%). Both axes still clear the approved 90%/50% held-out targets.
+- Fixed both calibration scripts (`eval/run_policy_calibration.py`, `eval/run_personal_example_calibration.py`) silently calibrating with the wrong evidence weights (defaulting to 0.0 instead of production's real Kiwi-lexical and new filename weights) — found independently while wiring the new channel through, not in the original report.
+- Expanded the invented held-out corpus (50 → 68 cases) to exercise the new evidence channels and near-miss template pairs; regenerated and re-verified both `calibrated_policy.json` and `personal_example_policy.json` against it.
+- Separately validated the fix against the real dataset behind the original report (100 real files, made available locally, never committed): 50/50 subject and 57/57 template predictions correct on a conservatively-labeled subset; the already-recalibrated thresholds generalized to the real data without adjustment; confident auto-route rate across all 100 real files rose from the originally reported 16.1% to 46.0% using filename evidence alone, with no body text.
+- See `session_archive/2026-08-17-student-hybrid-margin-and-filename-remediation/` for the full investigation, decisions, and evidence.
+
 ## 2026-08-17 — Student-hybrid Phase 7 preview, immutable plan, and corrections
 
 - Wired the active Desktop/Downloads organization flow to independent subject and template classification and removed the older topic-calibration, topic-management, and folder-migration controls from the tray.

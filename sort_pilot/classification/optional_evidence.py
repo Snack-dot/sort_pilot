@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 
-PHASE8_OPTIONAL_EVIDENCE_VERSION = "phase-8-optional-evidence-v1"
+PHASE8_OPTIONAL_EVIDENCE_VERSION = "phase-8-optional-evidence-v2"
 DEFAULT_PHASE8_OPTIONAL_EVIDENCE_PATH = (
     Path(__file__).with_name("data") / "phase8_optional_evidence.json"
 )
@@ -15,6 +15,7 @@ _FIELDS = {
     "version",
     "ocr_layout",
     "subject_kiwi_lexical_weight",
+    "subject_filename_weight",
     "pmi",
     "yolo_lvis_visual",
     "model_session_scheduling",
@@ -27,13 +28,14 @@ class Phase8OptionalEvidence:
 
     ocr_layout: bool
     subject_kiwi_lexical_weight: float
+    subject_filename_weight: float
     pmi: bool
     yolo_lvis_visual: bool
     model_session_scheduling: bool
     version: str = PHASE8_OPTIONAL_EVIDENCE_VERSION
 
     def __post_init__(self) -> None:
-        """Require the exact version, booleans, and a finite nonnegative weight."""
+        """Require the exact version, booleans, and finite nonnegative weights."""
         if self.version != PHASE8_OPTIONAL_EVIDENCE_VERSION:
             raise ValueError("지원하지 않는 Phase 8 선택 버전입니다.")
         if not all(
@@ -46,14 +48,14 @@ class Phase8OptionalEvidence:
             )
         ):
             raise ValueError("Phase 8 선택 값은 bool이어야 합니다.")
-        weight = self.subject_kiwi_lexical_weight
-        if (
-            isinstance(weight, bool)
-            or not isinstance(weight, (int, float))
-            or not math.isfinite(weight)
-            or weight < 0
-        ):
-            raise ValueError("Phase 8 Kiwi 어휘 가중치는 유한한 음이 아닌 값이어야 합니다.")
+        for weight in (self.subject_kiwi_lexical_weight, self.subject_filename_weight):
+            if (
+                isinstance(weight, bool)
+                or not isinstance(weight, (int, float))
+                or not math.isfinite(weight)
+                or weight < 0
+            ):
+                raise ValueError("Phase 8 과목 근거 가중치는 유한한 음이 아닌 값이어야 합니다.")
 
 
 @lru_cache(maxsize=None)
@@ -68,6 +70,7 @@ def load_phase8_optional_evidence(
         return Phase8OptionalEvidence(
             ocr_layout=value["ocr_layout"],
             subject_kiwi_lexical_weight=value["subject_kiwi_lexical_weight"],
+            subject_filename_weight=value["subject_filename_weight"],
             pmi=value["pmi"],
             yolo_lvis_visual=value["yolo_lvis_visual"],
             model_session_scheduling=value["model_session_scheduling"],

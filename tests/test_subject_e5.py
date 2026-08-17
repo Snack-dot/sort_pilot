@@ -56,20 +56,39 @@ def test_natural_language_profiles_cover_exact_catalog_subjects():
     expected = tuple(dict.fromkeys((*catalog.middle_subjects, *catalog.high_subjects)))
 
     assert tuple(profile.label for profile in profiles) == expected
-    assert all(profile.version == "1" for profile in profiles)
+    assert all(profile.version == "2" for profile in profiles)
     assert all(profile.prototype_texts for profile in profiles)
-    assert all(profile.keywords == () for profile in profiles)
+    assert all(profile.keywords for profile in profiles)
+    assert all(profile.label in profile.keywords for profile in profiles)
 
 
-@pytest.mark.parametrize("change", ["extra", "missing_subject", "invalid_texts"])
+@pytest.mark.parametrize(
+    "change", ["extra", "missing_subject", "invalid_texts", "invalid_aliases"]
+)
 def test_subject_profile_loader_rejects_non_catalog_documents(tmp_path: Path, change: str):
     data = json.loads(DEFAULT_SUBJECT_PROFILES_PATH.read_text(encoding="utf-8"))
     if change == "extra":
         data["unexpected"] = True
     elif change == "missing_subject":
         del data["subjects"]["수학"]
-    else:
+    elif change == "invalid_texts":
         data["subjects"]["수학"] = "수학 설명"
+    else:
+        data["subjects"]["수학"]["filename_aliases"] = "수학"
+    path = tmp_path / "profiles.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    load_subject_profiles.cache_clear()
+    try:
+        with pytest.raises(RuntimeError):
+            load_subject_profiles(path)
+    finally:
+        load_subject_profiles.cache_clear()
+
+
+def test_subject_profile_loader_rejects_duplicate_filename_aliases(tmp_path: Path):
+    data = json.loads(DEFAULT_SUBJECT_PROFILES_PATH.read_text(encoding="utf-8"))
+    data["subjects"]["사회"]["filename_aliases"].append("수학")
     path = tmp_path / "profiles.json"
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
@@ -161,6 +180,65 @@ def test_subject_kiwi_lexical_evidence_stays_structured_and_inspectable():
     assert decision.evidence[-1].value == pytest.approx(0.05)
     assert len(encoder.batches) == 1
     assert all(text.startswith("passage: ") for text in encoder.batches[0])
+
+
+def test_subject_filename_alias_prefers_longest_specific_match():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("사회", ("사회 현상을 배운다.",), keywords=("사회",), version="2"),
+        SubjectProfile("통합사회", ("통합사회 현상을 배운다.",), keywords=("통합사회",), version="2"),
+    )
+    student = StudentProfile(StudentType.HIGH, 1, Semester.FIRST)
+
+    decision = classifier.classify(
+        SubjectEvidence("통합사회_문제.pdf", ""),
+        student,
+        profiles,
+        filename_weight=0.15,
+    )
+
+    assert decision.label == "통합사회"
+    assert decision.evidence[2].name == "filename_alias"
+    assert decision.evidence[2].value == pytest.approx(0.15)
+
+
+def test_subject_filename_alias_score_is_zero_with_no_match():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), keywords=("영어",), version="2"),
+        SubjectProfile("수학", ("수와 연산, 방정식과 함수를 학습한다.",), keywords=("수학",), version="2"),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+
+    decision = classifier.classify(
+        SubjectEvidence("방정식 문제.pdf", "함수의 값을 구한다."),
+        student,
+        profiles,
+        filename_weight=0.15,
+    )
+
+    assert decision.label == "수학"
+    assert decision.evidence[2].name == "filename_alias"
+    assert decision.evidence[2].value == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("value", [-0.1, float("nan"), True])
+def test_subject_classifier_rejects_invalid_filename_weight(value):
+    classifier = E5SubjectClassifier(DeterministicEncoder())
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산과 함수를 학습한다.",), version="1"),
+    )
+
+    with pytest.raises(ValueError, match="파일명 별칭"):
+        classifier.classify(
+            SubjectEvidence("자료.pdf", "일반 내용"),
+            StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST),
+            profiles,
+            filename_weight=value,
+        )
 
 
 @pytest.mark.parametrize("value", [-0.1, float("nan"), True])

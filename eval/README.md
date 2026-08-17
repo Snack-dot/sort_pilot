@@ -30,7 +30,7 @@ The runner writes nothing. It prints subject accuracy, template accuracy, combin
 
 ## Phase 5 held-out calibration
 
-`synthetic_student_held_out_corpus.json` contains 50 additional made-up cases using the same simple fields. None of its filename/text pairs occurs in the Phase 2 corpus, it covers all 18 configured subjects and all five templates, and it was not used to write or revise the subject/template profiles.
+`synthetic_student_held_out_corpus.json` contains 68 additional made-up cases using the same simple fields. None of its filename/text pairs occurs in the Phase 2 corpus, it covers all 18 configured subjects and all five templates, and it was not used to write or revise the subject/template *prototype text*. (18 of its cases were added during the filename/margin remediation specifically to exercise the new catalog-bounded filename aliases and indicators; those aliases were derived from the fixed subject/template catalog itself, not fitted to this held-out result.)
 
 The approved operating targets are:
 
@@ -50,7 +50,7 @@ The runner writes nothing. It prints only the centralized policy and aggregate p
 
 ## Phase 7 personal-example calibration
 
-Phase 7 uses the made-up Phase 2 corpus as pretend previously approved personal examples and the separate 50-case made-up held-out corpus as future files. It derives subject and template weights and minimum similarities independently while retaining the Phase 5 routing thresholds.
+Phase 7 uses the made-up Phase 2 corpus as pretend previously approved personal examples and the separate 68-case made-up held-out corpus as future files. It derives subject and template weights and minimum similarities independently while retaining the Phase 5 routing thresholds.
 
 Reproduce and verify the packaged rule with the already downloaded, Git-ignored E5 model:
 

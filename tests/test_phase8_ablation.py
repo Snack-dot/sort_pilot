@@ -51,6 +51,7 @@ def test_phase8_selected_evidence_is_strict_and_matches_final_ablation(
 
     assert selected.ocr_layout is True
     assert selected.subject_kiwi_lexical_weight == 0.05
+    assert selected.subject_filename_weight == 0.15
     assert selected.pmi is True
     assert selected.yolo_lvis_visual is False
     assert selected.model_session_scheduling is False

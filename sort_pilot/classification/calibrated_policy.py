@@ -223,6 +223,8 @@ def _measure_thresholds(
 def calibrate_axis(
     results: tuple[HeldOutAxisResult, ...],
     targets: CalibrationTargets,
+    *,
+    minimum_margin: float = 0.0,
 ) -> AxisCalibrationReport:
     """Select the broadest held-out routes that satisfy both approved targets."""
     if not isinstance(results, tuple) or not results or not all(
@@ -231,12 +233,27 @@ def calibrate_axis(
         raise ValueError("축 보정에는 비어 있지 않은 held-out 결과 튜플이 필요합니다.")
     if not isinstance(targets, CalibrationTargets):
         raise ValueError("축 보정에는 사용자 승인 목표가 필요합니다.")
+    if (
+        isinstance(minimum_margin, bool)
+        or not isinstance(minimum_margin, (int, float))
+        or not math.isfinite(minimum_margin)
+        or minimum_margin < 0
+    ):
+        raise ValueError("보정용 최소 margin은 0 이상의 유한한 숫자여야 합니다.")
     usable = tuple(result for result in results if not result.abstained)
     if not usable:
         raise ValueError("명시적 기권이 아닌 held-out 결과가 필요합니다.")
 
     scores = sorted({result.raw_score for result in usable})
-    margins = sorted({result.margin for result in usable})
+    # A threshold combo that ties on coverage/precision/accuracy but only clears
+    # this floor via a wafer-thin margin is not a safe auto-accept gate: it means
+    # some pair of candidates in the held-out set is a genuine near-tie, and
+    # accepting it "because the corpus said so" does not generalize. Floor the
+    # candidate margins first so the search can never settle on one, even as a
+    # coverage-maximizing choice.
+    margins = sorted({result.margin for result in usable if result.margin >= minimum_margin})
+    if not margins:
+        margins = [minimum_margin]
     best: tuple[tuple, AxisCalibrationReport] | None = None
     for high_score in scores:
         for high_margin in margins:
@@ -261,7 +278,11 @@ def calibrate_axis(
                     report.gemma_accuracy,
                     -report.reviewed,
                     -high_score,
-                    -high_margin,
+                    # Prefer the LARGEST tied margin, not the smallest: once coverage,
+                    # precision, and accuracy are already tied, a bigger top-two gap
+                    # generalizes more safely against real near-ties than whichever
+                    # margin happened to be the minimum observed in this held-out set.
+                    high_margin,
                     -gemma_score,
                 )
                 if best is None or objective > best[0]:
@@ -276,10 +297,13 @@ def calibrate_policy(
     template_results: tuple[HeldOutAxisResult, ...],
     targets: CalibrationTargets = CalibrationTargets(),
     version: str = CALIBRATED_POLICY_VERSION,
+    *,
+    subject_minimum_margin: float = 0.0,
+    template_minimum_margin: float = 0.0,
 ) -> PolicyCalibrationReport:
     """Calibrate independent subject and template routes from held-out data."""
-    subject = calibrate_axis(subject_results, targets)
-    template = calibrate_axis(template_results, targets)
+    subject = calibrate_axis(subject_results, targets, minimum_margin=subject_minimum_margin)
+    template = calibrate_axis(template_results, targets, minimum_margin=template_minimum_margin)
     policy = CalibratedPolicy(
         subject=subject.thresholds,
         template=template.thresholds,
