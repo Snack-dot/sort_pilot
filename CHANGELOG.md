@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid Phase 4 five-template classifier
+
+- Added strict separate profiles for exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.
+- Added explicit per-template weights for semantic intent, filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence; all start at the same neutral value and remain distinct from Phase 5 routing-threshold calibration.
+- Kept natural filename/body text in E5 input while scoring every engineered evidence source separately instead of converting it into a sentence.
+- Added five-candidate weighted ranking with raw score, top-two margin, every named evidence contribution, model/profile/policy versions, and no calibrated-confidence claim.
+- Added focused tests and a real cache-only model check against the tracked made-up corpus; this verifies classifier mechanics and is not a calibration or production-accuracy claim.
+
 ## 2026-08-17 — Student-hybrid Phase 3 subject profiles and E5 prototype
 
 - Added strict natural-language profiles for every exact subject in the middle/high student catalog.

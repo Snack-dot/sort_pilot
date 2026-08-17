@@ -1,0 +1,106 @@
+{
+  "version": "1",
+  "templates": {
+    "학습자료": {
+      "prototype_texts": [
+        "개념과 원리를 설명하고 복습할 내용을 정리한 학습 자료입니다.",
+        "수업 필기, 요약, 해설, 참고 내용처럼 제출을 요구하지 않는 공부 자료입니다."
+      ],
+      "file_name_indicators": ["학습자료", "개념정리", "요약", "필기", "해설", "참고자료"],
+      "lexical_indicators": ["개념", "원리", "정리", "요약", "복습", "설명", "참고"],
+      "pmi_collocations": ["개념 정리", "핵심 요약", "수업 필기", "학습 자료"],
+      "ocr_layout_indicators": ["목차", "학습목표", "핵심정리", "예시"],
+      "visual_indicators": ["교과서", "필기", "도표", "개념도"],
+      "evidence_weights": {
+        "semantic_intent": 1.0,
+        "file_name": 1.0,
+        "lexical": 1.0,
+        "pmi_collocation": 1.0,
+        "ocr_layout": 1.0,
+        "visual": 1.0,
+        "personal_example": 1.0
+      }
+    },
+    "과제": {
+      "prototype_texts": [
+        "문제를 풀거나 글과 보고서를 작성하여 정해진 기한에 제출하는 과제입니다.",
+        "학생이 수행하고 결과물을 제출해야 하는 숙제, 수행평가, 활동지입니다."
+      ],
+      "file_name_indicators": ["과제", "숙제", "수행평가", "활동지", "제출", "보고서"],
+      "lexical_indicators": ["제출", "작성", "풀이", "기한", "마감", "문제", "보고서"],
+      "pmi_collocations": ["과제 제출", "제출 기한", "문제 풀이", "보고서 작성"],
+      "ocr_layout_indicators": ["이름", "학번", "제출일", "답안란"],
+      "visual_indicators": ["문제지", "답안지", "워크시트", "작성란"],
+      "evidence_weights": {
+        "semantic_intent": 1.0,
+        "file_name": 1.0,
+        "lexical": 1.0,
+        "pmi_collocation": 1.0,
+        "ocr_layout": 1.0,
+        "visual": 1.0,
+        "personal_example": 1.0
+      }
+    },
+    "교내활동": {
+      "prototype_texts": [
+        "학교가 주관하거나 학교 안에서 진행하는 동아리, 학생회, 발표회, 대회 활동입니다.",
+        "교내 행사와 학교 프로그램의 모집, 일정, 참가 방법을 안내하는 자료입니다."
+      ],
+      "file_name_indicators": ["교내", "학교행사", "학생회", "동아리", "교내대회", "발표회"],
+      "lexical_indicators": ["학교", "교내", "학생회", "동아리", "발표", "행사", "참가"],
+      "pmi_collocations": ["교내 활동", "학교 행사", "학생회 활동", "교내 대회"],
+      "ocr_layout_indicators": ["교내", "학교장", "담당교사", "교내일정"],
+      "visual_indicators": ["학교", "교실", "교내행사", "학생회"],
+      "evidence_weights": {
+        "semantic_intent": 1.0,
+        "file_name": 1.0,
+        "lexical": 1.0,
+        "pmi_collocation": 1.0,
+        "ocr_layout": 1.0,
+        "visual": 1.0,
+        "personal_example": 1.0
+      }
+    },
+    "교외활동": {
+      "prototype_texts": [
+        "학교 밖 기관이나 지역사회가 주관하는 봉사, 캠프, 공모전, 체험 활동입니다.",
+        "외부 기관 프로그램의 모집, 참가 신청, 장소와 일정을 안내하는 자료입니다.",
+        "지역 예술회관, 청소년센터, 대학, 공공기관처럼 학교 밖 장소에서 열리는 음악회, 대회, 체험 프로그램입니다."
+      ],
+      "file_name_indicators": ["교외", "외부기관", "봉사활동", "캠프", "공모전", "체험활동"],
+      "lexical_indicators": ["교외", "외부", "지역사회", "기관", "봉사", "캠프", "공모전"],
+      "pmi_collocations": ["교외 활동", "외부 기관", "봉사 활동", "지역 사회"],
+      "ocr_layout_indicators": ["주최기관", "외부장소", "참가신청", "모집기간"],
+      "visual_indicators": ["외부행사", "봉사", "캠프", "지역사회"],
+      "evidence_weights": {
+        "semantic_intent": 1.0,
+        "file_name": 1.0,
+        "lexical": 1.0,
+        "pmi_collocation": 1.0,
+        "ocr_layout": 1.0,
+        "visual": 1.0,
+        "personal_example": 1.0
+      }
+    },
+    "증빙서류": {
+      "prototype_texts": [
+        "수료, 참여, 수상, 출석, 이수 사실을 공식적으로 확인하거나 증명하는 서류입니다.",
+        "기관이 발급한 확인서, 증명서, 수료증, 상장처럼 완료된 사실을 보여 주는 문서입니다."
+      ],
+      "file_name_indicators": ["증빙", "확인서", "증명서", "수료증", "상장", "이수증"],
+      "lexical_indicators": ["증명", "확인", "수료", "이수", "발급", "수상", "참여"],
+      "pmi_collocations": ["수료 증명", "이수 확인", "참여 확인", "발급 번호"],
+      "ocr_layout_indicators": ["발급번호", "직인", "서명", "발급일", "기관장"],
+      "visual_indicators": ["도장", "직인", "서명", "상장", "증명서"],
+      "evidence_weights": {
+        "semantic_intent": 1.0,
+        "file_name": 1.0,
+        "lexical": 1.0,
+        "pmi_collocation": 1.0,
+        "ocr_layout": 1.0,
+        "visual": 1.0,
+        "personal_example": 1.0
+      }
+    }
+  }
+}

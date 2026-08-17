@@ -1,6 +1,6 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–3 also establish the separate student subject/template contracts, onboarding profile, synthetic evaluation harness, and catalog-bounded multilingual E5 subject ranker required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–4 also establish the separate student subject/template contracts, onboarding profile, synthetic evaluation harness, catalog-bounded multilingual E5 subject ranker, and separate five-template classifier required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
 
 ## Current workflow
 
@@ -68,6 +68,7 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Atomic local student profile containing only occupation, student type, grade, semester, and catalog version; relevant organization flows require it.
 - Strict made-up evaluation corpus and prediction loaders with subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory metrics. Real evaluation material stays under ignored `eval/local/`.
 - Natural-language profiles for every catalog subject and a CPU-only `intfloat/multilingual-e5-small` prototype that ranks only the selected student's catalog subjects, retaining raw cosine similarity and margin without claiming calibrated confidence.
+- Separate profiles for exactly five templates, with semantic intent, filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence kept as distinct weighted inputs. The Phase 4 weights are neutral mechanics, not calibrated routing thresholds.
 - Manual Desktop, Downloads, or combined organization.
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
@@ -116,6 +117,7 @@ sort_pilot/onboarding.py           fixed-choice student-profile setup
 sort_pilot/curriculum/             strict student profile and subject catalog contracts
 sort_pilot/classification/         subject/template result and routing contracts
 sort_pilot/classification/e5.py    Phase 3 catalog-bounded subject ranking prototype
+sort_pilot/classification/template.py Phase 4 five-template ranking prototype
 sort_pilot/evaluation/             strict labeled-corpus loading and aggregate evaluation
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
 sort_pilot/calibration.py          bounded sampling, editable drafts, signed feedback

@@ -27,6 +27,18 @@ from .subject import (
     eligible_subject_profiles,
     load_subject_profiles,
 )
+from .template import (
+    DEFAULT_TEMPLATE_PROFILES_PATH,
+    TEMPLATE_PROFILE_VERSION,
+    TEMPLATE_RANKING_POLICY_VERSION,
+    TemplateClassifier,
+    TemplateEvidence,
+    TemplateEvidenceWeights,
+    TemplateProfile,
+    TemplateTextEncoder,
+    load_template_profiles,
+    ordered_template_profiles,
+)
 
 __all__ = [
     "AxisRoutingDecision",
@@ -34,6 +46,7 @@ __all__ = [
     "CandidateScore",
     "DecisionSource",
     "DEFAULT_SUBJECT_PROFILES_PATH",
+    "DEFAULT_TEMPLATE_PROFILES_PATH",
     "E5_MODEL_ID",
     "E5_RANKING_POLICY_VERSION",
     "E5_VECTOR_SIZE",
@@ -50,7 +63,16 @@ __all__ = [
     "SUBJECT_PROFILE_VERSION",
     "SubjectTextEncoder",
     "Template",
+    "TemplateClassifier",
+    "TemplateEvidence",
+    "TemplateEvidenceWeights",
+    "TemplateProfile",
+    "TEMPLATE_PROFILE_VERSION",
+    "TEMPLATE_RANKING_POLICY_VERSION",
+    "TemplateTextEncoder",
     "eligible_subject_profiles",
     "load_subject_profiles",
+    "load_template_profiles",
+    "ordered_template_profiles",
     "route_axis",
 ]
