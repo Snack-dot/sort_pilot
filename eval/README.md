@@ -63,3 +63,20 @@ The runner writes nothing. It prints only the rule and aggregate per-axis counts
 ## Real labels stay local
 
 Do not place an evaluation made from real files in any tracked synthetic JSON file. Put every real filename, extracted text, label, prediction, correction, and result under `eval/local/`. That directory is Git-ignored and its contents must never be committed, force-added, or uploaded to GitHub.
+
+## Phase 8 optional evidence and low-end measurement
+
+`synthetic_phase8_ablation_corpus.json` is the 30-case made-up development corpus. It was used to choose the smallest tested Kiwi lexical weight that cleared the agreed gates while retaining at least 90% authoritative-local subject precision. `synthetic_phase8_held_out_corpus.json` is a separate 30-case made-up final corpus with different filenames and wording. Neither file has invented case IDs.
+
+Run the cache-only aggregate evaluation with the already available local models:
+
+```powershell
+python eval/run_phase8_ablation.py eval/synthetic_phase8_ablation_corpus.json --model-cache data/models/fastembed --vision-model data/models/yolov8n.onnx --synthetic-image eval/synthetic_phase8_image.ppm
+python eval/run_phase8_ablation.py eval/synthetic_phase8_held_out_corpus.json --model-cache data/models/fastembed --vision-model data/models/yolov8n.onnx --synthetic-image eval/synthetic_phase8_image.ppm --verify-selection sort_pilot/classification/data/phase8_optional_evidence.json
+```
+
+The runner writes nothing and counts every unresolved result as incorrect. Each of subject accuracy, template accuracy, and combined-path accuracy must improve by at least five percentage points with an exact paired `p < 0.05`. Candidate P95 latency may be at most 10% above the Phase 7 baseline, and candidate peak process memory must stay at or below 2 GB.
+
+The final command verifies the complete selection frozen from development rather than choosing again from held-out labels. Development retained PMI (`p=0.0078125`) and rejected visual evidence (`p=1.0`). The final made-up result retained layout-aware OCR, subject Kiwi lexical weight `0.05`, and PMI: subject accuracy rose from `6.67%` to `46.67%` (`p=0.000488`), template accuracy from `43.33%` to `100%` (`p=0.0000153`), and combined-path accuracy from `3.33%` to `46.67%` (`p=0.000244`). Authoritative-local subject precision was `10/11` on development and `14/14` on held-out. The final P95 latency reproduction was about `11.7 ms` versus `371.8 ms`, and peak process memory was about `905.4 MB`. Visual evidence and new model-session scheduling were not retained.
+
+The measurement host had about 16 GB physical RAM. The agreed 2 GB peak-process limit is recorded as a low-memory viability proxy; this result does not claim that the host itself had 4–8 GB RAM.

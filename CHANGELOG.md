@@ -150,6 +150,16 @@ No code changes this session; recorded here so the next reviewer has the full pi
 
 All notable changes to the architecture implementation branch are documented here.
 
+## 2026-08-17 — Student-hybrid Phase 8 optional evidence and low-end optimization
+
+- Added strict paired made-up development and held-out evaluation for subject accuracy, template accuracy, combined-path accuracy, exact statistical significance, P95 latency, and peak process memory; unresolved results remain incorrect.
+- Added layout-aware OCR ordering while retaining the original OCR order transiently for template semantic intent; neither text form is serialized in the engine record.
+- Added a separate inspectable Kiwi lexical contribution to subject ranking and selected weight `0.05` from development data without changing the Phase 5 routing thresholds.
+- Final held-out gains were +40.0 points for subject, +56.7 points for template, and +43.3 points for combined path, with exact paired p-values below `0.05` for all three. Authoritative-local subject precision was `14/14`.
+- Final P95 latency reproduction was about `11.7 ms` versus the Phase 7 baseline's `371.8 ms`, and peak process memory was about `905.4 MB`, below the agreed 2 GB limit.
+- Retained PMI after significant development contribution and verified the complete frozen selection on separate made-up held-out cases. Rejected YOLO/LVIS visual evidence and new model-session scheduling; the active educational extractor no longer runs YOLO.
+- Used only made-up tracked cases; no real filename, extracted text, label, prediction, or correction was added.
+
 ## Unreleased
 
 ### Reconciled

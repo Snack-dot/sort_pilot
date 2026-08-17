@@ -19,6 +19,7 @@ KO_PARTICLES = ("에서는", "으로", "에게", "에서", "부터", "까지", "
 STOP = frozenset(get_stop_words("en")) | frozenset(get_stop_words("ko")) | {"그리고", "합니다", "있는", "없는"}
 MAX_BODY_TERMS = 160
 MAX_COLLOCATIONS = 40
+MAX_OCR_LAYOUT_ITEMS = 40
 MIN_COLLOCATION_COUNT = 2
 MIN_COLLOCATION_PMI = 2.0
 COLLOCATION_PREFIXES = {2: "bi:", 3: "tri:"}
@@ -180,13 +181,81 @@ def _ocr_engine():
     return engine
 
 
-def _ocr_evidence(path: Path) -> tuple[str, list[Feature]]:
-    """Extract bounded OCR natural text and at most forty lexical features."""
+def _layout_aware_ocr(result: object) -> tuple[str, tuple[str, ...]]:
+    """Order OCR lines by page columns and retain bounded transient layout evidence."""
+    texts = tuple(str(value).strip() for value in (getattr(result, "txts", None) or ()))
+    texts = tuple(value for value in texts if value)
+    boxes = getattr(result, "boxes", None)
+    if not texts:
+        return "", ()
+    if boxes is None or len(boxes) != len(texts):
+        ordered = texts
+    else:
+        lines: list[tuple[str, float, float, float, float]] = []
+        try:
+            for text, box in zip(texts, boxes, strict=True):
+                xs = tuple(float(point[0]) for point in box)
+                ys = tuple(float(point[1]) for point in box)
+                if not xs or not ys or not all(math.isfinite(value) for value in (*xs, *ys)):
+                    raise ValueError
+                lines.append((text, min(xs), min(ys), max(xs), max(ys)))
+        except (TypeError, ValueError, IndexError):
+            ordered = texts
+        else:
+            page_left = min(line[1] for line in lines)
+            page_right = max(line[3] for line in lines)
+            midpoint = (page_left + page_right) / 2.0
+            tolerance = max(1.0, (page_right - page_left) * 0.04)
+            left = [line for line in lines if line[3] < midpoint + tolerance]
+            right = [
+                line
+                for line in lines
+                if line not in left and line[1] > midpoint - tolerance
+            ]
+            spanning = [line for line in lines if line not in left and line not in right]
+            if len(left) >= 2 and len(right) >= 2:
+                first_column_y = min(line[2] for line in (*left, *right))
+                headers = [line for line in spanning if line[2] <= first_column_y]
+                footers = [line for line in spanning if line not in headers]
+                ordered_lines = (
+                    sorted(headers, key=lambda line: (line[2], line[1]))
+                    + sorted(left, key=lambda line: (line[2], line[1]))
+                    + sorted(right, key=lambda line: (line[2], line[1]))
+                    + sorted(footers, key=lambda line: (line[2], line[1]))
+                )
+            else:
+                ordered_lines = sorted(lines, key=lambda line: (line[2], line[1]))
+            ordered = tuple(line[0] for line in ordered_lines)
+    natural_text = " ".join(ordered)[:20_000]
+    evidence: list[str] = []
+    for line in ordered:
+        for value in (line[:120], re.sub(r"\s+", "", line)[:120]):
+            if value and value not in evidence:
+                evidence.append(value)
+            if len(evidence) >= MAX_OCR_LAYOUT_ITEMS:
+                break
+        if len(evidence) >= MAX_OCR_LAYOUT_ITEMS:
+            break
+    return natural_text, tuple(evidence)
+
+
+def _ocr_evidence(path: Path) -> tuple[str, list[Feature], tuple[str, ...]]:
+    """Extract bounded OCR natural text, lexical features, and transient layout evidence."""
     result = _ocr_engine()(str(path))
-    texts = getattr(result, "txts", None) or []
-    natural_text = " ".join(str(value) for value in texts)[:20_000]
+    original_text = " ".join(
+        str(value).strip()
+        for value in (getattr(result, "txts", None) or ())
+        if str(value).strip()
+    )[:20_000]
+    natural_text, layout_evidence = _layout_aware_ocr(result)
     _OCR_LOCAL.last_text = natural_text
-    return natural_text, [Feature(token, "ocr") for token in tokenize(natural_text)[:40]]
+    _OCR_LOCAL.last_template_text = original_text
+    _OCR_LOCAL.last_layout_evidence = layout_evidence
+    return (
+        natural_text,
+        [Feature(token, "ocr") for token in tokenize(natural_text)[:40]],
+        layout_evidence,
+    )
 
 
 def _ocr(path: Path) -> list[Feature]:
@@ -201,7 +270,7 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
     features.append(Feature(path.suffix.lower().lstrip(".") or "no_ext", "ext"))
     if re.match(r"(?i)^KakaoTalk_\d{8}_\d{6}", path.name): features.append(Feature("kakao_export", "meta"))
     partial = stat.st_size > max_content_mb * 1024 * 1024
-    text = ""; suffix = path.suffix.lower()
+    text = ""; template_text = ""; ocr_layout_evidence: tuple[str, ...] = (); suffix = path.suffix.lower()
     if not partial:
         try:
             if suffix in {".txt", ".md", ".csv", ".rtf"}: text = _read_text(path, max_chars)
@@ -213,6 +282,7 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             elif suffix == ".zip": text = _archive(path)
         except Exception:
             partial = True
+    template_text = text
     body_tokens = tokenize(text)
     for token, count in Counter(body_tokens).most_common(MAX_BODY_TERMS):
         features.append(Feature(token, "body", float(count)))
@@ -226,14 +296,15 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
             route, image_features = _image_features(path); features.extend(image_features)
             if route in {"screenshot", "ambiguous"}:
                 _OCR_LOCAL.last_text = ""
+                _OCR_LOCAL.last_template_text = ""
+                _OCR_LOCAL.last_layout_evidence = ()
                 features.extend(_ocr(path))
                 ocr_text = getattr(_OCR_LOCAL, "last_text", "")
+                template_ocr_text = getattr(_OCR_LOCAL, "last_template_text", "")
+                ocr_layout_evidence = getattr(_OCR_LOCAL, "last_layout_evidence", ())
                 if not text:
                     text = ocr_text[:max_chars]
-            model_path = Path(__file__).parents[2] / "data" / "models" / "yolov8n.onnx"
-            if model_path.exists():
-                from .vision import infer
-                vision_features, _ = infer(path, model_path); features.extend(vision_features)
+                    template_text = template_ocr_text[:max_chars]
         except Exception:
             partial = True; route = "image"
     return FeatureVector(
@@ -245,6 +316,8 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
         route,
         {"total": (time.perf_counter()-started)*1000},
         natural_text=text,
+        template_natural_text=template_text,
+        ocr_layout_evidence=ocr_layout_evidence,
     )
 
 

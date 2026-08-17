@@ -27,11 +27,15 @@ class FeatureVector:
     extractor_ms: dict[str, float] = field(default_factory=dict)
     peak_rss_mb: float = 0.0
     natural_text: str = field(default="", repr=False)
+    template_natural_text: str = field(default="", repr=False)
+    ocr_layout_evidence: tuple[str, ...] = field(default=(), repr=False)
 
     def to_dict(self) -> dict:
         """Serialize classifier features without persisting raw extracted text."""
         value = asdict(self)
         value.pop("natural_text", None)
+        value.pop("template_natural_text", None)
+        value.pop("ocr_layout_evidence", None)
         return value
 
 

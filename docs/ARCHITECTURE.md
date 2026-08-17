@@ -4,7 +4,7 @@
 
 > **Implemented-app note (updated 2026-08-17):** The diagrams below describe the original long-lived watcher and legacy type/topic proposal. The current app instead uses manual Desktop/Downloads collection, a two-worker bounded extraction queue, independent subject/template classification, calibrated local/Gemma/review routing, a fixed-choice educational preview, immutable approved paths, and persistent Undo. See `docs/FUNCTION_MAP.md` for the implemented call graph.
 >
-> Each worker returns an `AnalysisRecord` containing transient natural text plus bounded lexical, collocation, and visual evidence. Historical engine family/topic values are ignored for the active destination. The authoritative hierarchy is `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`, with exactly the five templates defined by the supreme plan. Preview corrections are stored as separate local personal examples; they do not mutate the global profiles.
+> Each worker returns an `AnalysisRecord` containing transient natural text plus bounded structured evidence. Phase 8 uses layout-ordered OCR for subject ranking and retains the original OCR order transiently for template semantic intent. Historical engine family/topic values are ignored for the active destination. The authoritative hierarchy is `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`, with exactly the five templates defined by the supreme plan. Preview corrections are stored as separate local personal examples; they do not mutate the global profiles. The Phase 8 selection retains PMI and disables YOLO/LVIS visual evidence plus new model-session scheduling in the active educational flow.
 
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that historical document.
 

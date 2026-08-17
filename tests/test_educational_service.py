@@ -45,6 +45,19 @@ class EqualEncoder:
         return values
 
 
+class RecordingEqualEncoder(EqualEncoder):
+    """Retain ordered batches while returning the same valid embeddings."""
+
+    def __init__(self) -> None:
+        """Start without recorded text batches."""
+        self.batches: list[tuple[str, ...]] = []
+
+    def encode(self, texts) -> np.ndarray:
+        """Record each batch before delegating to the equal encoder."""
+        self.batches.append(tuple(texts))
+        return super().encode(texts)
+
+
 class ForbiddenGemma:
     """Fail a test if an authoritative local or review route reaches Gemma."""
 
@@ -110,6 +123,52 @@ def test_service_accepts_both_high_local_axes_without_gemma(tmp_path: Path):
     assert output.classification.template.source is DecisionSource.LOCAL
     assert not output.classification.needs_review
     assert output.classification.folder.startswith("학생/중학생/1학년/1학기/")
+
+
+def test_service_uses_layout_for_subject_and_original_ocr_order_for_template(
+    tmp_path: Path,
+):
+    encoder = RecordingEqualEncoder()
+    service = EducationalClassificationService(
+        encoder,
+        load_subject_profiles(),
+        load_template_profiles(),
+        _policy("accept"),
+        _personal_policy(),
+        PersonalExampleStore(tmp_path / "personal_examples.json"),
+        ForbiddenGemma(),
+    )
+    item = EducationalClassificationInput(
+        source=tmp_path / "만든촬영본.png",
+        fingerprint="c" * 40,
+        file_name="만든촬영본.png",
+        natural_text="정렬된 함수 방정식 본문",
+        template_natural_text="원래 섞인 OCR 순서",
+        lexical_evidence=("함수", "방정식"),
+        pmi_collocations=("과제 제출",),
+        ocr_layout_evidence=("답안란",),
+        visual_evidence=("교과서",),
+    )
+
+    output = service.classify_many(
+        (item,),
+        default_profile(StudentType.MIDDLE, 1, Semester.FIRST),
+    )[0]
+
+    query_batch = next(
+        batch for batch in encoder.batches if batch[0].startswith("query: ")
+    )
+    assert query_batch == (
+        "query: 만든촬영본\n정렬된 함수 방정식 본문",
+        "query: 만든촬영본\n원래 섞인 OCR 순서",
+    )
+    assert output.classification.template.label == "과제"
+    contributions = {
+        item.name: item.value for item in output.classification.template.evidence
+    }
+    assert contributions["ocr_layout"] > 0.0
+    assert contributions["pmi_collocation"] > 0.0
+    assert contributions["visual"] == 0.0
 
 
 def test_service_turns_both_weak_axes_into_needs_review_without_gemma(tmp_path: Path):

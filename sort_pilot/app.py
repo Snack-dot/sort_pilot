@@ -333,6 +333,7 @@ class AppController(QObject):
             fingerprint=record.fingerprint,
             file_name=record.file_name,
             natural_text=record.natural_text,
+            template_natural_text=record.template_natural_text,
             lexical_evidence=record.lexical_evidence,
             pmi_collocations=record.pmi_collocations,
             ocr_layout_evidence=record.ocr_layout_evidence,

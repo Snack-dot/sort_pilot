@@ -95,6 +95,7 @@ class AnalysisRecord:
     terms: dict[str, float]
     fingerprint: str = ""
     natural_text: str = ""
+    template_natural_text: str = ""
     lexical_evidence: tuple[str, ...] = ()
     pmi_collocations: tuple[str, ...] = ()
     ocr_layout_evidence: tuple[str, ...] = ()

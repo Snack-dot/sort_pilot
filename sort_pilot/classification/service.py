@@ -23,6 +23,7 @@ from .personal_examples import (
     PersonalExamplePolicy,
     PersonalExampleStore,
 )
+from .optional_evidence import Phase8OptionalEvidence, load_phase8_optional_evidence
 from .policy import AxisRoutingDecision, PolicyRoute, route_axis
 from .result import (
     AxisDecision,
@@ -47,6 +48,7 @@ class EducationalClassificationInput:
     fingerprint: str
     file_name: str
     natural_text: str
+    template_natural_text: str | None = None
     lexical_evidence: tuple[str, ...] = ()
     pmi_collocations: tuple[str, ...] = ()
     ocr_layout_evidence: tuple[str, ...] = ()
@@ -68,6 +70,20 @@ class EducationalClassificationInput:
             self,
             "natural_text",
             self.natural_text[:MAX_CLASSIFICATION_TEXT_CHARACTERS],
+        )
+        if self.template_natural_text is not None and not isinstance(
+            self.template_natural_text,
+            str,
+        ):
+            raise ValueError("템플릿 자연어 근거는 문자열이어야 합니다.")
+        object.__setattr__(
+            self,
+            "template_natural_text",
+            (
+                self.natural_text
+                if self.template_natural_text is None
+                else self.template_natural_text[:MAX_CLASSIFICATION_TEXT_CHARACTERS]
+            ),
         )
         for field in (
             "lexical_evidence",
@@ -149,6 +165,7 @@ class EducationalClassificationService:
         personal_policy: PersonalExamplePolicy,
         personal_examples: PersonalExampleStore,
         gemma: ConstrainedGemmaFallback,
+        optional_evidence: Phase8OptionalEvidence | None = None,
     ) -> None:
         """Bind exact local classifiers, policies, examples, and fallback."""
         self.encoder = encoder
@@ -160,6 +177,7 @@ class EducationalClassificationService:
         self.personal_policy = personal_policy
         self.personal_examples = personal_examples
         self.gemma = gemma
+        self.optional_evidence = optional_evidence or load_phase8_optional_evidence()
 
     def classify_many(
         self,
@@ -177,22 +195,39 @@ class EducationalClassificationService:
         if not isinstance(student, StudentProfile):
             raise ValueError("교육 분류에는 저장된 학생 프로필이 필요합니다.")
         self._raise_if_cancelled(cancelled)
-        natural_inputs = tuple(
+        subject_inputs = tuple(
             SubjectEvidence(item.file_name, item.natural_text).embedding_text
             for item in ordered
         )
-        embeddings = _embedding_matrix(
-            self.encoder.encode(tuple(f"query: {value}" for value in natural_inputs)),
-            len(ordered),
+        template_inputs = tuple(
+            SubjectEvidence(
+                item.file_name,
+                item.template_natural_text or "",
+            ).embedding_text
+            for item in ordered
+        )
+        unique_inputs = tuple(dict.fromkeys((*subject_inputs, *template_inputs)))
+        unique_embeddings = _embedding_matrix(
+            self.encoder.encode(tuple(f"query: {value}" for value in unique_inputs)),
+            len(unique_inputs),
+        )
+        embedding_index = {value: index for index, value in enumerate(unique_inputs)}
+        subject_embeddings = np.asarray(
+            [unique_embeddings[embedding_index[value]] for value in subject_inputs],
+            dtype=np.float32,
+        )
+        template_embeddings = np.asarray(
+            [unique_embeddings[embedding_index[value]] for value in template_inputs],
+            dtype=np.float32,
         )
         local: list[tuple[AxisRoutingDecision, AxisRoutingDecision]] = []
-        for completed, (item, embedding) in enumerate(
-            zip(ordered, embeddings, strict=True),
+        for completed, (item, subject_embedding, template_embedding) in enumerate(
+            zip(ordered, subject_embeddings, template_embeddings, strict=True),
             1,
         ):
             self._raise_if_cancelled(cancelled)
             personal = self.personal_examples.nearest_scores(
-                tuple(float(value) for value in embedding),
+                tuple(float(value) for value in subject_embedding),
                 student,
                 self.personal_policy,
             )
@@ -204,24 +239,35 @@ class EducationalClassificationService:
             )
             template_evidence = TemplateEvidence(
                 file_name=item.file_name,
-                natural_text=item.natural_text,
+                natural_text=item.template_natural_text or "",
                 lexical_terms=item.lexical_evidence,
-                pmi_collocations=item.pmi_collocations,
-                ocr_layout_terms=item.ocr_layout_evidence,
-                visual_terms=item.visual_evidence,
+                pmi_collocations=(
+                    item.pmi_collocations if self.optional_evidence.pmi else ()
+                ),
+                ocr_layout_terms=(
+                    item.ocr_layout_evidence
+                    if self.optional_evidence.ocr_layout
+                    else ()
+                ),
+                visual_terms=(
+                    item.visual_evidence
+                    if self.optional_evidence.yolo_lvis_visual
+                    else ()
+                ),
                 personal_example_scores=personal.template,
             )
             subject = self.subject_classifier.classify(
                 subject_evidence,
                 student,
                 self.subject_profiles,
-                query_embedding=embedding,
+                query_embedding=subject_embedding,
                 personal_example_weight=self.personal_policy.subject.weight,
+                lexical_weight=self.optional_evidence.subject_kiwi_lexical_weight,
             )
             template = self.template_classifier.classify(
                 template_evidence,
                 self.template_profiles,
-                query_embedding=embedding,
+                query_embedding=template_embedding,
                 personal_example_weight=self.personal_policy.template.weight,
             )
             local.append(
@@ -256,7 +302,11 @@ class EducationalClassificationService:
                             routing=routing,
                             evidence=BoundedExtractedEvidence(
                                 file_name=item.file_name,
-                                natural_text=item.natural_text,
+                                natural_text=(
+                                    item.natural_text
+                                    if axis_index == 0
+                                    else item.template_natural_text or ""
+                                ),
                                 structured=routing.local_decision.evidence,
                             ),
                         )
@@ -276,7 +326,12 @@ class EducationalClassificationService:
         self._raise_if_cancelled(cancelled)
 
         outputs = []
-        for item, embedding, decisions in zip(ordered, embeddings, final, strict=True):
+        for item, embedding, decisions in zip(
+            ordered,
+            subject_embeddings,
+            final,
+            strict=True,
+        ):
             subject, template = decisions
             if not isinstance(subject, AxisDecision) or not isinstance(template, AxisDecision):
                 raise RuntimeError("교육 분류 축이 완성되지 않았습니다.")

@@ -14,7 +14,7 @@ The manual app uses a two-thread Qt pool. Each pool thread retains its own analy
 
 ## Authoritative student-classifier upgrade
 
-`../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is supreme for the student classifier; the legacy architecture and SRS remain references only. Phases 0–7 provide the two subject/template axes, fixed student onboarding and catalog, made-up evaluation corpus, E5 subject ranking, the separate five-template classifier, calibrated per-axis routing, constrained local Gemma fallback, fixed-choice preview, immutable approved paths, and local correction examples.
+`../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is supreme for the student classifier; the legacy architecture and SRS remain references only. Phases 0–8 provide the two subject/template axes, fixed student onboarding and catalog, made-up evaluation corpus, E5 subject ranking, the separate five-template classifier, calibrated per-axis routing, constrained local Gemma fallback, fixed-choice preview, immutable approved paths, local correction examples, and measured OCR-layout evidence.
 
 The Phase 6 fallback accepts only an axis that the calibrated policy routed to `gemma_fallback`. It sends ranked supplied candidates and bounded extracted evidence to one CPU-only loopback Gemma server, accepts only one exact supplied candidate or Needs Review, retries only unresolved axes, supports cancellation, and always shuts the server down. Its caller-selected local cache stores input hashes and validated selections only; it does not persist paths or raw extracted evidence. Invalid, unavailable, or retry-exhausted output remains Needs Review and cannot produce a move plan.
 
@@ -22,9 +22,11 @@ Phase 7 passes transient extracted natural text and bounded structured evidence 
 
 Only a changed or newly resolved preview decision becomes a separate personal example. The local document contains the fingerprint, normalized embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions, but no source path or raw extracted text. Future nearest-example evidence is independently weighted for each axis. The weights and minimum similarities reproduce from made-up held-out data without changing the Phase 5 thresholds; no E5/Gemma fine-tuning or global profile mutation occurs.
 
+Phase 8 orders detected OCR lines by page columns for subject natural text, retains the original detected order transiently for template semantic intent, and passes bounded layout indicators separately. A structured Kiwi lexical contribution with weight `0.05` supplements E5 subject similarity without converting tokens into a sentence. Development ablation retained PMI and rejected visual evidence; the final paired made-up evaluation verifies that frozen selection and clears the agreed subject, template, combined-path, latency, and memory gates. YOLO/LVIS visual evidence and new model-session scheduling remain disabled.
+
 ## Local model setup
 
-The YOLO ONNX model is generated from the official Ultralytics YOLOv8n checkpoint at 640×640 with opset 17 and is committed at `data/models/yolov8n.onnx` (~13MB, under GitHub's 100MB limit) — no setup needed. The semantic-rescue word vectors are pretrained fastText vectors (Korean + English), quantized to float16 and built locally at `data/models/word_vectors.npz` (~112MB, over GitHub's limit) by `embeddings_installer.py` after a consent prompt in the calibration flow, streaming only the most frequent words from Meta's official releases rather than downloading them whole. The classifier discovers both automatically and degrades gracefully (no object detection, no semantic rescue) when either is absent.
+The retained YOLO ONNX model was generated from the official Ultralytics YOLOv8n checkpoint at 640×640 with opset 17 and remains at `data/models/yolov8n.onnx` (~13MB), but the active educational extraction flow no longer invokes it after the Phase 8 ablation. The semantic-rescue word vectors are pretrained fastText vectors (Korean + English), quantized to float16 and built locally at `data/models/word_vectors.npz` (~112MB, over GitHub's limit) by `embeddings_installer.py` after a consent prompt in the historical calibration flow.
 
 ## Verification
 
@@ -35,4 +37,4 @@ Run:
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-Accuracy and resource targets still require the private labelled corpus and reference Windows hardware described in the SRS. Do not claim those acceptance thresholds based solely on unit tests.
+Phase 8 aggregate reproduction uses only the tracked made-up development and held-out corpora described in `../eval/README.md`. Real labels remain local-only under Git-ignored `eval/local/`.

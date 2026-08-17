@@ -107,8 +107,8 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
 | `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
-| `_ocr_engine`, `_ocr`, `_ocr_evidence` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens plus transient OCR natural text. |
-| `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
+| `_ocr_engine`, `_layout_aware_ocr`, `_ocr`, `_ocr_evidence` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread, order detected lines by page columns, and retain bounded tokens plus transient subject/template OCR text and layout evidence. |
+| `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image metadata, and layout-aware OCR into `FeatureVector`; the active educational flow does not invoke rejected YOLO/LVIS evidence. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
 | `load_vocab`, `doc_vectors`, `semantic_similarity`, `_resolve` | `classifier_engine/embeddings.py` | Lazily load the bundled pretrained word-vector vocabulary, expand YOLO object labels into plain words, and greedily match each document's most distinctive words against their closest counterpart instead of averaging them. |
@@ -226,7 +226,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `SubjectTextEncoder`, `SubjectTextEncoder.encode` | `classification/e5.py` | Define the minimal 384-dimensional encoder boundary used by subject ranking and injected tests. |
 | `_embedding_matrix` | `classification/e5.py` | Validate and normalize finite nonzero 384-dimensional embedding rows. |
 | `FastEmbedE5Encoder`, `FastEmbedE5Encoder.__init__`, `FastEmbedE5Encoder.encode` | `classification/e5.py` | Register and run exact multilingual E5-small through CPU-only FastEmbed, local-cache-only unless download is explicitly allowed. |
-| `E5SubjectClassifier`, `E5SubjectClassifier.__init__`, `E5SubjectClassifier._profile_embeddings`, `E5SubjectClassifier.classify` | `classification/e5.py` | Cache averaged profile vectors, rank only catalog subjects by NumPy cosine similarity, and retain raw similarity and top-two margin. |
+| `E5SubjectClassifier`, `E5SubjectClassifier.__init__`, `E5SubjectClassifier._profile_embeddings`, `E5SubjectClassifier._lexical_scores`, `E5SubjectClassifier.classify` | `classification/e5.py` | Cache averaged profile vectors, score bounded Kiwi terms separately against inspectable natural profiles, rank only catalog subjects, and retain each contribution plus top-two margin. |
 | `TemplateEvidenceWeights`, `TemplateEvidenceWeights.__post_init__`, `TemplateEvidenceWeights.total`, `TemplateEvidenceWeights.to_dict` | `classification/template.py` | Validate and expose one template profile's separate semantic, filename, lexical, PMI-collocation, OCR/layout, visual, and personal-example weights. |
 | `TemplateProfile`, `TemplateProfile.__post_init__` | `classification/template.py` | Keep natural prototypes, structured indicators, evidence weights, fixed label, and version together for one of the five templates. |
 | `TemplateEvidence`, `TemplateEvidence.__post_init__`, `TemplateEvidence.embedding_text` | `classification/template.py` | Validate natural and structured template evidence while exposing only natural filename/body text to E5. |
@@ -276,6 +276,17 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `_available_destination`, `freeze_organization_plan`, `_confirmation_message` | `educational_preview.py` | Resolve existing and within-batch collisions once, return the immutable approved plan, and show its exact paths in final confirmation. |
 | `EducationalPreviewDialog`, `EducationalPreviewDialog.__init__`, `EducationalPreviewDialog._set_read_only`, `EducationalPreviewDialog._axis_selector` | `educational_preview.py` | Build the fixed-choice two-axis review with explicit unresolved state and allowed destination roots. |
 | `EducationalPreviewDialog.approved_plans`, `EducationalPreviewDialog._refresh_destinations`, `EducationalPreviewDialog._confirm`, `EducationalPreviewDialog.frozen_plans` | `educational_preview.py` | Require both axes, show the resulting hierarchy, obtain final approval, and expose only paths frozen by that approval. |
+
+## Phase 8 optional evidence and low-end optimization
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `Phase8OptionalEvidence`, `Phase8OptionalEvidence.__post_init__`, `load_phase8_optional_evidence` | `classification/optional_evidence.py` | Strictly load the measured OCR-layout, Kiwi, and PMI selection plus explicit YOLO/LVIS and session-scheduling rejections. |
+| `Phase8Case`, `Phase8Case.__post_init__`, `load_phase8_corpus` | `evaluation/phase8.py` | Strictly load one ordered direct made-up Phase 8 corpus with catalog subjects, the five fixed templates, and separate optional evidence channels. |
+| `_exact_mcnemar_p_value`, `paired_accuracy` | `evaluation/phase8.py` | Calculate the exact two-sided paired probability and the agreed accuracy-gain/significance decision. |
+| `PairedAccuracy`, `PairedAccuracy.baseline_accuracy`, `PairedAccuracy.candidate_accuracy`, `PairedAccuracy.gain`, `PairedAccuracy.passes`, `PairedAccuracy.to_dict` | `evaluation/phase8.py` | Retain paired correctness counts, rates, gain, regressions, exact probability, and gate outcome. |
+| `ResourceMeasurement`, `ResourceMeasurement.__post_init__`, `ResourceMeasurement.to_dict` | `evaluation/phase8.py` | Validate and serialize measured P95 latency and peak process memory. |
+| `Phase8GateReport`, `Phase8GateReport.latency_ratio`, `Phase8GateReport.passes`, `Phase8GateReport.to_dict` | `evaluation/phase8.py` | Require all three paired accuracy gates plus the agreed latency and memory limits for the complete selected configuration. |
 
 ## Student evaluation framework
 

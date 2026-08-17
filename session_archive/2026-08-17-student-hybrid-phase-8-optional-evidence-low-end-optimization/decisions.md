@@ -1,0 +1,24 @@
+# Phase 8 Decisions
+
+- `plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` remains supreme.
+- The classifier continues to have exactly the subject and template axes.
+- Templates remain exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.
+- Unresolved subject or template results count as incorrect in subject, template, and combined-path accuracy as applicable.
+- Each accuracy measure must improve by at least `0.05` with an exact paired probability below `0.05`.
+- Candidate P95 latency may be at most `1.10` times the Phase 7 baseline.
+- Candidate peak process memory must remain at or below `2048 MB`.
+- The Phase 5 routing thresholds remain unchanged.
+- The made-up development corpus selects evidence. The separate made-up held-out corpus verifies the frozen selection and does not select evidence again.
+- Layout-aware OCR orders detected lines by page columns for subject natural text.
+- Original OCR detection order is retained transiently for independent template semantic intent.
+- OCR text, original-order template text, and layout evidence are excluded from `FeatureVector.to_dict()`.
+- Subject Kiwi terms remain structured evidence and are never converted into a sentence for E5.
+- Subject Kiwi lexical weight is `0.05`, the smallest tested development weight that cleared all three development accuracy gates while preserving at least 90% authoritative-local subject precision.
+- PMI is retained because its development contribution improved eight template results without regression and had exact paired `p=0.0078125`.
+- Visual evidence is rejected because it improved zero development and held-out results (`p=1.0`).
+- YOLO/LVIS is not invoked by the active educational extractor.
+- New model-session scheduling is not retained because the selected active flow has no justified optional visual-model session.
+- The final packaged selection is inspectable JSON and rejects unexpected fields.
+- The measurement host had about 16 GB physical RAM. The agreed 2 GB peak-process limit is a low-memory viability proxy, not a claim that the host itself had 4–8 GB RAM.
+- Only entirely made-up tracked cases and labels are used. Real evaluation data remains local-only and Git-ignored.
+- No phase after Phase 8 is started in this work.

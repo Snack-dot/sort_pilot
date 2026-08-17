@@ -16,6 +16,8 @@ from .subject import SubjectEvidence, SubjectProfile, eligible_subject_profiles
 E5_MODEL_ID = "intfloat/multilingual-e5-small"
 E5_VECTOR_SIZE = 384
 E5_RANKING_POLICY_VERSION = "phase-3-ranking"
+MAX_SUBJECT_LEXICAL_TERMS = 3
+MAX_SUBJECT_LEXICAL_EVIDENCE_ITEMS = 160
 
 
 class SubjectTextEncoder(Protocol):
@@ -140,6 +142,50 @@ class E5SubjectClassifier:
         self._profile_cache[profiles] = matrix
         return matrix
 
+    @staticmethod
+    def _lexical_scores(
+        evidence: SubjectEvidence,
+        profiles: tuple[SubjectProfile, ...],
+    ) -> dict[str, float]:
+        """Score bounded Kiwi terms against inspectable natural subject profiles."""
+        terms = tuple(
+            dict.fromkeys(
+                value.casefold().strip()
+                for value in evidence.lexical_terms[:MAX_SUBJECT_LEXICAL_EVIDENCE_ITEMS]
+                if value.strip()
+            )
+        )
+        profile_text = {
+            profile.label: " ".join(profile.prototype_texts).casefold()
+            for profile in profiles
+        }
+        weighted_terms: dict[str, float] = {}
+        for term in terms:
+            frequency = sum(term in text for text in profile_text.values())
+            if frequency:
+                weighted_terms[term] = (
+                    math.log((len(profiles) + 1) / (frequency + 1)) + 1.0
+                )
+        denominator = sum(
+            sorted(weighted_terms.values(), reverse=True)[:MAX_SUBJECT_LEXICAL_TERMS]
+        )
+        if denominator == 0.0:
+            return {profile.label: 0.0 for profile in profiles}
+        return {
+            profile.label: sum(
+                sorted(
+                    (
+                        weight
+                        for term, weight in weighted_terms.items()
+                        if term in profile_text[profile.label]
+                    ),
+                    reverse=True,
+                )[:MAX_SUBJECT_LEXICAL_TERMS]
+            )
+            / denominator
+            for profile in profiles
+        }
+
     def classify(
         self,
         evidence: SubjectEvidence,
@@ -148,15 +194,20 @@ class E5SubjectClassifier:
         *,
         query_embedding: Sequence[float] | None = None,
         personal_example_weight: float = 0.0,
+        lexical_weight: float = 0.0,
     ) -> AxisDecision:
-        """Rank catalog subjects with cosine and calibrated personal-example evidence."""
-        if (
-            isinstance(personal_example_weight, bool)
-            or not isinstance(personal_example_weight, (int, float))
-            or not math.isfinite(personal_example_weight)
-            or personal_example_weight < 0
+        """Rank catalog subjects with cosine and separate structured evidence."""
+        for value, name in (
+            (personal_example_weight, "개인 예시"),
+            (lexical_weight, "Kiwi 어휘"),
         ):
-            raise ValueError("과목 개인 예시 가중치는 0 이상의 유한한 숫자여야 합니다.")
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                raise ValueError(f"과목 {name} 가중치는 0 이상의 유한한 숫자여야 합니다.")
         eligible = eligible_subject_profiles(student, profiles)
         if not eligible:
             raise ValueError("선택한 학생 유형에 사용할 과목 프로필이 없습니다.")
@@ -177,30 +228,40 @@ class E5SubjectClassifier:
             for item in evidence.personal_example_scores
             if item.label in student.allowed_subjects
         }
+        lexical = self._lexical_scores(evidence, profiles)
         ranked = sorted(
             (
                 (
                     profile,
                     float(similarity),
+                    float(lexical.get(profile.label, 0.0)),
                     float(similarity)
-                    + float(personal_example_weight) * personal.get(profile.label, 0.0),
+                    + float(personal_example_weight) * personal.get(profile.label, 0.0)
+                    + float(lexical_weight) * lexical.get(profile.label, 0.0),
                 )
                 for profile, similarity in zip(eligible, similarities, strict=True)
             ),
-            key=lambda item: -item[2],
+            key=lambda item: -item[3],
         )
         candidates = tuple(
             CandidateScore(profile.label, adjusted)
-            for profile, _similarity, adjusted in ranked
+            for profile, _similarity, _lexical, adjusted in ranked
         )
         top_score = candidates[0].raw_score
         margin = top_score - candidates[1].raw_score if len(candidates) > 1 else 0.0
-        top_profile, top_similarity, _adjusted = ranked[0]
-        baseline_label = eligible[int(np.argmax(similarities))].label
+        top_profile, top_similarity, top_lexical, _adjusted = ranked[0]
+        local_without_personal = max(
+            zip(eligible, similarities, strict=True),
+            key=lambda item: (
+                float(item[1])
+                + float(lexical_weight) * lexical.get(item[0].label, 0.0)
+            ),
+        )[0].label
         personal_contribution = float(personal_example_weight) * personal.get(
             top_profile.label,
             0.0,
         )
+        lexical_contribution = float(lexical_weight) * top_lexical
         return AxisDecision(
             label=top_profile.label,
             raw_score=top_score,
@@ -218,10 +279,16 @@ class E5SubjectClassifier:
                     value=personal_contribution,
                     detail=f"weight={float(personal_example_weight):.6f}",
                 ),
+                EvidenceContribution(
+                    name="kiwi_lexical",
+                    value=lexical_contribution,
+                    detail=f"weight={float(lexical_weight):.6f}",
+                ),
             ),
             source=(
                 DecisionSource.PERSONAL_EXAMPLE
-                if top_profile.label != baseline_label and personal_contribution != 0.0
+                if top_profile.label != local_without_personal
+                and personal_contribution != 0.0
                 else DecisionSource.LOCAL
             ),
             model_version=self.model_id,

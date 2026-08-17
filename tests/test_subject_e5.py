@@ -136,6 +136,50 @@ def test_e5_subject_classifier_reuses_profile_embeddings():
     assert len(encoder.batches) == 3
 
 
+def test_subject_kiwi_lexical_evidence_stays_structured_and_inspectable():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산, 방정식과 함수를 학습한다.",), version="1"),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+    equal_embedding = np.zeros(E5_VECTOR_SIZE, dtype=np.float32)
+    equal_embedding[3] = 1.0
+
+    decision = classifier.classify(
+        SubjectEvidence("연습.pdf", "일반 내용", ("방정식", "함수")),
+        student,
+        profiles,
+        query_embedding=equal_embedding,
+        lexical_weight=0.05,
+    )
+
+    assert decision.label == "수학"
+    assert decision.raw_score == pytest.approx(0.05)
+    assert decision.evidence[-1].name == "kiwi_lexical"
+    assert decision.evidence[-1].value == pytest.approx(0.05)
+    assert len(encoder.batches) == 1
+    assert all(text.startswith("passage: ") for text in encoder.batches[0])
+
+
+@pytest.mark.parametrize("value", [-0.1, float("nan"), True])
+def test_subject_classifier_rejects_invalid_kiwi_lexical_weight(value):
+    classifier = E5SubjectClassifier(DeterministicEncoder())
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산과 함수를 학습한다.",), version="1"),
+    )
+
+    with pytest.raises(ValueError, match="Kiwi 어휘"):
+        classifier.classify(
+            SubjectEvidence("자료.pdf", "일반 내용"),
+            StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST),
+            profiles,
+            lexical_weight=value,
+        )
+
+
 def test_e5_subject_classifier_rejects_wrong_vector_size():
     class WrongSizeEncoder:
         model_id = E5_MODEL_ID

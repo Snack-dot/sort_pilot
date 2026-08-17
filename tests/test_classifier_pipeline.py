@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 import zipfile
 
@@ -155,3 +156,65 @@ def test_rapidocr_engine_is_reused_within_worker_thread():
 
     assert first is second
     assert len(created) == 1
+
+
+def test_layout_aware_ocr_orders_columns_and_keeps_transient_line_evidence():
+    result = SimpleNamespace(
+        txts=("문서 제목", "왼쪽 첫 줄", "오른쪽 첫 줄", "왼쪽 둘째 줄", "발급 번호"),
+        boxes=np.asarray(
+            [
+                [[0, 0], [200, 0], [200, 20], [0, 20]],
+                [[0, 30], [80, 30], [80, 45], [0, 45]],
+                [[120, 30], [200, 30], [200, 45], [120, 45]],
+                [[0, 60], [80, 60], [80, 75], [0, 75]],
+                [[120, 60], [200, 60], [200, 75], [120, 75]],
+            ],
+            dtype=np.float32,
+        ),
+    )
+
+    text, evidence = extract_module._layout_aware_ocr(result)
+
+    assert text == "문서 제목 왼쪽 첫 줄 왼쪽 둘째 줄 오른쪽 첫 줄 발급 번호"
+    assert "발급 번호" in evidence
+    assert "발급번호" in evidence
+
+
+def test_ocr_keeps_original_order_only_for_template_semantics(monkeypatch, tmp_path):
+    result = SimpleNamespace(
+        txts=("제목", "왼쪽 첫 줄", "오른쪽 첫 줄", "왼쪽 둘째 줄", "오른쪽 둘째 줄"),
+        boxes=np.asarray(
+            [
+                [[0, 0], [200, 0], [200, 20], [0, 20]],
+                [[0, 30], [80, 30], [80, 45], [0, 45]],
+                [[120, 30], [200, 30], [200, 45], [120, 45]],
+                [[0, 60], [80, 60], [80, 75], [0, 75]],
+                [[120, 60], [200, 60], [200, 75], [120, 75]],
+            ],
+            dtype=np.float32,
+        ),
+    )
+    monkeypatch.setattr(extract_module, "_ocr_engine", lambda: lambda _path: result)
+    extract_module._OCR_LOCAL = __import__("threading").local()
+
+    ordered, _features, _layout = extract_module._ocr_evidence(tmp_path / "made-up.png")
+
+    assert ordered == "제목 왼쪽 첫 줄 왼쪽 둘째 줄 오른쪽 첫 줄 오른쪽 둘째 줄"
+    assert extract_module._OCR_LOCAL.last_template_text == (
+        "제목 왼쪽 첫 줄 오른쪽 첫 줄 왼쪽 둘째 줄 오른쪽 둘째 줄"
+    )
+
+
+def test_feature_vector_does_not_serialize_ocr_text_or_layout_evidence():
+    vector = FeatureVector(
+        "x",
+        "x.png",
+        1,
+        natural_text="민감한 OCR 본문",
+        template_natural_text="원래 OCR 순서",
+        ocr_layout_evidence=("발급번호 123",),
+    )
+
+    assert "natural_text" not in vector.to_dict()
+    assert "template_natural_text" not in vector.to_dict()
+    assert "ocr_layout_evidence" not in vector.to_dict()

@@ -33,6 +33,12 @@ from .gemma_fallback import (
     GemmaFallbackCancelled,
     GemmaFallbackRequest,
 )
+from .optional_evidence import (
+    DEFAULT_PHASE8_OPTIONAL_EVIDENCE_PATH,
+    PHASE8_OPTIONAL_EVIDENCE_VERSION,
+    Phase8OptionalEvidence,
+    load_phase8_optional_evidence,
+)
 from .policy import AxisRoutingDecision, PolicyRoute, RoutingThresholds, route_axis
 from .personal_calibration import (
     PersonalAxisCalibrationReport,
@@ -105,6 +111,7 @@ __all__ = [
     "DEFAULT_SUBJECT_PROFILES_PATH",
     "DEFAULT_CALIBRATED_POLICY_PATH",
     "DEFAULT_PERSONAL_EXAMPLE_POLICY_PATH",
+    "DEFAULT_PHASE8_OPTIONAL_EVIDENCE_PATH",
     "DEFAULT_TEMPLATE_PROFILES_PATH",
     "E5_MODEL_ID",
     "E5_RANKING_POLICY_VERSION",
@@ -129,6 +136,7 @@ __all__ = [
     "OriginalPrediction",
     "PERSONAL_EXAMPLE_DOCUMENT_VERSION",
     "PERSONAL_EXAMPLE_POLICY_VERSION",
+    "PHASE8_OPTIONAL_EVIDENCE_VERSION",
     "PersonalAxisCalibrationReport",
     "PersonalCalibrationCase",
     "PersonalExample",
@@ -138,6 +146,7 @@ __all__ = [
     "PersonalExampleStore",
     "PersonalExampleVersions",
     "PolicyRoute",
+    "Phase8OptionalEvidence",
     "PolicyCalibrationReport",
     "RoutingThresholds",
     "SubjectClassifier",
@@ -161,6 +170,7 @@ __all__ = [
     "calibrate_personal_examples",
     "load_calibrated_policy",
     "load_personal_example_policy",
+    "load_phase8_optional_evidence",
     "load_subject_profiles",
     "load_template_profiles",
     "ordered_template_profiles",
