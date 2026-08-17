@@ -219,6 +219,11 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `SubjectEvidence`, `SubjectEvidence.__post_init__`, `SubjectEvidence.embedding_text` | `classification/subject.py` | Keep natural filename/body text separate from bounded lexical evidence. |
 | `SubjectClassifier.classify` | `classification/subject.py` | Require local subject implementations to return an observable catalog-bounded axis decision. |
 | `eligible_subject_profiles` | `classification/subject.py` | Filter global profiles into the selected student type's JSON-catalog order before scoring. |
+| `load_subject_profiles` | `classification/subject.py` | Strictly load natural-language profiles for every exact subject in the packaged catalog. |
+| `SubjectTextEncoder`, `SubjectTextEncoder.encode` | `classification/e5.py` | Define the minimal 384-dimensional encoder boundary used by subject ranking and injected tests. |
+| `_embedding_matrix` | `classification/e5.py` | Validate and normalize finite nonzero 384-dimensional embedding rows. |
+| `FastEmbedE5Encoder`, `FastEmbedE5Encoder.__init__`, `FastEmbedE5Encoder.encode` | `classification/e5.py` | Register and run exact multilingual E5-small through CPU-only FastEmbed, local-cache-only unless download is explicitly allowed. |
+| `E5SubjectClassifier`, `E5SubjectClassifier.__init__`, `E5SubjectClassifier._profile_embeddings`, `E5SubjectClassifier.classify` | `classification/e5.py` | Cache averaged profile vectors, rank only catalog subjects by NumPy cosine similarity, and retain raw similarity and top-two margin. |
 | `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate provisional raw-score/margin gates. |
 | `AxisRoutingDecision` | `classification/policy.py` | Preserve the local decision, routing reason, and policy version passed to the next stage. |
 | `route_axis` | `classification/policy.py` | Accept decisive local evidence, escalate only plausible ambiguity to Gemma, and abstain on weak evidence. |

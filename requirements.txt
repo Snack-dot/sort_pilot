@@ -9,4 +9,6 @@ onnxruntime==1.27.0
 rapidocr==3.5.0
 psutil==7.0.0
 stop-words==2025.11.4
+numpy==2.4.6
+fastembed==0.8.0
 

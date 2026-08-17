@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid Phase 3 subject profiles and E5 prototype
+
+- Added strict natural-language profiles for every exact subject in the middle/high student catalog.
+- Added the pinned `fastembed==0.8.0` CPU adapter for `intfloat/multilingual-e5-small`, with explicit custom-model registration and local-cache-only loading by default.
+- Added 384-dimensional finite/nonzero vector validation, E5 query/passage prefixes, normalized profile-vector averaging, and NumPy cosine ranking.
+- Restricted ranked candidates to the selected student type's catalog and retained raw similarity plus top-two margin without treating either as calibrated confidence.
+- Added focused tests with an injected deterministic encoder and completed a real local-model check against the made-up corpus; this remains a prototype and is not wired into the active production classifier.
+
 ## 2026-08-17 — Student-hybrid Phase 2 evaluation
 
 - Added a labeled synthetic student corpus with only made-up filenames, text, subjects, and the five fixed templates.

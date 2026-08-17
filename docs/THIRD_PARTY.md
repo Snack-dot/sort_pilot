@@ -15,6 +15,8 @@ This inventory documents the dependencies and model artifacts used by the local 
 | RapidOCR | 3.5.0 | Apache-2.0 | Local OCR pipeline |
 | psutil | 7.0.0 | BSD-3-Clause | Resource and battery instrumentation |
 | stop-words | 2025.11.4 | BSD-3-Clause | Verified multilingual stopword lists for content tokenization |
+| NumPy | 2.4.6 | BSD-3-Clause | Dense vector validation, normalization, and cosine similarity |
+| FastEmbed | 0.8.0 | Apache-2.0 | CPU-only ONNX text embedding adapter for Phase 3 subject ranking |
 | pytest | 9.1.1 | MIT | Development tests |
 | Ultralytics | 8.4.56 | AGPL-3.0 | Development-only YOLO export |
 | ONNX | 1.22.0 | Apache-2.0 | Development-only ONNX export support |
@@ -28,9 +30,12 @@ This inventory documents the dependencies and model artifacts used by the local 
 | `gemma-3-1b-it-Q4_K_M.gguf` | `ggml-org/gemma-3-1b-it-GGUF` (Google Gemma terms) | `8CCC5CD1F1B3602548715AE25A66ED73FD5DC68A210412EEA643EB20EB75A135` | No (downloaded, consent-gated) |
 | `llama-b10405-bin-win-cpu-x64.zip` | `ggml-org/llama.cpp` release `b10405` (MIT) | `31F3BCC3F7645715B3ED8E845AB338D94659AA0E512B2211B8D94B9C8EB24758` | No (downloaded, consent-gated) |
 | `data/models/word_vectors.npz` | Streamed from Meta AI's official `fasttext` `cc.ko.300.vec.gz`/`cc.en.300.vec.gz` releases (CC BY-SA 3.0), top 100,000 words by frequency per language, float16-quantized | `AEE86795E9892825DA0A7D02C67D5AC7F66C4EA16360D642C9DDF1F58828B972` (maintainer's reference build) | No (~112MB — over GitHub's 100MB limit; downloaded, consent-gated) |
+| `intfloat/multilingual-e5-small` `onnx/model.onnx` | Hugging Face snapshot `614241f622f53c4eeff9890bdc4f31cfecc418b3` (MIT) | `CA456C06B3A9505DDFD9131408916DD79290368331E7D76BB621F1CBA6BC8665` | No (470,268,510 bytes; explicitly downloaded to Git-ignored `data/models/fastembed/`) |
 
 ONNX export is not bit-reproducible across toolchains, so `yolov8n.onnx`'s hash reflects this repository's own committed bytes, not a value anyone re-exporting the checkpoint should expect to match — `yolov8n.pt`'s hash is what verifies you have the authentic upstream weights.
 
 `gemma-3-1b-it-Q4_K_M.gguf` and `llama-b10405-bin-win-cpu-x64.zip` are downloaded only after explicit terms consent and verified against the pinned digests above before use (`local_tagger.py`).
 
 `word_vectors.npz` is built by `embeddings_installer.py`: rather than downloading one pinned artifact, it streams each official fastText release and stops after the top `VOCAB_PER_LANGUAGE` (100,000) most frequent words — the full releases are multi-gigabyte, and only the frequent end is needed. That makes the resulting bytes environment-dependent (zlib/numpy version), so the installer verifies the result structurally (word count, vector shape) rather than against a fixed hash; the digest above documents the maintainer's own build for reference, not a runtime-enforced check. Also consent-gated, like Gemma. The semantic-rescue layer no-ops gracefully when this file is absent.
+
+Phase 3 registers and uses `intfloat/multilingual-e5-small` explicitly because FastEmbed 0.8.0 does not include E5-small in its built-in model list. The adapter forces `CPUExecutionProvider`, defaults to cached files only, and applies the E5 `query:`/`passage:` input prefixes. The initial download occurs only when a caller explicitly sets `allow_download=True`.

@@ -1,5 +1,13 @@
 """Contracts shared by local classification, fallback policy, and preview."""
 
+from .e5 import (
+    E5_MODEL_ID,
+    E5_RANKING_POLICY_VERSION,
+    E5_VECTOR_SIZE,
+    E5SubjectClassifier,
+    FastEmbedE5Encoder,
+    SubjectTextEncoder,
+)
 from .policy import AxisRoutingDecision, PolicyRoute, RoutingThresholds, route_axis
 from .result import (
     AxisDecision,
@@ -10,22 +18,39 @@ from .result import (
     OrganizationPlan,
     Template,
 )
-from .subject import SubjectClassifier, SubjectEvidence, SubjectProfile, eligible_subject_profiles
+from .subject import (
+    DEFAULT_SUBJECT_PROFILES_PATH,
+    SUBJECT_PROFILE_VERSION,
+    SubjectClassifier,
+    SubjectEvidence,
+    SubjectProfile,
+    eligible_subject_profiles,
+    load_subject_profiles,
+)
 
 __all__ = [
     "AxisRoutingDecision",
     "AxisDecision",
     "CandidateScore",
     "DecisionSource",
+    "DEFAULT_SUBJECT_PROFILES_PATH",
+    "E5_MODEL_ID",
+    "E5_RANKING_POLICY_VERSION",
+    "E5_VECTOR_SIZE",
+    "E5SubjectClassifier",
     "EducationalClassificationResult",
     "EvidenceContribution",
+    "FastEmbedE5Encoder",
     "OrganizationPlan",
     "PolicyRoute",
     "RoutingThresholds",
     "SubjectClassifier",
     "SubjectEvidence",
     "SubjectProfile",
+    "SUBJECT_PROFILE_VERSION",
+    "SubjectTextEncoder",
     "Template",
     "eligible_subject_profiles",
+    "load_subject_profiles",
     "route_axis",
 ]
