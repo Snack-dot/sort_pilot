@@ -2,26 +2,30 @@
 
 from .policy import AxisRoutingDecision, PolicyRoute, RoutingThresholds, route_axis
 from .result import (
-    Activity,
     AxisDecision,
     CandidateScore,
     DecisionSource,
     EducationalClassificationResult,
+    EvidenceContribution,
+    OrganizationPlan,
+    Template,
 )
 from .subject import SubjectClassifier, SubjectEvidence, SubjectProfile, eligible_subject_profiles
 
 __all__ = [
-    "Activity",
     "AxisRoutingDecision",
     "AxisDecision",
     "CandidateScore",
     "DecisionSource",
     "EducationalClassificationResult",
+    "EvidenceContribution",
+    "OrganizationPlan",
     "PolicyRoute",
     "RoutingThresholds",
     "SubjectClassifier",
     "SubjectEvidence",
     "SubjectProfile",
+    "Template",
     "eligible_subject_profiles",
     "route_axis",
 ]

@@ -15,6 +15,7 @@ class TrayIcon:
         organize_desktop: Callable[[], None],
         organize_downloads: Callable[[], None],
         calibrate_topics: Callable[[], None],
+        manage_student_profile: Callable[[], bool],
         manage_topics: Callable[[], None],
         migrate_folders: Callable[[], None],
         undo: Callable[[], None],
@@ -32,6 +33,8 @@ class TrayIcon:
         self.downloads_action.triggered.connect(organize_downloads)
         self.calibrate_action = QAction("주제 다시 보정", self.menu)
         self.calibrate_action.triggered.connect(calibrate_topics)
+        self.student_action = QAction("학생 설정", self.menu)
+        self.student_action.triggered.connect(manage_student_profile)
         self.topics_action = QAction("폴더/태그 관리", self.menu)
         self.topics_action.triggered.connect(manage_topics)
         self.migration_action = QAction("기존 폴더 계층화", self.menu)
@@ -44,6 +47,7 @@ class TrayIcon:
         self.menu.addAction(self.desktop_action)
         self.menu.addAction(self.downloads_action)
         self.menu.addSeparator()
+        self.menu.addAction(self.student_action)
         self.menu.addAction(self.calibrate_action)
         self.menu.addAction(self.topics_action)
         self.menu.addAction(self.migration_action)
@@ -60,6 +64,7 @@ class TrayIcon:
             self.desktop_action,
             self.downloads_action,
             self.calibrate_action,
+            self.student_action,
             self.topics_action,
             self.migration_action,
             self.undo_action,

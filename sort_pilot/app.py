@@ -25,12 +25,14 @@ from .classifier_engine.topics import (
     TopicProfile,
     TopicProfileStore,
 )
+from .curriculum import StudentProfileStore
 from .embeddings_installer import EmbeddingsInstaller
 from .history import HistoryStore
 from .instance_lock import SingleInstanceLock
 from .local_tagger import LocalModelInstaller, LocalTagger
 from .migration import MigrationCandidate, collect_migration_candidates
 from .models import FileSuggestion
+from .onboarding import StudentOnboardingDialog
 from .organizer import build_operation, execute_batch, undo_latest
 from .preview import PreviewDialog
 from .scanner import collect_candidates
@@ -48,6 +50,7 @@ class AppController(QObject):
         self.app.setQuitOnLastWindowClosed(False)
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         self.history = HistoryStore(app_data / "history.json", app_data / "history.db")
+        self.student_profile_store = StudentProfileStore(app_data / "student_profile.json")
         self.profile_store = TopicProfileStore(data_dir() / "topic_profiles.json")
         self.topic_classifier = TopicClassifier()
         self.calibration = CalibrationService(self.topic_classifier, self.profile_store)
@@ -72,6 +75,7 @@ class AppController(QObject):
             self.organize_desktop,
             self.organize_downloads,
             self.calibrate_topics,
+            self.manage_student_profile,
             self.manage_topics,
             self.migrate_folders,
             self.undo,
@@ -79,20 +83,55 @@ class AppController(QObject):
         )
 
     def start(self) -> None:
-        """Show the tray icon and report a successful history migration."""
+        """Show the tray icon and schedule onboarding before other first-run work."""
         self.tray.show()
         if self.history.migrated_legacy_batch:
             self.tray.notify("Sort Pilot", "기존 실행 취소 기록을 JSON 형식으로 이전했습니다.")
+        QTimer.singleShot(0, self._start_initial_workflow)
+
+    def _start_initial_workflow(self) -> None:
+        """Require valid student settings before scheduling legacy topic calibration."""
+        if not self._require_student_profile():
+            return
         if not self.profile_store.load():
             self._pending_organize = (
                 [self._desktop_folder(), self.downloads_folder],
                 "바탕화면과 다운로드 폴더",
             )
-            QTimer.singleShot(0, self.calibrate_topics)
+            self.calibrate_topics()
+
+    def _require_student_profile(self) -> bool:
+        """Require a valid saved student profile before classification or organization."""
+        try:
+            current = self.student_profile_store.load()
+        except RuntimeError as exc:
+            QMessageBox.critical(None, "학생 설정 읽기 실패", str(exc))
+            return False
+        return current is not None or self.manage_student_profile()
+
+    def manage_student_profile(self) -> bool:
+        """Create or edit the local student onboarding profile atomically."""
+        try:
+            current = self.student_profile_store.load()
+        except RuntimeError as exc:
+            QMessageBox.critical(None, "학생 설정 읽기 실패", str(exc))
+            return False
+        dialog = StudentOnboardingDialog(current)
+        if dialog.exec() != StudentOnboardingDialog.DialogCode.Accepted or dialog.profile is None:
+            return False
+        try:
+            self.student_profile_store.save(dialog.profile)
+        except (OSError, ValueError, RuntimeError) as exc:
+            QMessageBox.critical(None, "학생 설정 저장 실패", str(exc))
+            return False
+        self.tray.notify("Sort Pilot", "학생 유형, 학년, 학기 설정을 저장했습니다.")
+        return True
 
     def calibrate_topics(self) -> None:
         """Analyze a bounded random sample without moving files."""
         if self.analysis.busy:
+            return
+        if not self._require_student_profile():
             return
         if self._pending_organize is None:
             self._pending_organize = (
@@ -140,6 +179,8 @@ class AppController(QObject):
 
     def migrate_folders(self) -> None:
         """Analyze existing flat folders and prepare a separate approval-based migration."""
+        if not self._require_student_profile():
+            return
         candidates: list[MigrationCandidate] = []
         try:
             for root in (self._desktop_folder(), self.downloads_folder):
@@ -160,6 +201,8 @@ class AppController(QObject):
 
     def _organize_existing_files(self, folders: list[Path], label: str) -> None:
         """Collect candidates quickly and start a hierarchical background batch."""
+        if not self._require_student_profile():
+            return
         if not self.profile_store.load():
             self._pending_organize = (folders, label)
             QMessageBox.information(
@@ -184,6 +227,8 @@ class AppController(QObject):
 
     def _start_analysis(self, paths, mode: str, label: str) -> None:
         """Start one queue session with an explicit completion mode and progress label."""
+        if not self._require_student_profile():
+            return
         self._analysis_mode = mode
         total = self.analysis.start(paths)
         if total:
@@ -428,6 +473,8 @@ class AppController(QObject):
         learning_records: dict[str, AnalysisRecord] | None = None,
     ) -> None:
         """Show editable destinations, execute approved moves, and learn feedback."""
+        if not self._require_student_profile():
+            return
         dialog = PreviewDialog(
             suggestions,
             self._desktop_folder(),

@@ -1,5 +1,7 @@
 # Sort Pilot — Korean Middle/High School Hybrid Educational Classifier
 
+> **Status:** Superseded preliminary reference only. `../HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is supreme and overrides every conflict.
+
 Upgrade the existing Sort Pilot architecture to the following target specification. Use the existing repository context for current modules, safety logic, extraction, preview, move, rollback, Undo, caching, and Gemma integration. Do not redesign unrelated infrastructure.
 
 ## Product Domain

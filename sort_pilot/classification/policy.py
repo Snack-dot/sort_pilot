@@ -17,7 +17,7 @@ class PolicyRoute(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class RoutingThresholds:
-    """Provisional raw-score and margin gates for one classifier axis."""
+    """Calibrated raw-score and margin gates for one classifier axis."""
 
     high_score: float
     high_margin: float
@@ -55,14 +55,14 @@ def route_axis(
             policy_version,
             "local classifier explicitly abstained",
         )
-    if decision.score >= thresholds.high_score and decision.margin >= thresholds.high_margin:
+    if decision.raw_score >= thresholds.high_score and decision.margin >= thresholds.high_margin:
         return AxisRoutingDecision(
             PolicyRoute.ACCEPT_LOCAL,
             decision,
             policy_version,
             "raw score and top-two margin cleared local-authority gates",
         )
-    if decision.score >= thresholds.gemma_score:
+    if decision.raw_score >= thresholds.gemma_score:
         return AxisRoutingDecision(
             PolicyRoute.GEMMA_FALLBACK,
             decision,

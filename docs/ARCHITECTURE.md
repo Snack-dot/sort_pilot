@@ -1,10 +1,12 @@
 # Architecture — Local File Classifier
 
-> **Implemented-app note (2026-08-13):** The diagrams below describe the original long-lived watcher proposal. The integrated MVP instead uses manual Desktop/Downloads collection, an in-process `QThreadPool` capped at two workers, one reusable pipeline/OCR engine per worker, and Qt signals back to the UI. See `docs/FUNCTION_MAP.md` for the implemented call graph.
->
-> Each worker now runs the complete `Pipeline.safe_classify()` path and returns a reusable `AnalysisRecord` containing persisted Tier-1/Naive Bayes evidence plus extracted features. Engine categories never become destination topics automatically. A fresh install calibrates user topics from a bounded random sample; adaptive TF-IDF and optional consent-gated local Gemma labels are reviewed before profile creation. Full-batch corrections add signed positive/negative evidence only after successful moves. See `docs/HIERARCHICAL_TOPICS.md` for the implemented hierarchy.
+> **Documentation status:** Historical reference for the legacy classifier design. Major process, workflow, storage, and repository-layout sections below do not describe the current application. Use `FUNCTION_MAP.md` for implemented ownership and `../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` as the supreme student-classifier plan.
 
-Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that document.
+> **Implemented-app note (updated through Phase 2 on 2026-08-17):** The diagrams below describe the original long-lived watcher, not the integrated manual tray application. The current app uses manual Desktop/Downloads collection, a two-worker queue, the legacy type/topic preview, explicit approval, transactional moves, and persistent Undo. Phases 0–2 establish the strict student subject/template contracts, fixed-choice saved profile, and synthetic evaluation harness as separate foundations; subject/template ranking and production integration begin in later phases. See `FUNCTION_MAP.md` for the implemented ownership map.
+>
+> The authoritative future hierarchy is `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`, with exactly the five templates defined by the supreme plan. At this checkpoint, that hierarchy is validated by the educational contracts but is not yet used by the active legacy preview.
+
+Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that historical document.
 
 ---
 
@@ -566,10 +568,11 @@ Undo restores the source path, reverses the model deltas, and marks the journal 
 
 ```
 tidy/
-├── docs/AGENTS.md               repository agent conventions
-├── SRS.md
-├── ARCHITECTURE.md
-├── THIRD_PARTY.md
+├── docs/
+│   ├── AGENTS.md                repository agent conventions
+│   ├── ARCHITECTURE.md
+│   ├── SRS.md
+│   └── THIRD_PARTY.md
 ├── pyproject.toml
 ├── src/tidy/
 │   ├── app.py                   tray, lifecycle, wiring

@@ -1,5 +1,7 @@
 # Third-party software
 
+This inventory documents the dependencies and model artifacts used by the local application.
+
 | Dependency | Version | License | Purpose |
 | --- | --- | --- | --- |
 | PyQt6 | 6.7.1 | GPL-3.0/commercial | Desktop tray and dialogs |

@@ -1,11 +1,12 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–2 also establish the separate student subject/template contracts, onboarding profile, and synthetic evaluation harness required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
 
 ## Current workflow
 
 ```text
 Tray action (Desktop / Downloads / both)
+→ require fixed-choice student type / grade / semester setup
 → safe top-level candidate collection
 → deduplicated two-worker classification queue
 → real Pipeline Tier-1 / Naive Bayes decision and persistence
@@ -61,6 +62,11 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 
 ## Features and safety
 
+- Strict packaged `KR_STUDENT_2026_MVP_V1` subject catalog for `중학생` and `고등학생`, grades 1–3, and semesters 1–2.
+- Exactly two educational classification axes: catalog-bounded subject and one of `학습자료`, `과제`, `교내활동`, `교외활동`, or `증빙서류`.
+- Unresolved subject or template decisions are `Needs Review` state and cannot produce a move plan.
+- Atomic local student profile containing only occupation, student type, grade, semester, and catalog version; relevant organization flows require it.
+- Strict made-up evaluation corpus and prediction loaders with subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory metrics. Real evaluation material stays under ignored `eval/local/`.
 - Manual Desktop, Downloads, or combined organization.
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
@@ -105,6 +111,10 @@ The app has no main window. Right-click the `SP` system-tray icon to organize fi
 ```text
 main.py                            desktop entry point
 sort_pilot/app.py                  tray workflow and UI coordination
+sort_pilot/onboarding.py           fixed-choice student-profile setup
+sort_pilot/curriculum/             strict student profile and subject catalog contracts
+sort_pilot/classification/         subject/template result and routing contracts
+sort_pilot/evaluation/             strict labeled-corpus loading and aggregate evaluation
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
 sort_pilot/calibration.py          bounded sampling, editable drafts, signed feedback
 sort_pilot/calibration_dialog.py   calibration board and consent/install UI
@@ -116,6 +126,8 @@ sort_pilot/history.py              atomic JSON move history and SQLite migration
 sort_pilot/preview.py              destination review and approval
 sort_pilot/organizer.py            safe moves, rollback, collision handling, Undo
 tests/                             app, queue, contract, and engine tests
+eval/                              tracked made-up evaluation inputs and cache-only runner
+plans/                             authoritative hybrid plan and reference-plan hierarchy
 docs/FUNCTION_MAP.md               complete function ownership and call-flow map
 docs/INTEGRATION_PROCESS.md        app-branch integration record
 docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migration
@@ -123,4 +135,4 @@ docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migra
 
 Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles and hashed calibration history are stored locally; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-The vision model (`data/models/yolov8n.onnx`, ~13MB) is committed directly and used automatically. Larger binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or a given cluster's naming request fails, that cluster's deterministic collocation-aware name keeps calibration usable. The optional semantic-rescue word vectors (`data/models/word_vectors.npz`, ~112MB) are built locally after a separate consent prompt, streaming only the most frequent words from Meta's official fastText releases rather than downloading them in full; matching skips this step gracefully when it's absent. Provenance requirements are in `THIRD_PARTY.md`.
+The vision model (`data/models/yolov8n.onnx`, ~13MB) is committed directly and used automatically. Larger binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or a given cluster's naming request fails, that cluster's deterministic collocation-aware name keeps calibration usable. The optional semantic-rescue word vectors (`data/models/word_vectors.npz`, ~112MB) are built locally after a separate consent prompt, streaming only the most frequent words from Meta's official fastText releases rather than downloading them in full; matching skips this step gracefully when it's absent. Provenance requirements are in `docs/THIRD_PARTY.md`.

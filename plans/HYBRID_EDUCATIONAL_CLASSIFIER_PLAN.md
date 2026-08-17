@@ -6,6 +6,8 @@ Date: 2026-08-16
 
 Supersedes: every document under `plans/superseded/`
 
+Authority: this user-controlled plan is supreme. `plans/README.md` defines the reference hierarchy; superseded documents may provide background only and never override this plan.
+
 ## 1. Product boundary
 
 Sort Pilot targets one occupation only:
@@ -213,7 +215,9 @@ Add the 2026 JSON catalog and persist occupation, student type, grade, semester,
 
 ### Phase 2 — Evaluation framework
 
-Build a labeled, anonymized corpus and track subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, memory, and folder usefulness.
+Build a labeled synthetic corpus and track subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory.
+
+Only made-up corpus cases and their labels may be tracked. Any evaluation using real local files, filenames, extracted text, labels, predictions, or corrections remains local-only under the Git-ignored `eval/local/` directory and must never be committed or uploaded to GitHub.
 
 ### Phase 3 — Subject profiles and E5 prototype
 

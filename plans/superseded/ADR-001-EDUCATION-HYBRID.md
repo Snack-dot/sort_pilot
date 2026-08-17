@@ -1,5 +1,7 @@
 # ADR-001: Curriculum-constrained educational hybrid classification
 
+> **Status:** Superseded exploratory reference only. `../HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is supreme and overrides every conflict.
+
 ## Status
 
 Accepted for implementation foundation on 2026-08-16.

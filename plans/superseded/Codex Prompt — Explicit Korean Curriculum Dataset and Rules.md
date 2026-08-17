@@ -1,5 +1,7 @@
 # Korean National Curriculum Constraint — Explicit Specification
 
+> **Status:** Superseded reference only. This is the highest-ranked reference document, but `../HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is supreme and overrides every conflict.
+
 Use the official Korean national curriculum as classification data. Do not infer, invent, rename, or fabricate subjects.
 
 Authoritative curriculum basis:

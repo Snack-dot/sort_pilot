@@ -33,3 +33,9 @@ Git history is unavailable in this checkout. Use short, imperative commit subjec
 ## Safety & Scope
 
 Read `README.md` before editing. Preserve the classifier return interface and keep inference local; cloud AI APIs and file-upload services are prohibited. Do not modify non-classifier modules or remove existing behavior without explicit approval; report unrelated problems instead.
+
+## Educational Plan Authority and Session Records
+
+1. `plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is the main and supreme educational architecture plan. Read and follow it before educational-classifier work.
+2. Documents under `plans/superseded/` stay reference-only. They may provide background but must never override, expand, rename, or reinterpret the main plan.
+3. Always record every work session under the repository's sessions directory, `session_archive/`, using the established session documentation format.

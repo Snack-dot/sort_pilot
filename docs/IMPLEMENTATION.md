@@ -2,7 +2,7 @@
 
 ## Branch purpose
 
-This work belongs on a feature branch rather than `main`. It turns the compact tray prototype into the layered system specified by `SRS.md` and `ARCHITECTURE.md`, while retaining the original UI-facing dictionary contract.
+This work belongs on a feature branch rather than `main`. `../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` is the supreme plan for the student-hybrid upgrade. `SRS.md`, `ARCHITECTURE.md`, and the documents under `../plans/superseded/` remain historical references only and cannot override it.
 
 ## Implemented layers
 
@@ -12,7 +12,15 @@ The root launcher and `sort_pilot/` application package use the manual Desktop/D
 
 The manual app uses a two-thread Qt pool. Each pool thread retains its own analyzer, engine pipeline, SQLite connection, and RapidOCR instance. Progress and results cross back to the Qt main thread through signals. See `FUNCTION_MAP.md` for complete ownership and `INTEGRATION_PROCESS.md` for the branch integration record.
 
-Hierarchical classification routes each file into a fixed Korean type family and then applies only family-specific profiles confirmed by the user. Engine categories never name destination topics, and there are no built-in topics. A bounded first-run sample (up to 20 files per family) is adaptively clustered — complete-linkage TF-IDF/co-occurrence similarity, with a pretrained-word-vector semantic rescue when exact matching finds nothing — and only genuinely multi-file clusters are reviewed in a calibration board; optional local Gemma improves names/tags one cluster at a time under a schema-constrained request, while deterministic collocation-aware terms remain the per-cluster fallback. Approval immediately moves the surfaced seeds into the folders they create, stores broad base-word/collocation/co-occurrence evidence, then rescans only the remaining top-level files for final review. Successful corrections add positive evidence to the chosen topic and negative evidence to the rejected topic. See `HIERARCHICAL_TOPICS.md` for persistence, scoring, privacy, UI, and migration behavior.
+Hierarchical classification routes each file into a fixed Korean type family and then applies only family-specific profiles confirmed by the user. Engine categories never name destination topics, and there are no built-in topics. A bounded first-run sample (up to 20 files per family) is adaptively clustered — complete-linkage TF-IDF/co-occurrence similarity, with a pretrained-word-vector semantic rescue when exact matching finds nothing — and only genuinely multi-file clusters are reviewed in a calibration board; optional local Gemma improves names/tags one cluster at a time under a strict JSON response contract, while deterministic collocation-aware terms remain the per-cluster fallback. Approval immediately moves the surfaced seeds into the folders they create, stores broad base-word/collocation/co-occurrence evidence, then rescans only the remaining top-level files for final review. Successful corrections add positive evidence to the chosen topic and negative evidence to the rejected topic. See `HIERARCHICAL_TOPICS.md` for persistence, scoring, privacy, UI, and migration behavior.
+
+## Student-hybrid Phases 0–2
+
+Phase 0 establishes exactly two classification axes: subject and template. Subjects must come from the packaged `KR_STUDENT_2026_MVP_V1` catalog for the selected student type. Templates are fixed to `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`. Unexpected catalog and student-profile fields are rejected. An unresolved subject or template remains `Needs Review` and cannot produce an `OrganizationPlan`.
+
+Phase 1 adds the atomic saved student profile and fixed-choice onboarding. The stored fields are limited to occupation, student type, grade, semester, and catalog version. Relevant classification and organization entry points require a valid saved profile. The active organizer otherwise remains on the pre-existing type/topic implementation at this checkpoint; production subject/template ranking begins in later phases.
+
+Phase 2 adds strict labeled-corpus and prediction loading, a cache-only evaluation runner, made-up tracked examples, and aggregate subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory. Unresolved results count as incorrect in all three accuracy metrics. Any evaluation involving real local filenames, text, labels, predictions, or corrections belongs only in Git-ignored `eval/local/`.
 
 ## Local model setup
 

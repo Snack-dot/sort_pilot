@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from sort_pilot.curriculum import CurriculumProfile
+from sort_pilot.curriculum import StudentProfile
 
 from .result import AxisDecision
 
@@ -46,21 +46,21 @@ class SubjectClassifier(Protocol):
     def classify(
         self,
         evidence: SubjectEvidence,
-        curriculum: CurriculumProfile,
+        student: StudentProfile,
         profiles: tuple[SubjectProfile, ...],
     ) -> AxisDecision:
-        """Return one observable decision bounded by the curriculum profile."""
+        """Return one observable decision bounded by the student subject catalog."""
         ...
 
 
 def eligible_subject_profiles(
-    curriculum: CurriculumProfile,
+    student: StudentProfile,
     profiles: tuple[SubjectProfile, ...],
 ) -> tuple[SubjectProfile, ...]:
-    """Select profiles allowed by the active curriculum in candidate-list order."""
+    """Select profiles allowed by the student catalog in candidate-list order."""
     profiles_by_label = {profile.label: profile for profile in profiles}
     return tuple(
         profiles_by_label[label]
-        for label in curriculum.allowed_subjects
+        for label in student.allowed_subjects
         if label in profiles_by_label
     )

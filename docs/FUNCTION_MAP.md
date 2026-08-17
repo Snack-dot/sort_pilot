@@ -7,8 +7,9 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `run` | `sort_pilot/app.py` | Creates Qt, acquires the single-instance lock, validates the tray, and enters the event loop; called by `main.py`. |
-| `AppController.__init__` | `sort_pilot/app.py` | Wires history, queue signals, paths, and tray actions. |
-| `start`, `calibrate_topics` | `sort_pilot/app.py` | Shows the tray, triggers first-run calibration, and starts manual recalibration from a bounded sample. |
+| `AppController.__init__` | `sort_pilot/app.py` | Wires history, queue signals, paths, student-profile storage, and tray actions. |
+| `start`, `_start_initial_workflow`, `_require_student_profile` | `sort_pilot/app.py` | Shows the tray, requires fixed-choice student onboarding, then continues the existing first-run topic calibration. |
+| `manage_student_profile`, `calibrate_topics` | `sort_pilot/app.py` | Edit the saved student settings or start legacy topic recalibration after enforcing the profile gate. |
 | `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Tray callbacks selecting one or both source roots. |
 | `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
 | `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
@@ -200,21 +201,39 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `SchoolLevel`, `Semester` | `curriculum/profiles.py` | Define stable onboarding and folder labels for the Korean middle/high-school MVP. |
-| `CurriculumProfile`, `CurriculumProfile.__post_init__`, `subject_candidates`, `requires_migration`, `to_dict`, `from_dict` | `curriculum/profiles.py` | Validate and serialize versioned curriculum constraints while retaining explicit extracurricular and unknown candidates. |
-| `CurriculumProfileStore.__init__`, `load`, `save` | `curriculum/profiles.py` | Atomically persist the active onboarding profile and report corrupt or stale-version state. |
-| `default_profile` | `curriculum/profiles.py` | Build the initial editable subject space for one school level, grade, and semester. |
-| `DecisionSource`, `Activity` | `classification/result.py` | Define observable classifier authority and the stable user-facing activity axis. |
-| `CandidateScore` | `classification/result.py` | Carry an inspectable raw candidate score without claiming calibrated probability. |
-| `AxisDecision`, `AxisDecision.__post_init__` | `classification/result.py` | Represent and validate one independently resolved subject, activity, or document-type decision. |
-| `EducationalClassificationResult`, `EducationalClassificationResult.__post_init__` | `classification/result.py` | Combine bounded educational axes while keeping rich classification state separate from folder layout. |
-| `EducationalClassificationResult.needs_review`, `folder`, `to_dict` | `classification/result.py` | Expose review state, render the six-component student hierarchy, and serialize complete provenance. |
-| `SubjectProfile`, `SubjectProfile.__post_init__`, `SubjectEvidence` | `classification/subject.py` | Define versioned global subject prototypes and bounded natural/lexical evidence for one file. |
-| `SubjectClassifier.classify` | `classification/subject.py` | Require local subject implementations to return an observable curriculum-bounded axis decision. |
-| `eligible_subject_profiles` | `classification/subject.py` | Filter global profiles into the active curriculum candidate order before scoring. |
+| `StudentOnboardingDialog`, `StudentOnboardingDialog.__init__` | `onboarding.py` | Present only fixed occupation, student-type, grade, semester, and catalog metadata choices. |
+| `_selected_profile`, `_update_subjects`, `_accept` | `onboarding.py` | Validate fixed selections, display catalog subjects, and return a profile for atomic persistence. |
+| `StudentType`, `SubjectCatalog`, `SubjectCatalog.__post_init__`, `subjects_for` | `curriculum/catalog.py` | Define the two student types and validate the exact per-type subject lists loaded from JSON. |
+| `load_subject_catalog` | `curriculum/catalog.py` | Strictly load and cache the packaged `KR_STUDENT_2026_MVP_V1` catalog. |
+| `Semester`, `StudentProfile`, `StudentProfile.__post_init__`, `allowed_subjects`, `to_dict`, `from_dict` | `curriculum/profiles.py` | Validate and serialize only occupation, student type, grade, semester, and catalog version. |
+| `StudentProfileStore`, `StudentProfileStore.__init__`, `load`, `save` | `curriculum/profiles.py` | Atomically persist the active onboarding profile and report corrupt or stale-catalog state. |
+| `default_profile` | `curriculum/profiles.py` | Build a catalog-bounded profile for one student type, grade, and semester. |
+| `DecisionSource`, `Template` | `classification/result.py` | Define observable classifier authority and exactly five fixed template labels. |
+| `CandidateScore`, `CandidateScore.__post_init__` | `classification/result.py` | Carry and validate an inspectable raw candidate score without claiming calibrated probability. |
+| `EvidenceContribution`, `EvidenceContribution.__post_init__` | `classification/result.py` | Retain one named, finite evidence contribution to an axis decision. |
+| `AxisDecision`, `AxisDecision.__post_init__`, `AxisDecision.to_dict` | `classification/result.py` | Represent, validate, and serialize one resolved subject/template decision or nullable review state. |
+| `EducationalClassificationResult`, `EducationalClassificationResult.__post_init__` | `classification/result.py` | Combine catalog-bounded subject and template axes while keeping classification state separate from folder layout. |
+| `EducationalClassificationResult.needs_review`, `folder`, `to_dict` | `classification/result.py` | Expose review state, block unresolved folder rendering, render the six-component hierarchy, and serialize provenance. |
+| `OrganizationPlan`, `OrganizationPlan.__post_init__`, `OrganizationPlan.from_classification` | `classification/result.py` | Freeze an exact source and destination only after both bounded axes resolve. |
+| `SubjectProfile`, `SubjectProfile.__post_init__` | `classification/subject.py` | Define and validate one versioned natural-language subject profile. |
+| `SubjectEvidence`, `SubjectEvidence.__post_init__`, `SubjectEvidence.embedding_text` | `classification/subject.py` | Keep natural filename/body text separate from bounded lexical evidence. |
+| `SubjectClassifier.classify` | `classification/subject.py` | Require local subject implementations to return an observable catalog-bounded axis decision. |
+| `eligible_subject_profiles` | `classification/subject.py` | Filter global profiles into the selected student type's JSON-catalog order before scoring. |
 | `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate provisional raw-score/margin gates. |
 | `AxisRoutingDecision` | `classification/policy.py` | Preserve the local decision, routing reason, and policy version passed to the next stage. |
 | `route_axis` | `classification/policy.py` | Accept decisive local evidence, escalate only plausible ambiguity to Gemma, and abstain on weak evidence. |
+
+## Student evaluation
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `_require_fields`, `_required_text`, `_optional_label`, `_read_document` | `evaluation/corpus.py` | Reject unexpected or missing corpus/prediction fields and parse one strict JSON document. |
+| `CorpusCase`, `CorpusCase.__post_init__` | `evaluation/corpus.py` | Validate one ordered made-up case against the selected student type's catalog and the five templates. |
+| `Prediction`, `Prediction.__post_init__` | `evaluation/corpus.py` | Validate one ordered prediction, nullable axis labels, route, correction count, latency, and memory. |
+| `load_corpus`, `load_predictions` | `evaluation/corpus.py` | Load strict ordered cases and predictions without invented identifiers. |
+| `_rate`, `_percentile`, `_measurement` | `evaluation/metrics.py` | Compute bounded aggregate rates and latency/memory summaries. |
+| `EvaluationReport`, `EvaluationReport.to_dict` | `evaluation/metrics.py` | Hold and serialize all required aggregate Phase 2 measures. |
+| `evaluate_predictions` | `evaluation/metrics.py` | Count unresolved axes as incorrect and calculate subject, template, combined-path, coverage, review, fallback, correction, latency, and memory results. |
 
 ## Maintenance rule
 

@@ -1,5 +1,7 @@
 # SRS — Local File Classifier (working name: `tidy`)
 
+> **Documentation status:** Historical requirements for the legacy classifier architecture. This document does not override `../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md`, which is supreme for the student hybrid classifier.
+
 > **Implementation note (2026-08-13):** The integrated desktop MVP uses explicit Desktop/Downloads batch actions and a cancellable two-worker in-process queue. Watcher-oriented requirements below are retained as historical/future requirements and are not part of the current app workflow. The engine package is now `sort_pilot.classifier_engine`; its data directory remains `%APPDATA%\tidy` for compatibility.
 >
 > The current destination model is hierarchical: one fixed Korean file-type root plus one family-specific semantic topic. Every file runs the persisted Tier-1/Naive Bayes engine path, but engine categories are evidence only. There are no built-in semantic topics or seed lexicon. First-run sample calibration creates only user-confirmed topics, and later successful review corrections provide signed learning evidence. Unmatched API results use `미분류`.
