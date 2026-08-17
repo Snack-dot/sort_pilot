@@ -205,11 +205,27 @@ class OrganizationPlan:
     def __post_init__(self) -> None:
         """Reject unresolved classifications and destinations outside the frozen hierarchy."""
         folder = self.classification.folder
-        if not self.source.name or self.destination.name != self.source.name:
-            raise ValueError("조직 계획은 원본 파일 이름을 보존해야 합니다.")
+        if not self.source.name or not self._valid_destination_name(
+            self.source.name,
+            self.destination.name,
+        ):
+            raise ValueError("조직 계획은 원본 파일 이름 또는 기존 충돌 접미사를 보존해야 합니다.")
         expected_parent = tuple(folder.split("/"))
         if self.destination.parent.parts[-len(expected_parent):] != expected_parent:
             raise ValueError("조직 계획의 목적지가 확정된 분류 경로와 일치하지 않습니다.")
+
+    @staticmethod
+    def _valid_destination_name(source_name: str, destination_name: str) -> bool:
+        """Allow the original name or the existing underscore-number collision form."""
+        source = Path(source_name)
+        destination = Path(destination_name)
+        if destination_name == source_name:
+            return True
+        if destination.suffix.casefold() != source.suffix.casefold():
+            return False
+        prefix = f"{source.stem}_"
+        suffix = destination.stem[len(prefix):] if destination.stem.startswith(prefix) else ""
+        return suffix.isdigit() and int(suffix) >= 1
 
     @classmethod
     def from_classification(

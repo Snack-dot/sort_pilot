@@ -1,31 +1,29 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–6 also establish the separate student subject/template contracts, onboarding profile, synthetic evaluation harness, catalog-bounded multilingual E5 subject ranker, separate five-template classifier, independently calibrated routing policy, and constrained local Gemma fallback required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, classifies the independent subject and template axes locally, and moves only files whose exact destination paths the user approves.
 
 ## Current workflow
 
 ```text
 Tray action (Desktop / Downloads / both)
-→ require fixed-choice student type / grade / semester setup
+→ first-run student type / grade / semester setup
 → safe top-level candidate collection
-→ deduplicated two-worker classification queue
-→ real Pipeline Tier-1 / Naive Bayes decision and persistence
-→ fixed file type + user-created topic profile resolution
-→ first-run sample calibration when no user topics exist
-→ approved seed files immediately create/populate topic folders
-→ remaining-file editable topic review
-→ cancellable progress dialog
-→ editable destination preview
-→ explicit user approval
-→ original-name file moves
+→ deduplicated two-worker bounded extraction queue
+→ independent catalog-bounded subject and five-template ranking
+→ calibrated local acceptance / constrained Gemma fallback / Needs Review
+→ fixed-choice subject and template preview
+→ unresolved axes require user selection
+→ explicit final approval freezes exact source and destination paths
+→ exact original-name or collision-suffixed file moves
+→ corrected decisions stored locally as separate personal examples
 → atomic JSON history and restart-safe Undo
 ```
 
-There is no real-time filesystem watcher in the integrated app. Manual organization avoids repeated background scans, and each worker reuses one local RapidOCR engine rather than initializing ONNX Runtime for every image.
+There is no real-time filesystem watcher. Manual organization avoids repeated background scans, and each extraction worker reuses one local RapidOCR engine. The active destination hierarchy is exactly `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`.
 
-## Public classifier interface
+## Lower-level extraction interface
 
-`ClassifierEngine` is exported directly by `sort_pilot.classifier_engine` and returns Python dictionaries that are directly JSON-compatible. There is no separate compatibility classifier or fallback implementation; every call uses `Pipeline.safe_classify()`.
+`ClassifierEngine` remains the lower-level extraction and compatibility interface used by the queue. Its historical type/topic fields are not educational classification axes and are not used to build the active destination. The educational result is produced by `EducationalClassificationService` and contains only subject and template decisions.
 
 ```python
 from pathlib import Path
@@ -58,39 +56,28 @@ Multiple files:
 }
 ```
 
-Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fixed roots are `문서`, `이미지`, `압축파일`, `오디오`, `동영상`, and `기타`; unmatched topics use `미분류`. A fresh install contains no semantic topics. `내과제` and `구매기록` above are examples of profiles confirmed by the user during calibration. Engine decisions are persisted as evidence but never become destination topic names automatically.
+`analyze_json` and `analyze_many_json` are retained compatibility calls. The tray workflow consumes `AnalysisRecord` extraction evidence and disregards the historical type/topic destination returned by those calls.
 
 ## Features and safety
 
-- Strict packaged `KR_STUDENT_2026_MVP_V1` subject catalog for `중학생` and `고등학생`, grades 1–3, and semesters 1–2.
-- Exactly two educational classification axes: catalog-bounded subject and one of `학습자료`, `과제`, `교내활동`, `교외활동`, or `증빙서류`.
-- Unresolved subject or template decisions are `Needs Review` state and cannot produce a move plan.
-- Atomic local student profile containing only occupation, student type, grade, semester, and catalog version; relevant organization flows require it.
-- Strict made-up evaluation corpus and prediction loaders with subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory metrics. Real evaluation material stays under ignored `eval/local/`.
-- Natural-language profiles for every catalog subject and a CPU-only `intfloat/multilingual-e5-small` prototype that ranks only the selected student's catalog subjects, retaining raw cosine similarity and margin without claiming calibrated confidence.
-- Separate profiles for exactly five templates, with semantic intent, filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence kept as distinct weighted inputs. The Phase 4 weights are neutral mechanics, not calibrated routing thresholds.
-- Independently calibrated subject and template routes using a separate 50-case made-up held-out corpus: authoritative local decisions must meet 90% held-out precision, while the Gemma escalation region must meet 50% held-out top-label accuracy; lower evidence remains `Needs Review`.
-- Per-axis local Gemma fallback restricted to Phase 5 escalation routes, supplied subject candidates or exactly the five templates, bounded evidence, and `Needs Review`. It batches, retries unresolved axes, supports cancellation, uses a hash-only atomic local cache, and cannot override an authoritative local decision or local abstention.
+- First-run student setup stores only the fixed `학생` occupation, `중학생|고등학생`, grade 1–3, semester 1–2, and `KR_STUDENT_2026_MVP_V1` catalog version; it does not collect a school, institution, or timetable.
+- Phase 2 evaluation uses a tracked, made-up student corpus and reports subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory. Unresolved results are incorrect for all applicable accuracy measures.
+- Phase 3 provides natural-language profiles for every catalog subject and a CPU-only `intfloat/multilingual-e5-small` ranker. It validates 384-dimensional vectors, compares only the selected student type's catalog subjects with NumPy cosine similarity, and retains raw similarity and top-two margin without calling either value confidence.
+- Phase 4 provides separate profiles and explicit evidence weights for exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`. It ranks all five with natural semantic intent plus separate filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence, retaining raw score and margin without calibrated confidence.
+- Phase 5 calibrates subject and template policy independently from 50 new made-up held-out cases. Authoritative local routes must achieve at least 90% held-out precision; the Gemma-escalation region must achieve at least 50% held-out top-label accuracy; weaker evidence remains Needs Review.
+- Phase 6 provides a constrained local Gemma fallback only for a subject or template axis that Phase 5 routed as plausible but ambiguous. Each request contains ranked supplied candidates and bounded extracted evidence; valid output is one exact supplied candidate or Needs Review. Invalid or unavailable results remain Needs Review, while retry, cancellation, and a local hash-keyed cache reuse the reliable `fix`-branch behavior without allowing Gemma to return a path.
+- Phase 7 connects those components to the tray workflow. It exposes unresolved subject/template axes for fixed-choice selection, freezes exact collision-resolved paths at final approval, executes those paths without reclassification, preserves transactional move and persistent Undo behavior, and stores only genuine corrections as separate local personal examples.
+- Personal examples contain a fingerprint, normalized embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions. They contain no source path or raw extracted text, do not fine-tune E5 or Gemma, and do not mutate global subject/template profiles.
+- Calibrated nearest-example evidence uses separate subject and template weights derived from made-up held-out data while retaining the Phase 5 routing thresholds and the approved 90%/50% operating targets.
 - Manual Desktop, Downloads, or combined organization.
-- Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
-- Deterministic top-level type routing with independent, user-owned topic profiles per type.
-- User-created topic names, tags, enable/disable state, and learn-only example files.
-- First-run calibration samples up to 20 safe top-level files per type and still works with one or two; only clusters of two or more genuinely connected files are surfaced for review, and unsurfaced files are retried with priority in a later round. Approval immediately creates `<유형>/<주제>` folders and moves those seed files into them.
-- Complete-linkage TF-IDF/co-occurrence clustering proposes topics, backed by PMI-filtered bigram/trigram collocation detection and a pretrained-word-vector semantic rescue for when exact term overlap isn't enough; an optional local Google Gemma 3 1B model improves names and tag lists, one cluster at a time under a schema-constrained request, after explicit terms/download consent.
-- The calibration board supports moving files between topics, renaming, editing tags, splitting, merging, and excluding samples.
-- The final batch review uses an editable topic selector. Confirmed predictions reinforce a profile; corrections reinforce the chosen profile and demote the rejected profile.
-- Profile data is version 3 and stores a broad bounded vocabulary: base-word weights plus up to 120 weighted within-file co-occurrence pairs per seed. It also stores independent negative correction evidence without raw contents or example paths.
-- Manual previewed migration from a user-named flat folder such as `직접선택` to `문서/직접선택` or `이미지/직접선택`.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
-- Cancellable progress with no partial preview after cancellation.
+- Cancellable extraction, local E5 classification, and Gemma fallback with no partial preview after cancellation.
 - Local document, archive, image, OCR, and optional ONNX object features; YOLO object detection runs on any eligible image once the local model is installed, independent of screenshot/photo routing.
-- Semantic topics use actual local contents only: TXT/Markdown/CSV/RTF, PDF, DOCX, ODT, PPTX, XLSX, ZIP entry names, and image OCR/object (including object-pair co-occurrence) evidence. Filenames, extensions, and generic metadata may inform the lower-level engine decision but cannot create or select a topic. Up to 160 distinct body terms are retained per readable document, plus statistically significant bigram/trigram phrases (filtered by pointwise mutual information, not just raw adjacency).
-- A local semantic rescue matches records against profiles by pretrained word-vector similarity only when exact term matching finds nothing, using greedy word-to-word pairing rather than averaging; it never replaces the exact-match path, only supplements it.
-- Calibration samples only formats with a bundled content extractor, and extraction-empty samples cannot create a profile. `.hwp` and `.hwpx` are excluded from collection while the content architecture is being validated; legacy binary DOC/XLS/PPT files are not calibration seeds.
-- Editable destination root and relative folder for every file.
+- The preview allows only the selected student's catalog subjects, the five fixed templates, and Desktop or Downloads as the destination root.
 - Original filenames are preserved; collisions receive numeric suffixes.
-- No move occurs before final approval.
+- No move plan exists while either axis is unresolved, and no move occurs before final approval.
+- Execution consumes the frozen `OrganizationPlan` and never recomputes classification.
 - Completed move batches are stored atomically in `history.json` and can be undone after restart.
 - The latest active legacy `history.db` batch is migrated once without modifying the database.
 - A Qt lock prevents two Sort Pilot instances from running simultaneously.
@@ -115,32 +102,31 @@ The app has no main window. Right-click the `SP` system-tray icon to organize fi
 ```text
 main.py                            desktop entry point
 sort_pilot/app.py                  tray workflow and UI coordination
-sort_pilot/onboarding.py           fixed-choice student-profile setup
-sort_pilot/curriculum/             strict student profile and subject catalog contracts
-sort_pilot/classification/         subject/template result and routing contracts
-sort_pilot/classification/e5.py    Phase 3 catalog-bounded subject ranking prototype
-sort_pilot/classification/template.py Phase 4 five-template ranking prototype
-sort_pilot/classification/calibrated_policy.py Phase 5 per-axis routing calibration
-sort_pilot/classification/gemma_fallback.py Phase 6 constrained local fallback
-sort_pilot/evaluation/             strict labeled-corpus loading and aggregate evaluation
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
-sort_pilot/calibration.py          bounded sampling, editable drafts, signed feedback
-sort_pilot/calibration_dialog.py   calibration board and consent/install UI
-sort_pilot/local_tagger.py         pinned Gemma/llama.cpp install and localhost inference
-sort_pilot/classifier_engine/      sole public classifier, extraction, scoring, persistence, topics, vision
-sort_pilot/topic_dialogs.py        topic profile and TF-IDF proposal UI
-sort_pilot/migration.py            safe flat-folder hierarchy migration planning
+sort_pilot/onboarding.py           fixed-choice student setup dialog
+sort_pilot/classification/         two-axis contracts, classifiers, policy, and constrained Gemma fallback
+sort_pilot/educational_preview.py  fixed-axis review and immutable approved plans
+sort_pilot/evaluation/             strict made-up corpus loading and evaluation measures
+sort_pilot/local_tagger.py         pinned Gemma/llama.cpp installation support
+sort_pilot/classifier_engine/      bounded extraction and retained compatibility engine
 sort_pilot/history.py              atomic JSON move history and SQLite migration
-sort_pilot/preview.py              destination review and approval
-sort_pilot/organizer.py            safe moves, rollback, collision handling, Undo
+sort_pilot/organizer.py            frozen-path moves, rollback, and Undo
 tests/                             app, queue, contract, and engine tests
-eval/                              tracked made-up evaluation inputs and cache-only runner
-plans/                             authoritative hybrid plan and reference-plan hierarchy
+eval/                              aggregate runners and tracked synthetic student examples
+docs/ARCHITECTURE.md               historical legacy-classifier architecture reference
 docs/FUNCTION_MAP.md               complete function ownership and call-flow map
 docs/INTEGRATION_PROCESS.md        app-branch integration record
 docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migration
+docs/SRS.md                        historical legacy-classifier requirements
+docs/THIRD_PARTY.md                dependency and model-artifact inventory
 ```
 
-Classifier state intentionally remains under the legacy `%APPDATA%\tidy` directory so the package rename does not orphan learned weights or decisions. Versioned topic profiles and hashed calibration history are stored locally; no example paths or raw contents are retained. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
+The retained extraction engine keeps its compatibility state under `%APPDATA%\tidy`. Those historical decisions do not select the educational subject, template, or destination. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
+
+The student onboarding profile is stored atomically as `student_profile.json` in Qt's Sort Pilot application-data directory. Preview corrections are stored separately as `personal_examples.json`; Gemma cache entries are stored as `gemma_fallback_cache.json`. Both are private local state and are also named in `.gitignore` as an additional guard.
+
+Phases 3–7 are wired into the active organization workflow. Both classifiers reuse the local E5 encoder; FastEmbed loads `data/models/fastembed/` without network access and forces ONNX Runtime's `CPUExecutionProvider`. Phase 5 centralizes the independent routing thresholds, Phase 6 reuses the consent-gated Gemma and llama.cpp artifacts, and Phase 7 adds the independently calibrated personal-example rule. Downloaded E5 and Gemma artifacts remain Git-ignored.
+
+Only made-up student evaluation cases and labels are tracked. Any evaluation using real local files, filenames, extracted text, labels, predictions, corrections, or results belongs under the Git-ignored `eval/local/` directory and must never be committed or uploaded to GitHub. The Phase 2 runner prints aggregate measures and writes no evaluation output.
 
 The vision model (`data/models/yolov8n.onnx`, ~13MB) is committed directly and used automatically. Larger binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or a given cluster's naming request fails, that cluster's deterministic collocation-aware name keeps calibration usable. The optional semantic-rescue word vectors (`data/models/word_vectors.npz`, ~112MB) are built locally after a separate consent prompt, streaming only the most frequent words from Meta's official fastText releases rather than downloading them in full; matching skips this step gracefully when it's absent. Provenance requirements are in `docs/THIRD_PARTY.md`.

@@ -1,0 +1,29 @@
+# Phase 7 Decisions
+
+- Phase 7 implements preview, immutable approved paths, corrections, and the active workflow connection. Phase 8 and later work remain out of scope.
+- The active educational classifier has exactly two axes: subject and template.
+- Template choices remain exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.
+- The selected student's saved profile is required again before the completed extraction batch enters educational classification.
+- Historical type/topic engine output may remain as extraction compatibility state, but it does not select the active subject, template, or destination.
+- The older topic-calibration, topic-management, and folder-migration actions are no longer exposed in the student tray.
+- Natural filename/body/OCR text is transient classification input. `FeatureVector.to_dict()` deliberately excludes it, so it is not added to persisted engine decisions.
+- Subject and template use nearest personal examples independently and remain independently routed.
+- The numeric personal-example rule is derived only from made-up data: the Phase 2 corpus acts as pretend previously approved examples, and the separate Phase 5 held-out corpus acts as future files.
+- Phase 5 routing thresholds are unchanged. The derived rule must retain at least 90% authoritative-local precision and 50% Gemma-routed top-label accuracy for both axes.
+- The packaged subject personal-example weight is `0.01` with minimum similarity `0.8755742311477661`.
+- The packaged template personal-example weight is `0.02` with minimum similarity `0.8875447511672974`.
+- Personal evidence does not fine-tune E5 or Gemma and does not mutate global subject or template profiles.
+- Only a changed or newly resolved preview decision becomes a personal example. An unchanged approval does not create one.
+- A personal example contains only fingerprint, normalized E5 embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions. It contains no source path or raw extracted text.
+- The embedding version records `intfloat/multilingual-e5-small` even when Gemma supplied the original decision, because the stored vector is an E5 embedding.
+- Personal examples are stored atomically in the Qt application-data directory and keyed by fingerprint. The local filename is also explicitly ignored by Git.
+- The Gemma cache stays separate and contains only hashed inputs and validated selections. Its local filename is also explicitly ignored by Git.
+- An unavailable or invalid Gemma result remains Needs Review.
+- The preview offers only catalog-bounded subjects, the five fixed templates, and Desktop or Downloads as the destination root.
+- A checked row with either unresolved axis cannot be approved and cannot produce an `OrganizationPlan`.
+- Collision suffixes are selected and reserved before final approval, including collisions between rows in the same batch.
+- The preview and final confirmation show the exact collision-resolved destinations before the user says Yes.
+- Final approval freezes the exact source and destination. Execution consumes those exact paths and never reruns classification.
+- Move execution retains the existing batch transaction, rollback, JSON history, and persistent Undo.
+- If files move but required personal-example persistence fails, the newest move batch is undone and the failure is reported.
+- No real local data is used for calibration or tests, and no correction/cache file is added to the repository.

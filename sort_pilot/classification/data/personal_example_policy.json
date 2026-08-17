@@ -1,0 +1,11 @@
+{
+  "version": "phase-7-personal-example-v1",
+  "subject": {
+    "weight": 0.01,
+    "minimum_similarity": 0.8755742311477661
+  },
+  "template": {
+    "weight": 0.02,
+    "minimum_similarity": 0.8875447511672974
+  }
+}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid Phase 7 preview, immutable plan, and corrections
+
+- Wired the active Desktop/Downloads organization flow to independent subject and template classification and removed the older topic-calibration, topic-management, and folder-migration controls from the tray.
+- Added a fixed-choice educational preview that exposes unresolved axes, accepts only the selected student's catalog subjects and exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`, and requires both axes before approval.
+- Froze exact source and collision-resolved destination paths at final approval, executed those `OrganizationPlan` values without reclassification, and preserved transactional rollback plus persistent Undo.
+- Added strict atomic local personal examples containing fingerprint, normalized embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions, with no path or raw extracted text.
+- Added independently calibrated nearest-example influence using only made-up corpora. The reproducible rule retained Phase 5 thresholds, met the approved 90% local-precision and 50% Gemma top-label targets on both axes, and produced zero held-out regressions.
+- Kept extracted natural text transient, added end-to-end educational service routing and cancellation, and retained unavailable or invalid fallback results as Needs Review.
+
 ## 2026-08-17 — Student-hybrid Phase 6 constrained Gemma fallback
 
 - Added a per-axis local Gemma fallback that accepts only Phase 5 `gemma_fallback` routes and therefore cannot reconsider an authoritative local result or a local abstention.
@@ -14,7 +23,7 @@
 - Added a new 50-case made-up held-out corpus, separate from profile-writing examples, covering all 18 catalog subjects and all five templates.
 - Added exhaustive per-axis threshold selection that maximizes local handling first and Gemma escalation second while requiring both approved targets; explicit abstention remains Needs Review.
 - Added a centralized strict policy with independently calibrated subject and template raw-score, margin, and Gemma-escalation thresholds.
-- Added a cache-only calibration runner that reproduces the policy from the held-out corpus, prints nothing but aggregate results, and can verify the packaged policy exactly.
+- Added a cache-only calibration runner that reproduces the policy from the held-out corpus, prints aggregate results, writes nothing, and can verify the packaged policy exactly.
 - Held-out results were 7/7 authoritative subject decisions and 46/49 authoritative template decisions; the subject escalation region was 16/32 and the template escalation region was 1/1. These measurements define this policy and are not general production-accuracy claims.
 
 ## 2026-08-17 — Student-hybrid Phase 4 five-template classifier
@@ -43,9 +52,9 @@
 
 ## 2026-08-17 — Student-hybrid Phase 1 onboarding
 
-- Added a first-run fixed-choice student setup for `중학생` and `고등학생`, grades 1–3, and semesters 1–2.
+- Added a first-run fixed-choice student setup for `중학생|고등학생`, grades 1–3, and semesters 1–2.
 - Persisted only occupation, student type, grade, semester, and `KR_STUDENT_2026_MVP_V1` catalog version in an atomic local profile.
-- Added a tray action for editing student settings and required a saved student profile before relevant classification and organization flows.
+- Added a tray action for editing student settings and made saved settings bypass the first-run prompt on later launches.
 - Kept school, institution, timetable, academic-year migration, and production-classifier integration out of this phase.
 
 ## 2026-08-17 — Student-hybrid Phase 0 remediation
@@ -53,7 +62,7 @@
 - Replaced exploratory Python subject constants with the packaged `KR_STUDENT_2026_MVP_V1` JSON catalog for `중학생` and `고등학생`.
 - Restricted onboarding contracts to grades 1–3 and semesters 1–2, with no curriculum-revision migration, institution, timetable, or fallback-subject model.
 - Fixed the template contract to exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.
-- Made unresolved subject/template labels nullable review state and prohibited move-plan creation until both axes contain valid configured values.
+- Made unresolved subject/template labels nullable review state and prohibited destination rendering until both axes contain valid configured values.
 - Kept the active production classifier and application workflow unchanged during this foundation remediation.
 
 ## 2026-08-16 — Final student-hybrid MVP plan
@@ -69,7 +78,7 @@
 - Recorded the decision to evolve the existing statistical classifier into a curriculum-constrained middle/high-school hybrid, with local decisions authoritative at high confidence and Gemma restricted to ambiguous per-axis fallback.
 - Added versioned onboarding contracts for student type, grade, semester, and JSON-catalog subject candidates.
 - Added atomic onboarding-profile persistence with explicit corruption and stale-catalog rejection.
-- Defined the subject-profile, bounded evidence, curriculum filtering, and local subject-classifier interfaces required by the later E5 implementation.
+- Defined the subject-profile, bounded evidence, catalog filtering, and local subject-classifier interfaces required by the later E5 implementation.
 - Added an explicit per-axis policy contract that routes decisive local evidence to acceptance, plausible ambiguity to Gemma, and weak or abstained evidence to review.
 - Added an observable multidimensional result contract that keeps subject and template decisions, scores, margins, evidence, provenance, and nullable review state separate from the rendered folder hierarchy.
 - Added the `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>` renderer and contract tests without changing the active classifier or UI workflow.

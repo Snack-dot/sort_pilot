@@ -7,9 +7,9 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `run` | `sort_pilot/app.py` | Creates Qt, acquires the single-instance lock, validates the tray, and enters the event loop; called by `main.py`. |
-| `AppController.__init__` | `sort_pilot/app.py` | Wires history, queue signals, paths, student-profile storage, and tray actions. |
-| `start`, `_start_initial_workflow`, `_require_student_profile` | `sort_pilot/app.py` | Shows the tray, requires fixed-choice student onboarding, then continues the existing first-run topic calibration. |
-| `manage_student_profile`, `calibrate_topics` | `sort_pilot/app.py` | Edit the saved student settings or start legacy topic recalibration after enforcing the profile gate. |
+| `AppController.__init__` | `sort_pilot/app.py` | Wires history, student/profile stores, queue signals, paths, and tray actions. |
+| `start`, `_start_initial_workflow`, `_require_student_profile` | `sort_pilot/app.py` | Show the tray and require persisted student onboarding before every relevant classification or organization flow. |
+| `manage_student_profile` | `sort_pilot/app.py` | Edit the atomic fixed-choice student settings. |
 | `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Tray callbacks selecting one or both source roots. |
 | `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
 | `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
@@ -17,7 +17,9 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `_start_analysis` | `sort_pilot/app.py` | Records the organize/profile/migration mode and starts a shared queue session. |
 | `_show_progress`, `_update_progress`, `_close_progress` | `sort_pilot/app.py` | Own the cancellable analysis progress dialog. |
 | `_analysis_completed`, `_analysis_cancelled` | `sort_pilot/app.py` | Consume final queue signals; errors are reported and only complete successful sessions reach preview. |
-| `_complete_organization`, `_complete_calibration`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Dispatch extracted records into full review, calibration, learn-only example updates, or prescribed migration previews. |
+| `_complete_organization` | `sort_pilot/app.py` | Require the current student profile, classify subject/template, show the educational preview, execute frozen paths, and store corrections or roll moves back. |
+| `_educational_input`, `_classify_educational_records` | `sort_pilot/app.py` | Convert transient extraction records and run cancellable, cache-only E5 plus constrained Gemma work off the Qt main thread. |
+| `calibrate_topics`, `_complete_calibration`, `_complete_profile_learning`, `_complete_migration` | `sort_pilot/app.py` | Retained older workflow helpers that are no longer exposed by the student tray. |
 | `_report_analysis_errors` | `sort_pilot/app.py` | Reports bounded per-file errors without discarding successful records. |
 | `_set_busy` | `sort_pilot/app.py` | Disables conflicting tray actions during analysis. |
 | `_show_preview`, `_destination_root` | `sort_pilot/app.py` | Convert approved UI rows into allowed-root move operations. |
@@ -63,6 +65,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `_checked_item`, `approved_changes`, `_hierarchical_folder`, `_confirm` | `sort_pilot/preview.py` | Keep the type root immutable, translate editable topic paths to `ApprovedFileMove`, and require confirmation. |
 | `build_operation` | `sort_pilot/organizer.py` | Preserves original filename, validates folder, and selects collision-free destination. |
 | `execute_batch` | `sort_pilot/organizer.py` | Moves atomically at batch level; reverses completed moves on failure. |
+| `execute_organization_plans` | `sort_pilot/organizer.py` | Converts exact approved educational paths directly into the transactional move executor without reclassification. |
 | `undo_latest` | `sort_pilot/organizer.py` | Restores newest active batch and removes only recorded empty directories. |
 | `_safe_folder`, `_available_path` | `sort_pilot/organizer.py` | Sanitize untrusted folder text and choose a safe destination. |
 | `_missing_directories`, `_remove_empty_directories` | `sort_pilot/organizer.py` | Track and safely clean directories created by a batch. |
@@ -79,7 +82,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `latest_batch`, `mark_undone` | `sort_pilot/history.py` | Supply Undo data and deactivate restored/rolled-back batches. |
 | `_legacy_data` | `sort_pilot/history.py` | Reads, closes, and converts the latest active SQLite batch without modifying it. |
 | `_read`, `_write`, `_batch` | `sort_pilot/history.py` | Validate, atomically persist, and create/find JSON batch records. |
-| `TrayIcon.__init__`, `set_busy` | `sort_pilot/tray.py` | Construct actions and gate conflicting actions during analysis. |
+| `TrayIcon.__init__`, `set_busy` | `sort_pilot/tray.py` | Construct organization/student-settings actions and gate conflicting actions during analysis. |
 | `notify`, `show`, `hide`, `_icon` | `sort_pilot/tray.py` | Tray presentation and generated icon helpers. |
 | `SingleInstanceLock.__init__`, `acquire`, `release` | `sort_pilot/instance_lock.py` | Own the process-level Qt lock used by `run`. |
 
@@ -104,7 +107,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
 | `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
-| `_ocr_engine`, `_ocr` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens. |
+| `_ocr_engine`, `_ocr`, `_ocr_evidence` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread and extract bounded tokens plus transient OCR natural text. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image, OCR, and optional object features into `FeatureVector`. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
@@ -202,21 +205,21 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `StudentOnboardingDialog`, `StudentOnboardingDialog.__init__` | `onboarding.py` | Present only fixed occupation, student-type, grade, semester, and catalog metadata choices. |
-| `_selected_profile`, `_update_subjects`, `_accept` | `onboarding.py` | Validate fixed selections, display catalog subjects, and return a profile for atomic persistence. |
-| `StudentType`, `SubjectCatalog`, `SubjectCatalog.__post_init__`, `subjects_for` | `curriculum/catalog.py` | Define the two student types and validate the exact per-type subject lists loaded from JSON. |
-| `load_subject_catalog` | `curriculum/catalog.py` | Strictly load and cache the packaged `KR_STUDENT_2026_MVP_V1` catalog. |
-| `Semester`, `StudentProfile`, `StudentProfile.__post_init__`, `allowed_subjects`, `to_dict`, `from_dict` | `curriculum/profiles.py` | Validate and serialize only occupation, student type, grade, semester, and catalog version. |
-| `StudentProfileStore`, `StudentProfileStore.__init__`, `load`, `save` | `curriculum/profiles.py` | Atomically persist the active onboarding profile and report corrupt or stale-catalog state. |
+| `_selected_profile`, `_update_subjects`, `_accept` | `onboarding.py` | Validate fixed selections, show exact catalog candidates, and return a profile for atomic persistence. |
+| `StudentType`, `SubjectCatalog`, `SubjectCatalog.__post_init__`, `subjects_for` | `curriculum/catalog.py` | Define the two student types and validate the exact per-type subject constraints loaded from JSON. |
+| `load_subject_catalog` | `curriculum/catalog.py` | Load and cache the packaged `KR_STUDENT_2026_MVP_V1` catalog. |
+| `Semester`, `StudentProfile`, `StudentProfile.__post_init__`, `allowed_subjects`, `to_dict`, `from_dict` | `curriculum/profiles.py` | Validate and serialize the fixed student occupation, type, grade, semester, and catalog version without migration semantics. |
+| `StudentProfileStore.__init__`, `load`, `save` | `curriculum/profiles.py` | Atomically persist the active onboarding profile and report corrupt or stale-catalog state. |
 | `default_profile` | `curriculum/profiles.py` | Build a catalog-bounded profile for one student type, grade, and semester. |
-| `DecisionSource`, `Template` | `classification/result.py` | Define observable classifier authority and exactly five fixed template labels. |
+| `DecisionSource`, `Template` | `classification/result.py` | Define observable classifier authority and the five fixed user-facing template folders. |
 | `CandidateScore`, `CandidateScore.__post_init__` | `classification/result.py` | Carry and validate an inspectable raw candidate score without claiming calibrated probability. |
-| `EvidenceContribution`, `EvidenceContribution.__post_init__` | `classification/result.py` | Retain one named, finite evidence contribution to an axis decision. |
-| `AxisDecision`, `AxisDecision.__post_init__`, `AxisDecision.to_dict` | `classification/result.py` | Represent, validate, and serialize one resolved subject/template decision or nullable review state. |
-| `EducationalClassificationResult`, `EducationalClassificationResult.__post_init__` | `classification/result.py` | Combine catalog-bounded subject and template axes while keeping classification state separate from folder layout. |
-| `EducationalClassificationResult.needs_review`, `folder`, `to_dict` | `classification/result.py` | Expose review state, block unresolved folder rendering, render the six-component hierarchy, and serialize provenance. |
-| `OrganizationPlan`, `OrganizationPlan.__post_init__`, `OrganizationPlan.from_classification` | `classification/result.py` | Freeze an exact source and destination only after both bounded axes resolve. |
+| `EvidenceContribution`, `EvidenceContribution.__post_init__` | `classification/result.py` | Retain one named, finite structured contribution to an axis decision. |
+| `AxisDecision`, `AxisDecision.__post_init__`, `AxisDecision.to_dict` | `classification/result.py` | Represent, validate, and serialize one independently resolved subject/template decision or nullable abstention. |
+| `EducationalClassificationResult`, `EducationalClassificationResult.__post_init__` | `classification/result.py` | Combine catalog-bounded axes while keeping rich classification state separate from folder layout. |
+| `EducationalClassificationResult.needs_review`, `folder`, `to_dict` | `classification/result.py` | Expose review state, block unresolved folder rendering, render the six-component hierarchy, and serialize complete provenance. |
+| `OrganizationPlan`, `OrganizationPlan.__post_init__`, `OrganizationPlan._valid_destination_name`, `OrganizationPlan.from_classification` | `classification/result.py` | Freeze exact source/destination paths only after both bounded axes resolve, accepting only the original filename or its collision suffix. |
 | `SubjectProfile`, `SubjectProfile.__post_init__` | `classification/subject.py` | Define and validate one versioned natural-language subject profile. |
-| `SubjectEvidence`, `SubjectEvidence.__post_init__`, `SubjectEvidence.embedding_text` | `classification/subject.py` | Keep natural filename/body text separate from bounded lexical evidence. |
+| `SubjectEvidence`, `SubjectEvidence.__post_init__`, `SubjectEvidence.embedding_text` | `classification/subject.py` | Keep filename/body text valid and expose natural E5 input without serializing separate lexical evidence. |
 | `SubjectClassifier.classify` | `classification/subject.py` | Require local subject implementations to return an observable catalog-bounded axis decision. |
 | `eligible_subject_profiles` | `classification/subject.py` | Filter global profiles into the selected student type's JSON-catalog order before scoring. |
 | `load_subject_profiles` | `classification/subject.py` | Strictly load natural-language profiles for every exact subject in the packaged catalog. |
@@ -235,12 +238,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `CalibrationTargets`, `CalibrationTargets.__post_init__`, `CalibrationTargets.to_dict` | `classification/calibrated_policy.py` | Preserve and validate the user-approved 90% local-precision and 50% Gemma-escalation accuracy targets. |
 | `HeldOutAxisResult`, `HeldOutAxisResult.__post_init__` | `classification/calibrated_policy.py` | Hold one finite held-out raw score, margin, correctness label, and explicit-abstention state. |
 | `AxisCalibrationReport`, `AxisCalibrationReport.local_precision`, `AxisCalibrationReport.gemma_accuracy`, `AxisCalibrationReport.to_dict` | `classification/calibrated_policy.py` | Retain one axis's thresholds, routing counts, and achieved held-out rates. |
-| `CalibratedPolicy`, `CalibratedPolicy.__post_init__`, `CalibratedPolicy.thresholds_for`, `CalibratedPolicy.to_dict` | `classification/calibrated_policy.py` | Keep independently calibrated subject/template thresholds with their shared targets and version, and select thresholds by axis. |
-| `PolicyCalibrationReport`, `PolicyCalibrationReport.to_dict` | `classification/calibrated_policy.py` | Combine the two axis calibration reports with the centralized policy. |
-| `_passes_local`, `_passes_gemma`, `_local_precision`, `_gemma_accuracy`, `_measure_thresholds` | `classification/calibrated_policy.py` | Apply exact threshold gates and calculate aggregate held-out target rates and counts. |
-| `calibrate_axis`, `calibrate_policy` | `classification/calibrated_policy.py` | Exhaustively select target-meeting per-axis thresholds, maximizing local handling before Gemma escalation. |
-| `load_calibrated_policy` | `classification/calibrated_policy.py` | Strictly load the packaged independent routing policy and reject unexpected fields or target changes. |
-| `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate provisional raw-score/margin gates. |
+| `CalibratedPolicy`, `CalibratedPolicy.__post_init__`, `CalibratedPolicy.thresholds_for`, `CalibratedPolicy.to_dict` | `classification/calibrated_policy.py` | Centralize independently calibrated subject/template thresholds, approved targets, and policy version without corpus contents. |
+| `PolicyCalibrationReport`, `PolicyCalibrationReport.to_dict` | `classification/calibrated_policy.py` | Combine the central policy and aggregate subject/template calibration reports. |
+| `_rate`, `_measure_thresholds` (calibrated policy) | `classification/calibrated_policy.py` | Calculate empirical target rates and measure all three routes for one candidate threshold set. |
+| `calibrate_axis`, `calibrate_policy` | `classification/calibrated_policy.py` | Exhaustively select the broadest per-axis local and escalation regions satisfying both approved targets. |
+| `load_calibrated_policy` | `classification/calibrated_policy.py` | Strictly load the packaged Phase 5 targets and independent subject/template thresholds. |
+| `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate calibrated raw-score/margin gates. |
 | `AxisRoutingDecision` | `classification/policy.py` | Preserve the local decision, routing reason, and policy version passed to the next stage. |
 | `route_axis` | `classification/policy.py` | Accept decisive local evidence, escalate only plausible ambiguity to Gemma, and abstain on weak evidence. |
 | `ClassificationAxis`, `GemmaFallbackCancelled` | `classification/gemma_fallback.py` | Define the exact subject/template fallback axes and explicit cancellation outcome. |
@@ -252,17 +255,39 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `ConstrainedGemmaFallback._decision`, `_review_decision`, `_finish_as_review` | `classification/gemma_fallback.py` | Preserve ranked local evidence while recording Gemma/cache authority or unresolved review state in the complete axis representation. |
 | `ConstrainedGemmaFallback._start_process`, `_wait_until_ready`, `_post_json`, `_raise_if_cancelled`, `_stop_process`, `_free_port` | `classification/gemma_fallback.py` | Run CPU-only Gemma on a temporary loopback port, check cancellation at work boundaries, and always terminate or kill the server. |
 
-## Student evaluation
+## Phase 7 preview, immutable plan, and corrections
 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
-| `_require_fields`, `_required_text`, `_optional_label`, `_read_document` | `evaluation/corpus.py` | Reject unexpected or missing corpus/prediction fields and parse one strict JSON document. |
-| `CorpusCase`, `CorpusCase.__post_init__` | `evaluation/corpus.py` | Validate one ordered made-up case against the selected student type's catalog and the five templates. |
-| `Prediction`, `Prediction.__post_init__` | `evaluation/corpus.py` | Validate one ordered prediction, nullable axis labels, route, correction count, latency, and memory. |
-| `load_corpus`, `load_predictions` | `evaluation/corpus.py` | Load strict ordered cases and predictions without invented identifiers. |
-| `_rate`, `_percentile`, `_measurement` | `evaluation/metrics.py` | Compute bounded aggregate rates and latency/memory summaries. |
-| `EvaluationReport`, `EvaluationReport.to_dict` | `evaluation/metrics.py` | Hold and serialize all required aggregate Phase 2 measures. |
-| `evaluate_predictions` | `evaluation/metrics.py` | Count unresolved axes as incorrect and calculate subject, template, combined-path, coverage, review, fallback, correction, latency, and memory results. |
+| `PersonalExampleVersions`, `OriginalPrediction` | `classification/personal_examples.py` | Validate the relevant catalog/model/profile/policy versions and the two nullable original predictions retained for one correction. |
+| `_normalized_embedding`, `PersonalExample` | `classification/personal_examples.py` | Validate a finite normalized E5 vector and one path-free correction containing only the plan-required fields. |
+| `AxisPersonalExamplePolicy`, `PersonalExamplePolicy`, `load_personal_example_policy` | `classification/personal_examples.py` | Validate and strictly load the independently calibrated per-axis weight and minimum similarity. |
+| `PersonalExampleScores` | `classification/personal_examples.py` | Carry nearest eligible subject and template scores separately. |
+| `PersonalExampleStore`, `PersonalExampleStore.__init__`, `PersonalExampleStore.load`, `PersonalExampleStore.save`, `PersonalExampleStore.add` | `classification/personal_examples.py` | Strictly and atomically keep local corrections keyed by fingerprint without storing paths or raw text. |
+| `PersonalExampleStore.nearest_scores` | `classification/personal_examples.py` | Return maximum eligible cosine similarity for each approved subject and template label. |
+| `PersonalCalibrationCase` | `classification/personal_calibration.py` | Hold one made-up held-out ranking, nearest-example scores, correct label, and channel contribution scale. |
+| `PersonalAxisCalibrationReport`, `PersonalExampleCalibrationReport` | `classification/personal_calibration.py` | Report per-axis and combined correction, regression, routing, and approved-target measurements. |
+| `_measure_personal_policy`, `calibrate_personal_axis`, `calibrate_personal_examples` | `classification/personal_calibration.py` | Derive conservative independent influence from made-up held-out data while preserving Phase 5 thresholds and approved targets. |
+| `EducationalClassificationInput`, `EducationalClassificationOutput` | `classification/service.py` | Bound one source-separated transient evidence input and retain its complete two-axis result plus normalized embedding for preview. |
+| `_routed_local_decision` | `classification/service.py` | Finalize authoritative local results or explicit review state while preserving routing provenance. |
+| `EducationalClassificationService`, `EducationalClassificationService.classify_many`, `EducationalClassificationService._raise_if_cancelled` | `classification/service.py` | Run E5, nearest personal evidence, independent routing, and constrained Gemma for an ordered educational batch. |
+| `ApprovedEducationalPlan`, `ApprovedEducationalPlan.subject_corrected`, `ApprovedEducationalPlan.template_corrected`, `ApprovedEducationalPlan.personal_example` | `educational_preview.py` | Keep the frozen plan with its original result and produce a personal example only for a changed or newly resolved axis. |
+| `_user_decision`, `apply_preview_selection` | `educational_preview.py` | Apply exact catalog/five-template user selections while preserving earlier evidence and marking user authority. |
+| `_available_destination`, `freeze_organization_plan`, `_confirmation_message` | `educational_preview.py` | Resolve existing and within-batch collisions once, return the immutable approved plan, and show its exact paths in final confirmation. |
+| `EducationalPreviewDialog`, `EducationalPreviewDialog.__init__`, `EducationalPreviewDialog._set_read_only`, `EducationalPreviewDialog._axis_selector` | `educational_preview.py` | Build the fixed-choice two-axis review with explicit unresolved state and allowed destination roots. |
+| `EducationalPreviewDialog.approved_plans`, `EducationalPreviewDialog._refresh_destinations`, `EducationalPreviewDialog._confirm`, `EducationalPreviewDialog.frozen_plans` | `educational_preview.py` | Require both axes, show the resulting hierarchy, obtain final approval, and expose only paths frozen by that approval. |
+
+## Student evaluation framework
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `_require_fields`, `_required_text`, `_optional_label`, `_read_document` | `evaluation/corpus.py` | Enforce exact JSON fields and strict text, nullable-label, and ordered-document loading. |
+| `CorpusCase`, `CorpusCase.__post_init__`, `CorpusCase.from_dict`, `CorpusCase.to_dict` | `evaluation/corpus.py` | Validate and serialize one made-up corpus case with a catalog-bounded subject and fixed template. |
+| `Prediction`, `Prediction.__post_init__`, `Prediction.from_dict`, `Prediction.to_dict` | `evaluation/corpus.py` | Validate and serialize one ordered subject/template prediction, routing sources, corrections, latency, and memory. |
+| `load_corpus`, `load_predictions` | `evaluation/corpus.py` | Load nonempty strict corpus and prediction documents without invented join identifiers. |
+| `_rate`, `_percentile`, `_measurement` | `evaluation/metrics.py` | Calculate stable aggregate rates, percentiles, and readable resource measurements. |
+| `EvaluationReport`, `EvaluationReport.to_dict` | `evaluation/metrics.py` | Hold and serialize only the required Phase 2 measures and total case count. |
+| `evaluate_predictions` | `evaluation/metrics.py` | Compare ordered predictions with corpus labels, count unresolved axes as incorrect, and aggregate every required Phase 2 measure. |
 
 ## Maintenance rule
 

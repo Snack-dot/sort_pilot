@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import math
 from pathlib import Path
 from typing import Protocol
 
@@ -144,8 +145,18 @@ class E5SubjectClassifier:
         evidence: SubjectEvidence,
         student: StudentProfile,
         profiles: tuple[SubjectProfile, ...],
+        *,
+        query_embedding: Sequence[float] | None = None,
+        personal_example_weight: float = 0.0,
     ) -> AxisDecision:
-        """Rank catalog subjects and retain raw cosine similarity and margin."""
+        """Rank catalog subjects with cosine and calibrated personal-example evidence."""
+        if (
+            isinstance(personal_example_weight, bool)
+            or not isinstance(personal_example_weight, (int, float))
+            or not math.isfinite(personal_example_weight)
+            or personal_example_weight < 0
+        ):
+            raise ValueError("과목 개인 예시 가중치는 0 이상의 유한한 숫자여야 합니다.")
         eligible = eligible_subject_profiles(student, profiles)
         if not eligible:
             raise ValueError("선택한 학생 유형에 사용할 과목 프로필이 없습니다.")
@@ -155,21 +166,41 @@ class E5SubjectClassifier:
 
         profile_matrix = self._profile_embeddings(eligible)
         query_matrix = _embedding_matrix(
-            self.encoder.encode((f"query: {evidence.embedding_text}",)),
+            (query_embedding,)
+            if query_embedding is not None
+            else self.encoder.encode((f"query: {evidence.embedding_text}",)),
             1,
         )
         similarities = np.clip(profile_matrix @ query_matrix[0], -1.0, 1.0)
+        personal = {
+            item.label: item.raw_score
+            for item in evidence.personal_example_scores
+            if item.label in student.allowed_subjects
+        }
         ranked = sorted(
-            zip(eligible, similarities, strict=True),
-            key=lambda item: -float(item[1]),
+            (
+                (
+                    profile,
+                    float(similarity),
+                    float(similarity)
+                    + float(personal_example_weight) * personal.get(profile.label, 0.0),
+                )
+                for profile, similarity in zip(eligible, similarities, strict=True)
+            ),
+            key=lambda item: -item[2],
         )
         candidates = tuple(
-            CandidateScore(profile.label, float(similarity))
-            for profile, similarity in ranked
+            CandidateScore(profile.label, adjusted)
+            for profile, _similarity, adjusted in ranked
         )
         top_score = candidates[0].raw_score
         margin = top_score - candidates[1].raw_score if len(candidates) > 1 else 0.0
-        top_profile, top_similarity = ranked[0]
+        top_profile, top_similarity, _adjusted = ranked[0]
+        baseline_label = eligible[int(np.argmax(similarities))].label
+        personal_contribution = float(personal_example_weight) * personal.get(
+            top_profile.label,
+            0.0,
+        )
         return AxisDecision(
             label=top_profile.label,
             raw_score=top_score,
@@ -179,11 +210,20 @@ class E5SubjectClassifier:
             evidence=(
                 EvidenceContribution(
                     name="e5_similarity",
-                    value=float(top_similarity),
+                    value=top_similarity,
                     detail=self.model_id,
                 ),
+                EvidenceContribution(
+                    name="personal_example",
+                    value=personal_contribution,
+                    detail=f"weight={float(personal_example_weight):.6f}",
+                ),
             ),
-            source=DecisionSource.LOCAL,
+            source=(
+                DecisionSource.PERSONAL_EXAMPLE
+                if top_profile.label != baseline_label and personal_contribution != 0.0
+                else DecisionSource.LOCAL
+            ),
             model_version=self.model_id,
             profile_version=next(iter(versions)),
             policy_version=E5_RANKING_POLICY_VERSION,

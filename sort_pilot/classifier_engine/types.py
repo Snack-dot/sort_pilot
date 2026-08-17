@@ -26,10 +26,13 @@ class FeatureVector:
     route: str = "metadata"
     extractor_ms: dict[str, float] = field(default_factory=dict)
     peak_rss_mb: float = 0.0
+    natural_text: str = field(default="", repr=False)
 
     def to_dict(self) -> dict:
-        """Serialize the feature vector for persistence and evaluation."""
-        return asdict(self)
+        """Serialize classifier features without persisting raw extracted text."""
+        value = asdict(self)
+        value.pop("natural_text", None)
+        return value
 
 
 @dataclass

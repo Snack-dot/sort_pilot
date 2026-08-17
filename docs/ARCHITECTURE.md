@@ -2,9 +2,9 @@
 
 > **Documentation status:** Historical reference for the legacy classifier design. Major process, workflow, storage, and repository-layout sections below do not describe the current application. Use `FUNCTION_MAP.md` for implemented ownership and `../plans/HYBRID_EDUCATIONAL_CLASSIFIER_PLAN.md` as the supreme student-classifier plan.
 
-> **Implemented-app note (updated through Phase 2 on 2026-08-17):** The diagrams below describe the original long-lived watcher, not the integrated manual tray application. The current app uses manual Desktop/Downloads collection, a two-worker queue, the legacy type/topic preview, explicit approval, transactional moves, and persistent Undo. Phases 0–2 establish the strict student subject/template contracts, fixed-choice saved profile, and synthetic evaluation harness as separate foundations; subject/template ranking and production integration begin in later phases. See `FUNCTION_MAP.md` for the implemented ownership map.
+> **Implemented-app note (updated 2026-08-17):** The diagrams below describe the original long-lived watcher and legacy type/topic proposal. The current app instead uses manual Desktop/Downloads collection, a two-worker bounded extraction queue, independent subject/template classification, calibrated local/Gemma/review routing, a fixed-choice educational preview, immutable approved paths, and persistent Undo. See `docs/FUNCTION_MAP.md` for the implemented call graph.
 >
-> The authoritative future hierarchy is `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`, with exactly the five templates defined by the supreme plan. At this checkpoint, that hierarchy is validated by the educational contracts but is not yet used by the active legacy preview.
+> Each worker returns an `AnalysisRecord` containing transient natural text plus bounded lexical, collocation, and visual evidence. Historical engine family/topic values are ignored for the active destination. The authoritative hierarchy is `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`, with exactly the five templates defined by the supreme plan. Preview corrections are stored as separate local personal examples; they do not mutate the global profiles.
 
 Companion to `SRS.md`. Requirement IDs (`FR-xxx`, `NFR-xxx`) refer to that historical document.
 

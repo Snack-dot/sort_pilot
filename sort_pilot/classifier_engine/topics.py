@@ -93,6 +93,12 @@ class AnalysisRecord:
     suggested_name: str
     family: str
     terms: dict[str, float]
+    fingerprint: str = ""
+    natural_text: str = ""
+    lexical_evidence: tuple[str, ...] = ()
+    pmi_collocations: tuple[str, ...] = ()
+    ocr_layout_evidence: tuple[str, ...] = ()
+    visual_evidence: tuple[str, ...] = ()
     topic: str | None = None
     score: float = 0.0
     reason: str = ""

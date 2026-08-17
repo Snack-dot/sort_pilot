@@ -95,17 +95,14 @@ def test_first_run_cancellation_does_not_start_followup_calibration() -> None:
     assert controller._pending_organize is None
 
 
-def test_completed_onboarding_continues_existing_first_run_calibration() -> None:
+def test_completed_onboarding_does_not_start_the_older_topic_calibration() -> None:
     controller = _StartupStub(None, [], onboarding_result=True)
 
     AppController._start_initial_workflow(controller)
 
     assert controller.onboarding_calls == 1
-    assert controller.calibration_calls == 1
-    assert controller._pending_organize == (
-        [Path("Desktop"), Path("Downloads")],
-        "바탕화면과 다운로드 폴더",
-    )
+    assert controller.calibration_calls == 0
+    assert controller._pending_organize is None
 
 
 def test_saved_onboarding_is_reused_without_prompting() -> None:
@@ -125,6 +122,7 @@ def test_every_classification_and_organization_entry_stops_without_saved_profile
     AppController.migrate_folders(controller)
     AppController._organize_existing_files(controller, [Path("Downloads")], "downloads")
     AppController._start_analysis(controller, [Path("file.pdf")], "organize", "analysis")
+    AppController._complete_organization(controller, [])
     AppController._show_preview(controller, [])
 
-    assert controller.require_calls == 5
+    assert controller.require_calls == 6

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -17,6 +18,20 @@ from .calibration import (
     merge_profile_evidence,
 )
 from .calibration_dialog import CalibrationDialog, ensure_local_model, ensure_semantic_vectors
+from .classification import (
+    ConstrainedGemmaFallback,
+    EducationalClassificationInput,
+    EducationalClassificationOutput,
+    EducationalClassificationService,
+    FastEmbedE5Encoder,
+    GemmaFallbackCache,
+    GemmaFallbackCancelled,
+    PersonalExampleStore,
+    load_calibrated_policy,
+    load_personal_example_policy,
+    load_subject_profiles,
+    load_template_profiles,
+)
 from .classifier_engine.config import data_dir
 from .classifier_engine.hierarchy import TYPE_FAMILIES, UNSORTED_TOPIC
 from .classifier_engine.topics import (
@@ -25,7 +40,8 @@ from .classifier_engine.topics import (
     TopicProfile,
     TopicProfileStore,
 )
-from .curriculum import StudentProfileStore
+from .curriculum import StudentProfile, StudentProfileStore
+from .educational_preview import EducationalPreviewDialog
 from .embeddings_installer import EmbeddingsInstaller
 from .history import HistoryStore
 from .instance_lock import SingleInstanceLock
@@ -33,7 +49,12 @@ from .local_tagger import LocalModelInstaller, LocalTagger
 from .migration import MigrationCandidate, collect_migration_candidates
 from .models import FileSuggestion
 from .onboarding import StudentOnboardingDialog
-from .organizer import build_operation, execute_batch, undo_latest
+from .organizer import (
+    build_operation,
+    execute_batch,
+    execute_organization_plans,
+    undo_latest,
+)
 from .preview import PreviewDialog
 from .scanner import collect_candidates
 from .topic_dialogs import ProfileEditRequest, TopicManagerDialog
@@ -41,7 +62,7 @@ from .tray import TrayIcon
 
 
 class AppController(QObject):
-    """Coordinate tray actions, hierarchical analysis, profile learning, moves, and Undo."""
+    """Coordinate the student subject/template workflow, exact moves, and Undo."""
 
     def __init__(self, app: QApplication) -> None:
         """Initialize application services without starting file analysis."""
@@ -51,11 +72,17 @@ class AppController(QObject):
         app_data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         self.history = HistoryStore(app_data / "history.json", app_data / "history.db")
         self.student_profile_store = StudentProfileStore(app_data / "student_profile.json")
+        self.personal_examples = PersonalExampleStore(app_data / "personal_examples.json")
         self.profile_store = TopicProfileStore(data_dir() / "topic_profiles.json")
         self.topic_classifier = TopicClassifier()
         self.calibration = CalibrationService(self.topic_classifier, self.profile_store)
         self.calibration_sampler = CalibrationSampler(data_dir() / "calibration_state.json", per_family=20)
         self.model_installer = LocalModelInstaller(data_dir() / "local_ai")
+        self.gemma_fallback = ConstrainedGemmaFallback(
+            self.model_installer,
+            GemmaFallbackCache(app_data / "gemma_fallback_cache.json"),
+        )
+        self.e5_cache_dir = Path(__file__).resolve().parents[1] / "data" / "models" / "fastembed"
         self.local_tagger = LocalTagger(self.model_installer)
         self.embeddings_installer = EmbeddingsInstaller(data_dir() / "local_ai")
         self.downloads_folder = Path.home() / "Downloads"
@@ -70,14 +97,12 @@ class AppController(QObject):
         self._pending_profile_request: ProfileEditRequest | None = None
         self._pending_organize: tuple[list[Path], str] | None = None
         self._migration_candidates: dict[str, MigrationCandidate] = {}
+        self._classification_cancel_event: threading.Event | None = None
         self.tray = TrayIcon(
             self.organize_all,
             self.organize_desktop,
             self.organize_downloads,
-            self.calibrate_topics,
             self.manage_student_profile,
-            self.manage_topics,
-            self.migrate_folders,
             self.undo,
             self.quit,
         )
@@ -90,15 +115,8 @@ class AppController(QObject):
         QTimer.singleShot(0, self._start_initial_workflow)
 
     def _start_initial_workflow(self) -> None:
-        """Require valid student settings before scheduling legacy topic calibration."""
-        if not self._require_student_profile():
-            return
-        if not self.profile_store.load():
-            self._pending_organize = (
-                [self._desktop_folder(), self.downloads_folder],
-                "바탕화면과 다운로드 폴더",
-            )
-            self.calibrate_topics()
+        """Require the saved student profile without starting an older topic flow."""
+        self._require_student_profile()
 
     def _require_student_profile(self) -> bool:
         """Require a valid saved student profile before classification or organization."""
@@ -200,17 +218,8 @@ class AppController(QObject):
         return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation))
 
     def _organize_existing_files(self, folders: list[Path], label: str) -> None:
-        """Collect candidates quickly and start a hierarchical background batch."""
+        """Collect candidates and start the educational subject/template analysis."""
         if not self._require_student_profile():
-            return
-        if not self.profile_store.load():
-            self._pending_organize = (folders, label)
-            QMessageBox.information(
-                None,
-                "Sort Pilot",
-                "먼저 표본 파일로 사용자 주제를 보정합니다. 보정 후 전체 분석을 계속합니다.",
-            )
-            self.calibrate_topics()
             return
         paths: list[Path] = []
         try:
@@ -222,8 +231,7 @@ class AppController(QObject):
         if not paths:
             QMessageBox.information(None, "Sort Pilot", f"{label}에 정리할 파일이 없습니다.")
             return
-        self._profile_snapshot = self.profile_store.load()
-        self._start_analysis(paths, "organize", "AI 계층 분석")
+        self._start_analysis(paths, "organize", "교육 자료 분석")
 
     def _start_analysis(self, paths, mode: str, label: str) -> None:
         """Start one queue session with an explicit completion mode and progress label."""
@@ -270,17 +278,132 @@ class AppController(QObject):
             self._complete_organization(records)
 
     def _complete_organization(self, records: list[AnalysisRecord]) -> None:
-        """Match saved topics and open an editable full-batch review."""
+        """Classify both educational axes, review them, then execute frozen paths."""
+        if not self._require_student_profile():
+            return
         if not records:
             QMessageBox.information(None, "Sort Pilot", "분석 결과가 없습니다.")
             return
-        profiles = self._profile_snapshot or self.profile_store.load()
-        self.topic_classifier.assign_existing(records, profiles)
-        record_map = {self._path_key(record.source): record for record in records}
-        self._show_preview(
-            [self._record_suggestion(record) for record in records],
-            record_map,
+        try:
+            student = self.student_profile_store.load()
+        except RuntimeError as exc:
+            QMessageBox.critical(None, "학생 설정 읽기 실패", str(exc))
+            return
+        if student is None:
+            return
+        outputs = self._classify_educational_records(records, student)
+        if outputs is None:
+            return
+        dialog = EducationalPreviewDialog(
+            outputs,
+            self._desktop_folder(),
+            self.downloads_folder,
         )
+        if dialog.exec() != EducationalPreviewDialog.DialogCode.Accepted:
+            return
+        approved = dialog.frozen_plans
+        examples = tuple(
+            example
+            for item in approved
+            for example in (item.personal_example(),)
+            if example is not None
+        )
+        completed = []
+        try:
+            completed = execute_organization_plans(
+                [item.plan for item in approved],
+                self.history,
+            )
+            self.personal_examples.add(examples)
+        except (OSError, ValueError, RuntimeError) as exc:
+            if completed:
+                undo_latest(self.history)
+                detail = "\n이동한 파일은 원래 위치로 되돌렸습니다."
+            else:
+                detail = ""
+            QMessageBox.critical(None, "정리 실패", f"{exc}{detail}")
+            return
+        QMessageBox.information(None, "정리 완료", f"{len(completed)}개 파일을 정리했습니다.")
+
+    @staticmethod
+    def _educational_input(record: AnalysisRecord) -> EducationalClassificationInput:
+        """Convert one extraction record without persisting its source text."""
+        return EducationalClassificationInput(
+            source=record.source,
+            fingerprint=record.fingerprint,
+            file_name=record.file_name,
+            natural_text=record.natural_text,
+            lexical_evidence=record.lexical_evidence,
+            pmi_collocations=record.pmi_collocations,
+            ocr_layout_evidence=record.ocr_layout_evidence,
+            visual_evidence=record.visual_evidence,
+        )
+
+    def _classify_educational_records(
+        self,
+        records: list[AnalysisRecord],
+        student: StudentProfile,
+    ) -> tuple[EducationalClassificationOutput, ...] | None:
+        """Run local-cache-only educational classification with cancellation."""
+        try:
+            inputs = tuple(self._educational_input(record) for record in records)
+        except ValueError as exc:
+            QMessageBox.critical(None, "교육 분류 입력 실패", str(exc))
+            return None
+        cancel_event = threading.Event()
+        self._classification_cancel_event = cancel_event
+        completed_count = [0]
+        dialog = QProgressDialog("과목과 템플릿을 분류하고 있습니다.", "취소", 0, len(inputs))
+        dialog.setWindowTitle("Sort Pilot - 교육 분류")
+        dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+        dialog.setMinimumDuration(0)
+        dialog.setAutoClose(False)
+        dialog.setAutoReset(False)
+
+        def cancel() -> None:
+            cancel_event.set()
+            self.gemma_fallback.cancel()
+
+        def work() -> tuple[EducationalClassificationOutput, ...]:
+            encoder = FastEmbedE5Encoder(self.e5_cache_dir, allow_download=False)
+            service = EducationalClassificationService(
+                encoder=encoder,
+                subject_profiles=load_subject_profiles(),
+                template_profiles=load_template_profiles(),
+                calibrated_policy=load_calibrated_policy(),
+                personal_policy=load_personal_example_policy(),
+                personal_examples=self.personal_examples,
+                gemma=self.gemma_fallback,
+            )
+            return service.classify_many(
+                inputs,
+                student,
+                progress=lambda completed, _total: completed_count.__setitem__(0, completed),
+                cancelled=cancel_event.is_set,
+            )
+
+        dialog.canceled.connect(cancel)
+        self._set_busy(True)
+        dialog.show()
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(work)
+                while not future.done():
+                    QApplication.processEvents()
+                    dialog.setValue(completed_count[0])
+                    time.sleep(0.05)
+                return future.result()
+        except GemmaFallbackCancelled:
+            self.tray.notify("Sort Pilot", "교육 분류를 취소했습니다.")
+            return None
+        except Exception as exc:
+            QMessageBox.critical(None, "교육 분류 실패", str(exc))
+            return None
+        finally:
+            self._classification_cancel_event = None
+            dialog.close()
+            dialog.deleteLater()
+            self._set_busy(False)
 
     def _complete_calibration(self, records: list[AnalysisRecord]) -> None:
         """Generate local labels, review the sample, then persist approved topics."""
@@ -463,6 +586,9 @@ class AppController(QObject):
         if QMessageBox.question(None, "프로그램 종료", "Sort Pilot을 종료할까요?") != QMessageBox.StandardButton.Yes:
             return
         self._close_progress()
+        if self._classification_cancel_event is not None:
+            self._classification_cancel_event.set()
+        self.gemma_fallback.cancel()
         self.analysis.shutdown(-1)
         self.tray.hide()
         self.app.quit()

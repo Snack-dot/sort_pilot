@@ -8,7 +8,7 @@ from typing import Protocol
 
 from sort_pilot.curriculum import StudentProfile, load_subject_catalog
 
-from .result import AxisDecision
+from .result import AxisDecision, CandidateScore
 
 
 SUBJECT_PROFILE_VERSION = "1"
@@ -54,6 +54,7 @@ class SubjectEvidence:
     file_name: str
     natural_text: str
     lexical_terms: tuple[str, ...] = ()
+    personal_example_scores: tuple[CandidateScore, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate file-name, natural-text, and separate lexical evidence types."""
@@ -70,6 +71,15 @@ class SubjectEvidence:
             isinstance(value, str) for value in self.lexical_terms
         ):
             raise ValueError("과목 어휘 근거는 문자열 튜플이어야 합니다.")
+        if not isinstance(self.personal_example_scores, tuple) or not all(
+            isinstance(value, CandidateScore) for value in self.personal_example_scores
+        ):
+            raise ValueError("개인 예시 과목 근거는 후보 점수 튜플이어야 합니다.")
+        labels = tuple(item.label for item in self.personal_example_scores)
+        if len(labels) != len(set(labels)) or any(
+            not -1.0 <= item.raw_score <= 1.0 for item in self.personal_example_scores
+        ):
+            raise ValueError("개인 예시 과목 근거는 중복 없는 -1부터 1 사이 점수여야 합니다.")
 
     @property
     def embedding_text(self) -> str:

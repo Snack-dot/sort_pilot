@@ -48,6 +48,18 @@ python eval/run_policy_calibration.py eval/synthetic_student_held_out_corpus.jso
 
 The runner writes nothing. It prints only the centralized policy and aggregate per-axis counts/rates. Do not revise profiles from this held-out result; doing so would invalidate the separation between profile writing and policy calibration.
 
+## Phase 7 personal-example calibration
+
+Phase 7 uses the made-up Phase 2 corpus as pretend previously approved personal examples and the separate 50-case made-up held-out corpus as future files. It derives subject and template weights and minimum similarities independently while retaining the Phase 5 routing thresholds.
+
+Reproduce and verify the packaged rule with the already downloaded, Git-ignored E5 model:
+
+```powershell
+python eval/run_personal_example_calibration.py eval/synthetic_student_corpus.json eval/synthetic_student_held_out_corpus.json --model-cache data/models/fastembed --verify-policy sort_pilot/classification/data/personal_example_policy.json
+```
+
+The runner writes nothing. It prints only the rule and aggregate per-axis counts/rates. The tracked examples are entirely made up; do not substitute real filenames, text, labels, predictions, or corrections into either tracked corpus.
+
 ## Real labels stay local
 
 Do not place an evaluation made from real files in any tracked synthetic JSON file. Put every real filename, extracted text, label, prediction, correction, and result under `eval/local/`. That directory is Git-ignored and its contents must never be committed, force-added, or uploaded to GitHub.

@@ -11,6 +11,7 @@ from .topics import (
     AnalysisRecord,
     TopicClassifier,
     TopicProfileStore,
+    humanize_term,
     vector_terms,
 )
 from .types import Decision
@@ -42,12 +43,42 @@ class ClassifierEngine:
         vector, decision, decision_id = self.pipeline.safe_classify(file_path)
         family = route_type(file_path)
         reason = self._decision_reason(decision)
+        lexical_evidence = tuple(
+            dict.fromkeys(
+                feature.t
+                for feature in vector.features
+                if feature.src in {"body", "ocr"}
+                and not feature.t.startswith(("bi:", "tri:"))
+            )
+        )
+        pmi_collocations = tuple(
+            dict.fromkeys(
+                feature.t.split(":", 1)[1]
+                for feature in vector.features
+                if feature.src == "body" and feature.t.startswith(("bi:", "tri:"))
+            )
+        )
+        visual_evidence = tuple(
+            dict.fromkeys(
+                value
+                for feature in vector.features
+                if feature.src in {"obj", "pair"}
+                for value in (humanize_term(feature.t),)
+                if value
+            )
+        )
         return AnalysisRecord(
             file_path=str(file_path.resolve()),
             file_name=file_path.name,
             suggested_name=file_path.name,
             family=family,
             terms=vector_terms(vector, self.pipeline.config.source_weights),
+            fingerprint=vector.file_id.split(":", 1)[-1],
+            natural_text=vector.natural_text,
+            lexical_evidence=lexical_evidence,
+            pmi_collocations=pmi_collocations,
+            ocr_layout_evidence=(),
+            visual_evidence=visual_evidence,
             topic=None,
             score=float(decision.margin),
             reason=reason,

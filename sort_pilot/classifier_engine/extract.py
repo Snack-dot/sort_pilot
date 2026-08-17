@@ -180,11 +180,18 @@ def _ocr_engine():
     return engine
 
 
-def _ocr(path: Path) -> list[Feature]:
-    """Extract at most forty OCR tokens while reusing the thread's engine."""
+def _ocr_evidence(path: Path) -> tuple[str, list[Feature]]:
+    """Extract bounded OCR natural text and at most forty lexical features."""
     result = _ocr_engine()(str(path))
     texts = getattr(result, "txts", None) or []
-    return [Feature(token, "ocr") for token in tokenize(" ".join(texts))[:40]]
+    natural_text = " ".join(str(value) for value in texts)[:20_000]
+    _OCR_LOCAL.last_text = natural_text
+    return natural_text, [Feature(token, "ocr") for token in tokenize(natural_text)[:40]]
+
+
+def _ocr(path: Path) -> list[Feature]:
+    """Return OCR lexical features for the legacy extractor interface."""
+    return _ocr_evidence(path)[1]
 
 
 def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
@@ -217,14 +224,28 @@ def extract(path: Path, max_content_mb=200, max_chars=20_000) -> FeatureVector:
     if mime.startswith("image/"):
         try:
             route, image_features = _image_features(path); features.extend(image_features)
-            if route in {"screenshot", "ambiguous"}: features.extend(_ocr(path))
+            if route in {"screenshot", "ambiguous"}:
+                _OCR_LOCAL.last_text = ""
+                features.extend(_ocr(path))
+                ocr_text = getattr(_OCR_LOCAL, "last_text", "")
+                if not text:
+                    text = ocr_text[:max_chars]
             model_path = Path(__file__).parents[2] / "data" / "models" / "yolov8n.onnx"
             if model_path.exists():
                 from .vision import infer
                 vision_features, _ = infer(path, model_path); features.extend(vision_features)
         except Exception:
             partial = True; route = "image"
-    return FeatureVector(path_id(path), str(path), stat.st_size, features, partial, route, {"total": (time.perf_counter()-started)*1000})
+    return FeatureVector(
+        path_id(path),
+        str(path),
+        stat.st_size,
+        features,
+        partial,
+        route,
+        {"total": (time.perf_counter()-started)*1000},
+        natural_text=text,
+    )
 
 
 def is_processable(path: Path, exclusions=()) -> bool:

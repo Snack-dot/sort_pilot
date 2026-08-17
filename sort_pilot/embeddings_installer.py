@@ -48,7 +48,7 @@ class EmbeddingsInstaller:
     That makes the exact resulting bytes environment-dependent (numpy/zlib
     version, platform), so the result is checked structurally rather than
     against a fixed hash — REFERENCE_SHA256 documents the maintainer's own
-    build for THIRD_PARTY.md, the same way the locally-exported YOLO ONNX
+    build for docs/THIRD_PARTY.md, the same way the locally-exported YOLO ONNX
     model's pinned hash is informational rather than runtime-enforced.
     """
 

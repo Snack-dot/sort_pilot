@@ -304,6 +304,7 @@ class TemplateClassifier:
         profile: TemplateProfile,
         evidence: TemplateEvidence,
         semantic_intent: float,
+        personal_example_weight: float,
     ) -> dict[str, float]:
         """Calculate each named raw evidence value without converting it to text."""
         personal = {
@@ -325,15 +326,27 @@ class TemplateClassifier:
                 profile.ocr_layout_indicators,
             ),
             "visual": _indicator_score(evidence.visual_terms, profile.visual_indicators),
-            "personal_example": personal.get(profile.template.value, 0.0),
+            "personal_example": (
+                personal_example_weight * personal.get(profile.template.value, 0.0)
+            ),
         }
 
     def classify(
         self,
         evidence: TemplateEvidence,
         profiles: tuple[TemplateProfile, ...],
+        *,
+        query_embedding: Sequence[float] | None = None,
+        personal_example_weight: float = 1.0,
     ) -> AxisDecision:
         """Rank all five fixed templates and retain weighted evidence and margin."""
+        if (
+            isinstance(personal_example_weight, bool)
+            or not isinstance(personal_example_weight, (int, float))
+            or not math.isfinite(personal_example_weight)
+            or personal_example_weight < 0
+        ):
+            raise ValueError("템플릿 개인 예시 가중치는 0 이상의 유한한 숫자여야 합니다.")
         ordered = ordered_template_profiles(profiles)
         versions = {profile.version for profile in ordered}
         if len(versions) != 1:
@@ -341,7 +354,9 @@ class TemplateClassifier:
 
         profile_matrix = self._profile_embeddings(ordered)
         query_matrix = _embedding_matrix(
-            self.encoder.encode((f"query: {evidence.embedding_text}",)),
+            (query_embedding,)
+            if query_embedding is not None
+            else self.encoder.encode((f"query: {evidence.embedding_text}",)),
             1,
         )
         similarities = np.clip(profile_matrix @ query_matrix[0], -1.0, 1.0)
@@ -351,12 +366,26 @@ class TemplateClassifier:
                 profile,
                 evidence,
                 float(similarity),
+                float(personal_example_weight),
             )
             raw_score = sum(
                 getattr(profile.evidence_weights, field) * channels[field]
                 for field in _WEIGHT_FIELDS
             ) / profile.evidence_weights.total
             scored.append((profile, raw_score, channels))
+        baseline = [
+            (
+                profile,
+                sum(
+                    getattr(profile.evidence_weights, field)
+                    * (0.0 if field == "personal_example" else channels[field])
+                    for field in _WEIGHT_FIELDS
+                )
+                / profile.evidence_weights.total,
+            )
+            for profile, _raw_score, channels in scored
+        ]
+        baseline_label = max(baseline, key=lambda item: item[1])[0].template.value
         ranked = sorted(scored, key=lambda item: -item[1])
         candidates = tuple(
             CandidateScore(profile.template.value, raw_score)
@@ -386,7 +415,12 @@ class TemplateClassifier:
             margin=max(0.0, margin),
             candidates=candidates,
             evidence=contributions,
-            source=DecisionSource.LOCAL,
+            source=(
+                DecisionSource.PERSONAL_EXAMPLE
+                if top_profile.template.value != baseline_label
+                and top_channels["personal_example"] != 0.0
+                else DecisionSource.LOCAL
+            ),
             model_version=self.encoder.model_id,
             profile_version=next(iter(versions)),
             policy_version=TEMPLATE_RANKING_POLICY_VERSION,
