@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -188,10 +189,17 @@ class TemplateTextEncoder(Protocol):
         ...
 
 
+def _normalize_match_text(value: str) -> str:
+    """Fold Unicode-decomposed (e.g. macOS NFD filenames) and case variants together."""
+    return unicodedata.normalize("NFC", value).casefold().strip()
+
+
 def _indicator_score(values: Sequence[str], indicators: Sequence[str]) -> float:
     """Measure the share of supplied structured values matching a profile indicator."""
-    normalized_values = tuple(value.casefold().strip() for value in values if value.strip())
-    normalized_indicators = tuple(value.casefold().strip() for value in indicators if value.strip())
+    normalized_values = tuple(_normalize_match_text(value) for value in values if value.strip())
+    normalized_indicators = tuple(
+        _normalize_match_text(value) for value in indicators if value.strip()
+    )
     if not normalized_values or not normalized_indicators:
         return 0.0
     matched = sum(

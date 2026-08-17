@@ -231,6 +231,7 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `TemplateProfile`, `TemplateProfile.__post_init__` | `classification/template.py` | Keep natural prototypes, structured indicators, evidence weights, fixed label, and version together for one of the five templates. |
 | `TemplateEvidence`, `TemplateEvidence.__post_init__`, `TemplateEvidence.embedding_text` | `classification/template.py` | Validate natural and structured template evidence while exposing only natural filename/body text to E5. |
 | `TemplateTextEncoder`, `TemplateTextEncoder.encode` | `classification/template.py` | Define the exact 384-dimensional multilingual E5 boundary used by template ranking. |
+| `_normalize_match_text` | `classification/template.py` | Fold Unicode-decomposed (macOS NFD) filenames and case variants together before literal indicator matching. |
 | `_indicator_score` | `classification/template.py` | Score structured values against one template profile without converting engineered evidence into natural text. |
 | `ordered_template_profiles` | `classification/template.py` | Require exactly one profile for each fixed template and restore the fixed template order. |
 | `load_template_profiles` | `classification/template.py` | Strictly load the five separate profiles and their complete evidence weights from packaged JSON. |

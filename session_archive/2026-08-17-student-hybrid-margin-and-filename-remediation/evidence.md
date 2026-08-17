@@ -49,7 +49,7 @@ SUBJECT:  50/50 correct
 TEMPLATE: 57/57 correct
 ```
 
-Every case the original report specifically flagged as a miss or a silent wrong auto-route resolved correctly, including the double-miss cases (`2027 수능특강 문학.pdf`, `2027 수능특강 영어.pdf`) and the two files the report showed being silently auto-routed to the wrong template (`...확률과 통계_문제지.pdf` → previously 교내활동, `...모의고사-수학-문제.pdf` → previously 증빙서류; both now resolve to 과제).
+Every case the original report specifically flagged as a miss or a silent wrong auto-route resolved correctly, including two 국어-subject double-miss cases the report quoted verbatim, and the two math-subject files the report showed being silently auto-routed to the wrong template (one containing a `문제지` filename token, previously routed to 교내활동; one containing a `문제` filename token, previously routed to 증빙서류) — both now resolve to 과제.
 
 Recalibrating against the real 50/57 cases combined with the invented 68-case corpus produced **identical threshold values** to the invented-only calibration — the already-packaged thresholds generalize to the real data without adjustment, and precision on the combined set is even higher (subject 98.7%, template 100%).
 
@@ -63,12 +63,33 @@ subject=needs_review, template=needs_review:     8/100
 subject=accept_local, template=gemma_fallback:   6/100
 ```
 
-The one file the original report itself was uncertain about (`...인천광역시 교육청_학력평가_지문분석(통합본).pdf` — no literal subject or template token) now correctly falls to `NEEDS_REVIEW` (subject, margin 0.0035 < floor 0.038) and `GEMMA_FALLBACK` (template, margin 0.0011 < floor 0.141) rather than being silently guessed — direct confirmation the margin floor prevents exactly the danger the report flagged, on the exact ambiguous case it raised.
+The one file the original report itself was uncertain about (a regional education-office exam-analysis document with no literal subject or template token in its filename) now correctly falls to `NEEDS_REVIEW` (subject, margin 0.0035 < floor 0.038) and `GEMMA_FALLBACK` (template, margin 0.0011 < floor 0.141) rather than being silently guessed — direct confirmation the margin floor prevents exactly the danger the report flagged, on the exact ambiguous case it raised.
+
+## Full real production pipeline validation (real text extraction, not filename-only)
+
+Prompted by "what if you run the entire suite on those 100 files," a second, more thorough validation ran the *actual* `EducationalClassificationService` (real PDF/DOCX text extraction via `ClassifierEngine`, Kiwi lexical terms, PMI collocations, OCR layout evidence where applicable, Gemma fallback gracefully reporting "unavailable" since no local model is installed in this environment) against the same 100 real files, instead of the deliberately simplified filename-only test.
+
+The first run of this fuller test produced a bizarre regression — template accuracy 0/57, everything sent to review — which led to finding an additional, real bug: `Path(evidence.file_name).stem` on this machine returns NFD-decomposed Korean text (confirmed directly: `'해설' in Path(raw_macos_filename).stem` → `False`, `'해설' in Path(nfc_normalized_filename).stem` → `True`), which silently fails substring-containment matching against the NFC-composed indicator/alias strings in the packaged JSON data. This predates this remediation — the original template `file_name` channel had the identical defect for every one of its indicators, on any NFD-producing filesystem (macOS/APFS; not Windows/NTFS, which is why the original report's own observations weren't caused by this). Fixed by NFC-normalizing both sides of the comparison in `template.py::_indicator_score` (new `_normalize_match_text` helper) and `e5.py::_filename_scores`.
+
+After the fix, re-running the full pipeline against all 100 real files:
+
+```
+both axes resolved (concrete destination): 41/100 = 41.0%
+subject sent to review: 46/100
+template sent to review: 45/100
+
+SUBJECT accuracy vs ground truth:  50/50 correct
+TEMPLATE accuracy vs ground truth: 51/57 correct (6 sent to Needs Review, none wrong-but-confident)
+```
+
+The 6 template cases that moved from "correct via filename alone" to "sent to review" under the full pipeline did so because real extracted body text sometimes pulls the E5 semantic-intent channel's contribution in a slightly different direction than the filename alone would, occasionally dropping the top-two margin below the 0.02 floor even though the file_name channel itself still favors the right answer — this is the margin-safety fix (D4) correctly trading a small amount of coverage for the guarantee that a genuinely close call never gets silently auto-routed. None of the 6 were wrong-but-confident; all landed safely in `NEEDS_REVIEW`.
 
 ## Verification performed
 
 - `python -m pytest tests/ -q` → 205 passed (full suite, before and after every round of edits).
 - `git diff --check` → clean, no whitespace errors.
 - `git status --porcelain eval/local/` → empty both before and after creating the real-data files (directory is git-ignored, confirmed via `git check-ignore -v eval/local/real_ground_truth.json`).
-- Real-filename leak check across every tracked file: `grep -rln "2020년_고1-3월-학평서울\|인천광역시\|9대 변별 유형공략\|확률과 통계_문제지\|드림하이에꼴\|부산교육청" . ` (excluding `.venv` and `eval/local/`) → zero matches.
+- Real-filename leak check across every tracked file: grepped for every real filename fragment quoted in the original diagnostic report (excluding `.venv` and `eval/local/`) → zero matches after this archive itself was corrected to describe real files generically instead of quoting them (see note below).
 - `python eval/run_phase8_ablation.py eval/synthetic_phase8_ablation_corpus.json --model-cache data/models/fastembed --verify-selection sort_pilot/classification/data/phase8_optional_evidence.json` → ran without error with the new `subject_filename_weight` field present.
+
+**Self-correction:** an earlier draft of this document directly quoted several real filename fragments from the report (a math worksheet's filename, a regional education office's name, two textbook-series titles) while describing which cases were re-verified. That draft was never pushed, but it was staged locally, which is exactly the mistake the "never commit the filenames or labels" instruction exists to prevent. Caught by re-running the leak-check grep (with a broader pattern list than the first pass used) before committing, and rewritten above to describe every real case generically (subject/template pattern, filename token category) instead of quoting it.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 import math
+import unicodedata
 from pathlib import Path
 from typing import Protocol
 
@@ -194,11 +195,17 @@ class E5SubjectClassifier:
         profiles: tuple[SubjectProfile, ...],
     ) -> dict[str, float]:
         """Score exactly one subject 1.0 via longest catalog-bounded alias match in the filename."""
-        stem = Path(evidence.file_name).stem.casefold().strip()
+        # NFC-normalize first: macOS/HFS+/APFS report Korean filenames pre-decomposed
+        # (NFD), which silently breaks substring containment against composed (NFC)
+        # alias strings even though the two forms render identically.
+        stem = unicodedata.normalize("NFC", Path(evidence.file_name).stem).casefold().strip()
         matches = [
             (len(alias), profile.label)
             for profile in profiles
-            for alias in (value.casefold().strip() for value in profile.keywords)
+            for alias in (
+                unicodedata.normalize("NFC", value).casefold().strip()
+                for value in profile.keywords
+            )
             if alias and alias in stem
         ]
         if not matches:

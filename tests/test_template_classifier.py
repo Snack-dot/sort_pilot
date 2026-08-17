@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import unicodedata
 from pathlib import Path
 
 import numpy as np
@@ -208,6 +209,19 @@ def test_each_structured_evidence_source_remains_separate_and_weighted(
     )
 
     assert decision.label == expected.value
+
+
+def test_file_name_indicator_matches_unicode_decomposed_filenames():
+    """macOS/APFS reports Korean filenames pre-decomposed (NFD); matching must not break."""
+    decomposed_name = unicodedata.normalize("NFD", "모의고사 정답.pdf")
+    assert decomposed_name != "모의고사 정답.pdf"
+
+    decision = TemplateClassifier(EqualTemplateEncoder()).classify(
+        TemplateEvidence(decomposed_name, "일반 안내"),
+        load_template_profiles(),
+    )
+
+    assert decision.label == Template.LEARNING_MATERIAL.value
 
 
 def test_template_classifier_reuses_profile_embeddings():

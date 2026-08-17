@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import unicodedata
 from pathlib import Path
 from types import ModuleType
 
@@ -200,6 +201,30 @@ def test_subject_filename_alias_prefers_longest_specific_match():
 
     assert decision.label == "통합사회"
     assert decision.evidence[2].name == "filename_alias"
+    assert decision.evidence[2].value == pytest.approx(0.15)
+
+
+def test_subject_filename_alias_matches_unicode_decomposed_filenames():
+    """macOS/APFS reports Korean filenames pre-decomposed (NFD); matching must not break."""
+    decomposed_name = unicodedata.normalize("NFD", "통합사회_문제.pdf")
+    assert decomposed_name != "통합사회_문제.pdf"
+
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("사회", ("사회 현상을 배운다.",), keywords=("사회",), version="2"),
+        SubjectProfile("통합사회", ("통합사회 현상을 배운다.",), keywords=("통합사회",), version="2"),
+    )
+    student = StudentProfile(StudentType.HIGH, 1, Semester.FIRST)
+
+    decision = classifier.classify(
+        SubjectEvidence(decomposed_name, ""),
+        student,
+        profiles,
+        filename_weight=0.15,
+    )
+
+    assert decision.label == "통합사회"
     assert decision.evidence[2].value == pytest.approx(0.15)
 
 
