@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-17 — Subject axis: PMI collocation and language-detection evidence
+
+Follow-up to the same-day filename-evidence remediation. Real-pipeline validation found 17 real files where template resolved locally but subject didn't; 12 were genuine English exam content with no literal "영어" filename token.
+
+- Downloaded and verified the real local Gemma 3 1B model (SHA-256-checked against the pinned hash) and tested it directly against these 12 real cases before building anything new: 0/12 correct, mostly failing to produce valid output under the subject axis's 18-candidate enum, confidently wrong when it did answer. Ruled out "just enable Gemma" as the fix.
+- Added a deterministic language-detection channel to the subject axis: counts Hangul vs. Latin-script characters in extracted body text, boosts 영어 only when the text is clearly predominantly non-Korean (≥30 letters, ≥60% Latin) — no model involved.
+- Extended PMI bigram/trigram collocation extraction (already used by the template axis) to the subject axis, with 18 hand-authored per-subject collocation lists.
+- Real-data result: subject-axis accuracy on the real, ground-truth-labeled set rose from 50/62 to 62/62 with real extracted text; full real-pipeline coverage across all 100 real files rose from 41% to 49%. Template axis (unaffected, out of scope for this change) stayed at 51/57.
+- Packaged `calibrated_policy.json`/`personal_example_policy.json` remain reproducible from the committed invented-only corpus alone (`--verify-policy` passes for both) — the improvement comes entirely from the two new real-evidence channels, not a threshold change.
+- See `session_archive/2026-08-17-subject-axis-pmi-and-language-evidence/` for the full investigation, decisions, and evidence.
+
 ## 2026-08-17 — Student-hybrid classifier remediation: filename evidence and margin safety
 
 No new phase; this remediates defects found in the shipped Phase 0-8 classifier by a real-data test (62, later 100, real exam-prep files, manually reviewed, screenshotted and separately downloaded for local-only validation — never committed).

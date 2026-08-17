@@ -57,7 +57,7 @@ def test_natural_language_profiles_cover_exact_catalog_subjects():
     expected = tuple(dict.fromkeys((*catalog.middle_subjects, *catalog.high_subjects)))
 
     assert tuple(profile.label for profile in profiles) == expected
-    assert all(profile.version == "2" for profile in profiles)
+    assert all(profile.version == "3" for profile in profiles)
     assert all(profile.prototype_texts for profile in profiles)
     assert all(profile.keywords for profile in profiles)
     assert all(profile.label in profile.keywords for profile in profiles)
@@ -263,6 +263,146 @@ def test_subject_classifier_rejects_invalid_filename_weight(value):
             StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST),
             profiles,
             filename_weight=value,
+        )
+
+
+def test_subject_pmi_collocation_evidence_stays_structured_and_inspectable():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile(
+            "사회", ("사회 현상을 배운다.",), pmi_collocations=("수요 공급",), version="3"
+        ),
+        SubjectProfile(
+            "도덕", ("도덕적 가치를 배운다.",), pmi_collocations=("윤리적 판단",), version="3"
+        ),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+    equal_embedding = np.zeros(E5_VECTOR_SIZE, dtype=np.float32)
+    equal_embedding[3] = 1.0
+
+    decision = classifier.classify(
+        SubjectEvidence(
+            "자료.pdf", "일반 내용", pmi_collocations=("수요 공급 균형",)
+        ),
+        student,
+        profiles,
+        query_embedding=equal_embedding,
+        pmi_weight=0.1,
+    )
+
+    assert decision.label == "사회"
+    assert decision.evidence[3].name == "pmi_collocation"
+    assert decision.evidence[3].value == pytest.approx(0.1)
+
+
+def test_subject_pmi_collocation_score_is_zero_with_no_match():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), keywords=("영어",), version="3"),
+        SubjectProfile("수학", ("수와 연산, 방정식과 함수를 학습한다.",), keywords=("수학",), version="3"),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+
+    decision = classifier.classify(
+        SubjectEvidence("방정식 문제.pdf", "함수의 값을 구한다.", pmi_collocations=("전혀 관련없음",)),
+        student,
+        profiles,
+        pmi_weight=0.1,
+    )
+
+    assert decision.label == "수학"
+    assert decision.evidence[3].value == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("value", [-0.1, float("nan"), True])
+def test_subject_classifier_rejects_invalid_pmi_weight(value):
+    classifier = E5SubjectClassifier(DeterministicEncoder())
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산과 함수를 학습한다.",), version="1"),
+    )
+
+    with pytest.raises(ValueError, match="PMI 연어"):
+        classifier.classify(
+            SubjectEvidence("자료.pdf", "일반 내용"),
+            StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST),
+            profiles,
+            pmi_weight=value,
+        )
+
+
+def test_subject_language_signal_boosts_english_for_predominantly_latin_text():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    # Neither prototype text contains a DeterministicEncoder trigger substring, so both
+    # map to the same orthogonal row -- E5 similarity is a true tie, isolating language_weight.
+    profiles = (
+        SubjectProfile("영어", ("영어 과목을 학습한다.",), version="1"),
+        SubjectProfile("정보", ("정보 과목에서 알고리즘을 학습한다.",), version="1"),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+    equal_embedding = np.zeros(E5_VECTOR_SIZE, dtype=np.float32)
+    equal_embedding[3] = 1.0
+    english_text = (
+        "Dear Principal Jones, I hope this letter finds you well. "
+        "I am writing to express my concern about the school cafeteria menu today."
+    )
+
+    decision = classifier.classify(
+        SubjectEvidence("자료.pdf", english_text),
+        student,
+        profiles,
+        query_embedding=equal_embedding,
+        language_weight=0.12,
+    )
+
+    assert decision.label == "영어"
+    assert decision.evidence[4].name == "language_signal"
+    assert decision.evidence[4].value == pytest.approx(0.12)
+
+
+def test_subject_language_signal_is_zero_for_korean_text_or_short_text():
+    encoder = DeterministicEncoder()
+    classifier = E5SubjectClassifier(encoder)
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산과 함수를 학습한다.",), version="1"),
+    )
+    student = StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST)
+
+    korean_decision = classifier.classify(
+        SubjectEvidence("방정식 문제.pdf", "함수의 값을 구하고 그래프를 그려서 풀이 과정을 자세히 설명하시오."),
+        student,
+        profiles,
+        language_weight=0.12,
+    )
+    short_english_decision = classifier.classify(
+        SubjectEvidence("문제.pdf", "Dear Sir"),
+        student,
+        profiles,
+        language_weight=0.12,
+    )
+
+    assert korean_decision.evidence[4].value == pytest.approx(0.0)
+    assert short_english_decision.evidence[4].value == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("value", [-0.1, float("nan"), True])
+def test_subject_classifier_rejects_invalid_language_weight(value):
+    classifier = E5SubjectClassifier(DeterministicEncoder())
+    profiles = (
+        SubjectProfile("영어", ("영어 듣기와 영문 독해를 학습한다.",), version="1"),
+        SubjectProfile("수학", ("수와 연산과 함수를 학습한다.",), version="1"),
+    )
+
+    with pytest.raises(ValueError, match="언어 신호"):
+        classifier.classify(
+            SubjectEvidence("자료.pdf", "일반 내용"),
+            StudentProfile(StudentType.MIDDLE, 1, Semester.FIRST),
+            profiles,
+            language_weight=value,
         )
 
 

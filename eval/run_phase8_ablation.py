@@ -42,6 +42,8 @@ DEFAULT_SYNTHETIC_IMAGE = Path("eval/synthetic_phase8_image.ppm")
 RESOURCE_REPETITIONS = 20
 PILOT_SUBJECT_LEXICAL_WEIGHT = 0.05
 PILOT_SUBJECT_FILENAME_WEIGHT = 0.15
+PILOT_SUBJECT_PMI_WEIGHT = 0.05
+PILOT_SUBJECT_LANGUAGE_WEIGHT = 0.12
 _RESOURCE_MARKER = "PHASE8_RESOURCE="
 
 
@@ -84,12 +86,19 @@ def _variant_outcomes(
     ):
         text = case.layout_text if use_layout else case.phase7_text
         subject = subject_classifier.classify(
-            SubjectEvidence(case.file_name, text, tuple(tokenize(text))),
+            SubjectEvidence(
+                case.file_name,
+                text,
+                tuple(tokenize(text)),
+                pmi_collocations=case.pmi_collocations if use_pmi else (),
+            ),
             case.student,
             subject_profiles,
             query_embedding=subject_embedding,
             lexical_weight=subject_lexical_weight,
             filename_weight=subject_filename_weight,
+            pmi_weight=PILOT_SUBJECT_PMI_WEIGHT,
+            language_weight=PILOT_SUBJECT_LANGUAGE_WEIGHT,
         )
         template = template_classifier.classify(
             TemplateEvidence(
@@ -257,6 +266,8 @@ def run_ablation(
         not selected_evidence.ocr_layout
         or selected_evidence.subject_kiwi_lexical_weight != PILOT_SUBJECT_LEXICAL_WEIGHT
         or selected_evidence.subject_filename_weight != PILOT_SUBJECT_FILENAME_WEIGHT
+        or selected_evidence.subject_pmi_weight != PILOT_SUBJECT_PMI_WEIGHT
+        or selected_evidence.subject_language_weight != PILOT_SUBJECT_LANGUAGE_WEIGHT
     ):
         raise ValueError("고정된 Phase 8 선택이 개발 측정과 일치하지 않습니다.")
     retain_pmi = (
@@ -314,6 +325,8 @@ def run_ablation(
             "ocr_layout": True,
             "subject_kiwi_lexical_weight": PILOT_SUBJECT_LEXICAL_WEIGHT,
             "subject_filename_weight": PILOT_SUBJECT_FILENAME_WEIGHT,
+            "subject_pmi_weight": PILOT_SUBJECT_PMI_WEIGHT,
+            "subject_language_weight": PILOT_SUBJECT_LANGUAGE_WEIGHT,
             "pmi": retain_pmi,
             "yolo_lvis_visual": retain_visual,
             "model_session_scheduling": False,

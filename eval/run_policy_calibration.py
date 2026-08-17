@@ -51,6 +51,8 @@ def derive_policy(
             subject_profiles,
             lexical_weight=optional_evidence.subject_kiwi_lexical_weight,
             filename_weight=optional_evidence.subject_filename_weight,
+            pmi_weight=optional_evidence.subject_pmi_weight,
+            language_weight=optional_evidence.subject_language_weight,
         )
         template = template_classifier.classify(
             TemplateEvidence(case.file_name, case.text),

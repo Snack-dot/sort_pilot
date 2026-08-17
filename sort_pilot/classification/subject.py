@@ -11,7 +11,7 @@ from sort_pilot.curriculum import StudentProfile, load_subject_catalog
 from .result import AxisDecision, CandidateScore
 
 
-SUBJECT_PROFILE_VERSION = "2"
+SUBJECT_PROFILE_VERSION = "3"
 DEFAULT_SUBJECT_PROFILES_PATH = Path(__file__).with_name("data") / "subject_profiles_ko.json"
 
 
@@ -22,6 +22,7 @@ class SubjectProfile:
     label: str
     prototype_texts: tuple[str, ...]
     keywords: tuple[str, ...] = ()
+    pmi_collocations: tuple[str, ...] = ()
     version: str = "v1"
 
     def __post_init__(self) -> None:
@@ -32,18 +33,24 @@ class SubjectProfile:
             or not all(isinstance(value, str) for value in self.prototype_texts)
             or not isinstance(self.keywords, tuple)
             or not all(isinstance(value, str) for value in self.keywords)
+            or not isinstance(self.pmi_collocations, tuple)
+            or not all(isinstance(value, str) for value in self.pmi_collocations)
             or not isinstance(self.version, str)
         ):
             raise ValueError("과목 프로필 필드의 타입이 올바르지 않습니다.")
         label = self.label.strip()
         prototypes = tuple(dict.fromkeys(value.strip() for value in self.prototype_texts if value.strip()))
         keywords = tuple(dict.fromkeys(value.strip() for value in self.keywords if value.strip()))
+        pmi_collocations = tuple(
+            dict.fromkeys(value.strip() for value in self.pmi_collocations if value.strip())
+        )
         version = self.version.strip()
         if not label or not prototypes or not version:
             raise ValueError("과목 프로필에는 라벨과 하나 이상의 설명문이 필요합니다.")
         object.__setattr__(self, "label", label)
         object.__setattr__(self, "prototype_texts", prototypes)
         object.__setattr__(self, "keywords", keywords)
+        object.__setattr__(self, "pmi_collocations", pmi_collocations)
         object.__setattr__(self, "version", version)
 
 
@@ -54,6 +61,7 @@ class SubjectEvidence:
     file_name: str
     natural_text: str
     lexical_terms: tuple[str, ...] = ()
+    pmi_collocations: tuple[str, ...] = ()
     personal_example_scores: tuple[CandidateScore, ...] = ()
 
     def __post_init__(self) -> None:
@@ -71,6 +79,10 @@ class SubjectEvidence:
             isinstance(value, str) for value in self.lexical_terms
         ):
             raise ValueError("과목 어휘 근거는 문자열 튜플이어야 합니다.")
+        if not isinstance(self.pmi_collocations, tuple) or not all(
+            isinstance(value, str) for value in self.pmi_collocations
+        ):
+            raise ValueError("과목 PMI 연어 근거는 문자열 튜플이어야 합니다.")
         if not isinstance(self.personal_example_scores, tuple) or not all(
             isinstance(value, CandidateScore) for value in self.personal_example_scores
         ):
@@ -148,13 +160,15 @@ def load_subject_profiles(
 
         if any(
             not isinstance(data["subjects"][label], dict)
-            or set(data["subjects"][label]) != {"prototype_texts", "filename_aliases"}
+            or set(data["subjects"][label])
+            != {"prototype_texts", "filename_aliases", "pmi_collocations"}
             or not _string_list(data["subjects"][label]["prototype_texts"])
             or not _string_list(data["subjects"][label]["filename_aliases"])
+            or not _string_list(data["subjects"][label]["pmi_collocations"])
             for label in catalog_subjects
         ):
             raise ValueError(
-                "각 과목 프로필에는 자연어 설명문과 파일명 별칭이 하나 이상 필요합니다."
+                "각 과목 프로필에는 자연어 설명문, 파일명 별칭, PMI 연어가 하나 이상 필요합니다."
             )
 
         seen_aliases: dict[str, str] = {}
@@ -173,6 +187,7 @@ def load_subject_profiles(
                 label=label,
                 prototype_texts=tuple(data["subjects"][label]["prototype_texts"]),
                 keywords=tuple(data["subjects"][label]["filename_aliases"]),
+                pmi_collocations=tuple(data["subjects"][label]["pmi_collocations"]),
                 version=data["version"],
             )
             for label in catalog_subjects

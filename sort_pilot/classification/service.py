@@ -232,10 +232,11 @@ class EducationalClassificationService:
                 self.personal_policy,
             )
             subject_evidence = SubjectEvidence(
-                item.file_name,
-                item.natural_text,
-                item.lexical_evidence,
-                personal.subject,
+                file_name=item.file_name,
+                natural_text=item.natural_text,
+                lexical_terms=item.lexical_evidence,
+                pmi_collocations=(item.pmi_collocations if self.optional_evidence.pmi else ()),
+                personal_example_scores=personal.subject,
             )
             template_evidence = TemplateEvidence(
                 file_name=item.file_name,
@@ -264,6 +265,8 @@ class EducationalClassificationService:
                 personal_example_weight=self.personal_policy.subject.weight,
                 lexical_weight=self.optional_evidence.subject_kiwi_lexical_weight,
                 filename_weight=self.optional_evidence.subject_filename_weight,
+                pmi_weight=self.optional_evidence.subject_pmi_weight,
+                language_weight=self.optional_evidence.subject_language_weight,
             )
             template = self.template_classifier.classify(
                 template_evidence,

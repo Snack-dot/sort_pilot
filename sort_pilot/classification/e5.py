@@ -19,6 +19,10 @@ E5_VECTOR_SIZE = 384
 E5_RANKING_POLICY_VERSION = "phase-3-ranking"
 MAX_SUBJECT_LEXICAL_TERMS = 3
 MAX_SUBJECT_LEXICAL_EVIDENCE_ITEMS = 160
+MAX_SUBJECT_PMI_EVIDENCE_ITEMS = 40
+MIN_LANGUAGE_SIGNAL_LETTERS = 30
+LATIN_SCRIPT_RATIO_THRESHOLD = 0.6
+ENGLISH_SUBJECT_LABEL = "영어"
 
 
 class SubjectTextEncoder(Protocol):
@@ -190,6 +194,58 @@ class E5SubjectClassifier:
         }
 
     @staticmethod
+    def _pmi_scores(
+        evidence: SubjectEvidence,
+        profiles: tuple[SubjectProfile, ...],
+    ) -> dict[str, float]:
+        """Score the share of bounded PMI collocations overlapping each subject's phrases."""
+        normalized_evidence = tuple(
+            dict.fromkeys(
+                value.casefold().strip()
+                for value in evidence.pmi_collocations[:MAX_SUBJECT_PMI_EVIDENCE_ITEMS]
+                if value.strip()
+            )
+        )
+        if not normalized_evidence:
+            return {profile.label: 0.0 for profile in profiles}
+        scores: dict[str, float] = {}
+        for profile in profiles:
+            normalized_profile = tuple(
+                value.casefold().strip() for value in profile.pmi_collocations if value.strip()
+            )
+            if not normalized_profile:
+                scores[profile.label] = 0.0
+                continue
+            matched = sum(
+                any(
+                    collocation in value or value in collocation
+                    for collocation in normalized_profile
+                )
+                for value in normalized_evidence
+            )
+            scores[profile.label] = matched / len(normalized_evidence)
+        return scores
+
+    @staticmethod
+    def _language_scores(
+        evidence: SubjectEvidence,
+        profiles: tuple[SubjectProfile, ...],
+    ) -> dict[str, float]:
+        """Score 영어 alone when extracted text is predominantly Latin-script, not Hangul."""
+        hangul = sum(1 for char in evidence.natural_text if "가" <= char <= "힣")
+        latin = sum(1 for char in evidence.natural_text if char.isascii() and char.isalpha())
+        total = hangul + latin
+        zero = {profile.label: 0.0 for profile in profiles}
+        if total < MIN_LANGUAGE_SIGNAL_LETTERS or latin / total < LATIN_SCRIPT_RATIO_THRESHOLD:
+            return zero
+        if not any(profile.label == ENGLISH_SUBJECT_LABEL for profile in profiles):
+            return zero
+        return {
+            profile.label: 1.0 if profile.label == ENGLISH_SUBJECT_LABEL else 0.0
+            for profile in profiles
+        }
+
+    @staticmethod
     def _filename_scores(
         evidence: SubjectEvidence,
         profiles: tuple[SubjectProfile, ...],
@@ -225,12 +281,16 @@ class E5SubjectClassifier:
         personal_example_weight: float = 0.0,
         lexical_weight: float = 0.0,
         filename_weight: float = 0.0,
+        pmi_weight: float = 0.0,
+        language_weight: float = 0.0,
     ) -> AxisDecision:
         """Rank catalog subjects with cosine and separate structured evidence."""
         for value, name in (
             (personal_example_weight, "개인 예시"),
             (lexical_weight, "Kiwi 어휘"),
             (filename_weight, "파일명 별칭"),
+            (pmi_weight, "PMI 연어"),
+            (language_weight, "언어 신호"),
         ):
             if (
                 isinstance(value, bool)
@@ -261,6 +321,19 @@ class E5SubjectClassifier:
         }
         lexical = self._lexical_scores(evidence, profiles)
         filename = self._filename_scores(evidence, profiles)
+        pmi = self._pmi_scores(evidence, profiles)
+        language = self._language_scores(evidence, profiles)
+
+        def _adjusted(label: str, similarity: float) -> float:
+            return (
+                float(similarity)
+                + float(personal_example_weight) * personal.get(label, 0.0)
+                + float(lexical_weight) * lexical.get(label, 0.0)
+                + float(filename_weight) * filename.get(label, 0.0)
+                + float(pmi_weight) * pmi.get(label, 0.0)
+                + float(language_weight) * language.get(label, 0.0)
+            )
+
         ranked = sorted(
             (
                 (
@@ -268,28 +341,37 @@ class E5SubjectClassifier:
                     float(similarity),
                     float(lexical.get(profile.label, 0.0)),
                     float(filename.get(profile.label, 0.0)),
-                    float(similarity)
-                    + float(personal_example_weight) * personal.get(profile.label, 0.0)
-                    + float(lexical_weight) * lexical.get(profile.label, 0.0)
-                    + float(filename_weight) * filename.get(profile.label, 0.0),
+                    float(pmi.get(profile.label, 0.0)),
+                    float(language.get(profile.label, 0.0)),
+                    _adjusted(profile.label, similarity),
                 )
                 for profile, similarity in zip(eligible, similarities, strict=True)
             ),
-            key=lambda item: -item[4],
+            key=lambda item: -item[6],
         )
         candidates = tuple(
             CandidateScore(profile.label, adjusted)
-            for profile, _similarity, _lexical, _filename, adjusted in ranked
+            for profile, _similarity, _lexical, _filename, _pmi, _language, adjusted in ranked
         )
         top_score = candidates[0].raw_score
         margin = top_score - candidates[1].raw_score if len(candidates) > 1 else 0.0
-        top_profile, top_similarity, top_lexical, top_filename, _adjusted = ranked[0]
+        (
+            top_profile,
+            top_similarity,
+            top_lexical,
+            top_filename,
+            top_pmi,
+            top_language,
+            _adjusted_top,
+        ) = ranked[0]
         local_without_personal = max(
             zip(eligible, similarities, strict=True),
             key=lambda item: (
                 float(item[1])
                 + float(lexical_weight) * lexical.get(item[0].label, 0.0)
                 + float(filename_weight) * filename.get(item[0].label, 0.0)
+                + float(pmi_weight) * pmi.get(item[0].label, 0.0)
+                + float(language_weight) * language.get(item[0].label, 0.0)
             ),
         )[0].label
         personal_contribution = float(personal_example_weight) * personal.get(
@@ -297,6 +379,8 @@ class E5SubjectClassifier:
             0.0,
         )
         filename_contribution = float(filename_weight) * top_filename
+        pmi_contribution = float(pmi_weight) * top_pmi
+        language_contribution = float(language_weight) * top_language
         lexical_contribution = float(lexical_weight) * top_lexical
         return AxisDecision(
             label=top_profile.label,
@@ -319,6 +403,16 @@ class E5SubjectClassifier:
                     name="filename_alias",
                     value=filename_contribution,
                     detail=f"weight={float(filename_weight):.6f}",
+                ),
+                EvidenceContribution(
+                    name="pmi_collocation",
+                    value=pmi_contribution,
+                    detail=f"weight={float(pmi_weight):.6f}",
+                ),
+                EvidenceContribution(
+                    name="language_signal",
+                    value=language_contribution,
+                    detail=f"weight={float(language_weight):.6f}",
                 ),
                 EvidenceContribution(
                     name="kiwi_lexical",

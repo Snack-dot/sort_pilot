@@ -1,5 +1,5 @@
 {
-  "version": "2",
+  "version": "3",
   "subjects": {
     "국어": {
       "prototype_texts": [
@@ -7,113 +7,135 @@
       ],
       "filename_aliases": [
         "국어", "언어와 매체", "언어와매체", "독서", "문학", "화법과 작문", "화법과작문"
-      ]
+      ],
+      "pmi_collocations": ["문학 작품", "표현 방법", "글의 구조", "화자 의도", "서술자 관점"]
     },
     "사회": {
       "prototype_texts": [
         "사회 과목에서 지리, 경제, 정치, 법, 문화와 공동체의 원리를 학습한다."
       ],
-      "filename_aliases": ["사회"]
+      "filename_aliases": ["사회"],
+      "pmi_collocations": ["수요 공급", "권리 의무", "지리적 특성", "정치 참여", "법과 질서"]
     },
     "역사": {
       "prototype_texts": [
         "역사 과목에서 여러 시대의 사건, 인물, 문화, 사회 변화와 역사 자료를 학습한다."
       ],
-      "filename_aliases": ["역사"]
+      "filename_aliases": ["역사"],
+      "pmi_collocations": ["역사적 사건", "시대적 배경", "역사 자료", "문화 교류", "사회 변화"]
     },
     "도덕": {
       "prototype_texts": [
         "도덕 과목에서 윤리적 판단, 인간의 가치, 공동체 생활과 책임을 학습한다."
       ],
-      "filename_aliases": ["도덕"]
+      "filename_aliases": ["도덕"],
+      "pmi_collocations": ["윤리적 판단", "도덕적 가치", "공동체 생활", "인간의 존엄", "책임과 배려"]
     },
     "수학": {
       "prototype_texts": [
         "수학 과목에서 수와 연산, 방정식, 함수, 확률과 통계, 도형과 기하를 학습한다.",
         "일차함수와 이차함수의 그래프, 기울기, 절편을 구하고 수식과 방정식을 계산한다."
       ],
-      "filename_aliases": ["수학"]
+      "filename_aliases": ["수학"],
+      "pmi_collocations": ["함수 그래프", "방정식의 해", "확률 통계", "도형의 성질", "수와 연산"]
     },
     "과학": {
       "prototype_texts": [
         "과학 과목에서 물질, 에너지, 생명, 지구와 우주의 현상을 관찰하고 실험한다."
       ],
-      "filename_aliases": ["과학"]
+      "filename_aliases": ["과학"],
+      "pmi_collocations": ["물질과 에너지", "화학 반응", "생명 현상", "지구와 우주", "힘과 운동"]
     },
     "기술·가정": {
       "prototype_texts": [
         "기술·가정 과목에서 생활 기술, 가족과 가정생활, 자원 관리, 설계와 제작을 학습한다."
       ],
-      "filename_aliases": ["기술·가정", "기술가정"]
+      "filename_aliases": ["기술·가정", "기술가정"],
+      "pmi_collocations": ["생활 기술", "가정생활", "자원 관리", "설계와 제작", "식생활 관리"]
     },
     "정보": {
       "prototype_texts": [
         "정보 과목에서 컴퓨팅 사고, 알고리즘, 프로그래밍, 데이터와 정보 윤리를 학습한다.",
         "순서도와 반복 구조로 알고리즘을 설계하고 프로그램 코드를 작성하여 실행 결과를 확인한다."
       ],
-      "filename_aliases": ["정보"]
+      "filename_aliases": ["정보"],
+      "pmi_collocations": ["컴퓨팅 사고", "알고리즘 설계", "프로그래밍 언어", "데이터 처리", "정보 윤리"]
     },
     "체육": {
       "prototype_texts": [
         "체육 과목에서 운동 기능, 체력, 스포츠 활동, 건강과 안전을 학습하고 실천한다."
       ],
-      "filename_aliases": ["체육"]
+      "filename_aliases": ["체육"],
+      "pmi_collocations": ["운동 기능", "체력 증진", "스포츠 활동", "건강과 안전", "신체 활동"]
     },
     "음악": {
       "prototype_texts": [
         "음악 과목에서 노래, 악기 연주, 감상, 리듬, 선율과 음악 표현을 학습한다."
       ],
-      "filename_aliases": ["음악"]
+      "filename_aliases": ["음악"],
+      "pmi_collocations": ["악기 연주", "음악 감상", "리듬과 선율", "노래 부르기", "음악 표현"]
     },
     "미술": {
       "prototype_texts": [
         "미술 과목에서 회화, 조형, 디자인, 작품 감상과 시각 표현을 학습한다."
       ],
-      "filename_aliases": ["미술"]
+      "filename_aliases": ["미술"],
+      "pmi_collocations": ["조형 요소", "작품 감상", "시각 표현", "회화 기법", "디자인 원리"]
     },
     "영어": {
       "prototype_texts": [
         "영어 과목에서 영어 듣기, 말하기, 읽기, 쓰기, 어휘와 문법을 학습한다.",
         "영어 독해와 영문법을 공부하고 영어 회화, 발표, 말하기 대회와 작문 활동을 연습한다."
       ],
-      "filename_aliases": ["영어"]
+      "filename_aliases": ["영어"],
+      "pmi_collocations": [
+        "reading comprehension", "grammar rule", "sentence structure", "main idea", "topic sentence"
+      ]
     },
     "진로": {
       "prototype_texts": [
         "진로 과목에서 자기 이해, 직업 탐색, 진학 계획과 진로 설계를 학습한다."
       ],
-      "filename_aliases": ["진로"]
+      "filename_aliases": ["진로"],
+      "pmi_collocations": ["진로 탐색", "직업 세계", "자기 이해", "진학 계획", "진로 설계"]
     },
     "한국사": {
       "prototype_texts": [
         "한국사 과목에서 한국의 고대부터 현대까지 시대별 사건, 인물과 사회 변화를 학습한다."
       ],
-      "filename_aliases": ["한국사"]
+      "filename_aliases": ["한국사"],
+      "pmi_collocations": ["한국의 역사", "고대 사회", "근대화 운동", "독립운동", "역사적 인물"]
     },
     "통합사회": {
       "prototype_texts": [
         "통합사회 과목에서 인간, 사회, 환경을 지리, 윤리, 경제, 정치의 관점으로 통합하여 학습한다."
       ],
-      "filename_aliases": ["통합사회"]
+      "filename_aliases": ["통합사회"],
+      "pmi_collocations": ["인간과 사회", "지리 윤리", "경제 정치", "지속가능한 발전", "사회 정의"]
     },
     "통합과학": {
       "prototype_texts": [
         "통합과학 과목에서 물질과 규칙성, 시스템과 상호작용, 변화와 다양성, 환경과 에너지를 통합하여 학습한다."
       ],
-      "filename_aliases": ["통합과학"]
+      "filename_aliases": ["통합과학"],
+      "pmi_collocations": [
+        "물질의 규칙성", "시스템과 상호작용", "변화와 다양성", "환경과 에너지", "과학적 탐구"
+      ]
     },
     "제2외국어": {
       "prototype_texts": [
         "제2외국어 과목에서 영어가 아닌 외국어의 어휘, 문법, 회화와 해당 언어권 문화를 학습한다.",
         "중국어, 일본어, 독일어, 프랑스어, 스페인어처럼 영어 이외의 언어를 읽고 말하는 법을 배운다."
       ],
-      "filename_aliases": ["제2외국어"]
+      "filename_aliases": ["제2외국어"],
+      "pmi_collocations": ["외국어 학습", "언어권 문화", "회화 연습", "외국어 문법", "제2외국어"]
     },
     "한문": {
       "prototype_texts": [
         "한문 과목에서 한자와 한자어, 한문 문장, 고전 독해와 한문 문화를 학습한다."
       ],
-      "filename_aliases": ["한문"]
+      "filename_aliases": ["한문"],
+      "pmi_collocations": ["한자어 학습", "한문 문장", "고전 독해", "한문 문화", "한자 성어"]
     }
   }
 }
