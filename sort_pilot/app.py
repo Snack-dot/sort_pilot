@@ -7,6 +7,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+# Load ONNX Runtime before Qt. On Windows, loading Qt's native libraries first can
+# prevent onnxruntime_pybind11_state from initializing when FastEmbed is imported
+# later by a classification worker.
+import onnxruntime  # noqa: F401
 from PyQt6.QtCore import QObject, QStandardPaths, Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QMessageBox, QProgressDialog, QSystemTrayIcon
 

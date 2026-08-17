@@ -70,7 +70,9 @@ class FastEmbedE5Encoder:
             from fastembed import TextEmbedding
             from fastembed.common.model_description import ModelSource, PoolingType
         except ImportError as exc:
-            raise RuntimeError("FastEmbed 0.8.0이 설치되어야 합니다.") from exc
+            raise RuntimeError(
+                "FastEmbed 0.8.0 또는 ONNX Runtime을 불러올 수 없습니다."
+            ) from exc
 
         supported = {item["model"] for item in TextEmbedding.list_supported_models()}
         if self.model_id not in supported:
