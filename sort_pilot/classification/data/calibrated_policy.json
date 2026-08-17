@@ -1,0 +1,17 @@
+{
+  "version": "phase-5-held-out-v1",
+  "targets": {
+    "local_precision": 0.9,
+    "gemma_accuracy": 0.5
+  },
+  "subject": {
+    "high_score": 0.8336313366889954,
+    "high_margin": 0.02738821506500244,
+    "gemma_score": 0.8336313366889954
+  },
+  "template": {
+    "high_score": 0.12044353996004377,
+    "high_margin": 0.00011819601058959961,
+    "gemma_score": 0.12044353996004377
+  }
+}

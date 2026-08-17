@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid Phase 5 calibrated policy
+
+- Added user-approved operating targets of 90% held-out precision for authoritative local decisions and 50% held-out top-label accuracy for Gemma escalation.
+- Added a new 50-case made-up held-out corpus, separate from profile-writing examples, covering all 18 catalog subjects and all five templates.
+- Added exhaustive per-axis threshold selection that maximizes local handling first and Gemma escalation second while requiring both approved targets; explicit abstention remains Needs Review.
+- Added a centralized strict policy with independently calibrated subject and template raw-score, margin, and Gemma-escalation thresholds.
+- Added a cache-only calibration runner that reproduces the policy from the held-out corpus, prints nothing but aggregate results, and can verify the packaged policy exactly.
+- Held-out results were 7/7 authoritative subject decisions and 46/49 authoritative template decisions; the subject escalation region was 16/32 and the template escalation region was 1/1. These measurements define this policy and are not general production-accuracy claims.
+
 ## 2026-08-17 — Student-hybrid Phase 4 five-template classifier
 
 - Added strict separate profiles for exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`.

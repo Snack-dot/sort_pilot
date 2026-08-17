@@ -1,6 +1,6 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–4 also establish the separate student subject/template contracts, onboarding profile, synthetic evaluation harness, catalog-bounded multilingual E5 subject ranker, and separate five-template classifier required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, recommends hierarchical type/topic folders using a fully local classifier, and moves only the files explicitly approved by the user. Phases 0–5 also establish the separate student subject/template contracts, onboarding profile, synthetic evaluation harness, catalog-bounded multilingual E5 subject ranker, separate five-template classifier, and independently calibrated routing policy required by the authoritative hybrid-classifier plan; those new classification axes are not yet wired into the active organizer.
 
 ## Current workflow
 
@@ -69,6 +69,7 @@ Use `ClassifierEngine.analyze_json(path)` or `analyze_many_json(paths)`. The fix
 - Strict made-up evaluation corpus and prediction loaders with subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory metrics. Real evaluation material stays under ignored `eval/local/`.
 - Natural-language profiles for every catalog subject and a CPU-only `intfloat/multilingual-e5-small` prototype that ranks only the selected student's catalog subjects, retaining raw cosine similarity and margin without claiming calibrated confidence.
 - Separate profiles for exactly five templates, with semantic intent, filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence kept as distinct weighted inputs. The Phase 4 weights are neutral mechanics, not calibrated routing thresholds.
+- Independently calibrated subject and template routes using a separate 50-case made-up held-out corpus: authoritative local decisions must meet 90% held-out precision, while the Gemma escalation region must meet 50% held-out top-label accuracy; lower evidence remains `Needs Review`.
 - Manual Desktop, Downloads, or combined organization.
 - Real Tier-1 and learned Naive Bayes decisions persisted as evidence for every analyzed file.
 - Deterministic top-level type routing with independent, user-owned topic profiles per type.
@@ -118,6 +119,7 @@ sort_pilot/curriculum/             strict student profile and subject catalog co
 sort_pilot/classification/         subject/template result and routing contracts
 sort_pilot/classification/e5.py    Phase 3 catalog-bounded subject ranking prototype
 sort_pilot/classification/template.py Phase 4 five-template ranking prototype
+sort_pilot/classification/calibrated_policy.py Phase 5 per-axis routing calibration
 sort_pilot/evaluation/             strict labeled-corpus loading and aggregate evaluation
 sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
 sort_pilot/calibration.py          bounded sampling, editable drafts, signed feedback

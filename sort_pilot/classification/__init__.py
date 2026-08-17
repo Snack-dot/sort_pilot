@@ -1,5 +1,19 @@
 """Contracts shared by local classification, fallback policy, and preview."""
 
+from .calibrated_policy import (
+    CALIBRATED_POLICY_VERSION,
+    DEFAULT_CALIBRATED_POLICY_PATH,
+    GEMMA_ACCURACY_TARGET,
+    LOCAL_PRECISION_TARGET,
+    AxisCalibrationReport,
+    CalibratedPolicy,
+    CalibrationTargets,
+    HeldOutAxisResult,
+    PolicyCalibrationReport,
+    calibrate_axis,
+    calibrate_policy,
+    load_calibrated_policy,
+)
 from .e5 import (
     E5_MODEL_ID,
     E5_RANKING_POLICY_VERSION,
@@ -42,10 +56,15 @@ from .template import (
 
 __all__ = [
     "AxisRoutingDecision",
+    "AxisCalibrationReport",
     "AxisDecision",
+    "CALIBRATED_POLICY_VERSION",
+    "CalibratedPolicy",
+    "CalibrationTargets",
     "CandidateScore",
     "DecisionSource",
     "DEFAULT_SUBJECT_PROFILES_PATH",
+    "DEFAULT_CALIBRATED_POLICY_PATH",
     "DEFAULT_TEMPLATE_PROFILES_PATH",
     "E5_MODEL_ID",
     "E5_RANKING_POLICY_VERSION",
@@ -54,8 +73,12 @@ __all__ = [
     "EducationalClassificationResult",
     "EvidenceContribution",
     "FastEmbedE5Encoder",
+    "GEMMA_ACCURACY_TARGET",
+    "HeldOutAxisResult",
+    "LOCAL_PRECISION_TARGET",
     "OrganizationPlan",
     "PolicyRoute",
+    "PolicyCalibrationReport",
     "RoutingThresholds",
     "SubjectClassifier",
     "SubjectEvidence",
@@ -71,6 +94,9 @@ __all__ = [
     "TEMPLATE_RANKING_POLICY_VERSION",
     "TemplateTextEncoder",
     "eligible_subject_profiles",
+    "calibrate_axis",
+    "calibrate_policy",
+    "load_calibrated_policy",
     "load_subject_profiles",
     "load_template_profiles",
     "ordered_template_profiles",
