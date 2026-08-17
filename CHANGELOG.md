@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-17 — Student-hybrid Phase 6 constrained Gemma fallback
+
+- Added a per-axis local Gemma fallback that accepts only Phase 5 `gemma_fallback` routes and therefore cannot reconsider an authoritative local result or a local abstention.
+- Restricted each prompt and response contract to ranked supplied subject candidates or exactly the five fixed templates, bounded extracted evidence, and the exact `Needs Review` output; invented labels, paths, and additional output fields are rejected.
+- Ported the reliable `fix`-branch loopback server lifetime, five-item batching, two retries for unresolved axes, explicit cancellation, progress, and forced process cleanup without porting its obsolete role/area/document-type behavior.
+- Added an atomic local cache keyed by model-visible inputs and all relevant versions. The cache stores only hashes, axis names, and validated selections—not paths or raw extracted evidence—and writes each valid result immediately.
+- Kept unavailable, invalid, and retry-exhausted results as Needs Review, so they cannot produce a move plan. No Phase 7 production integration was started.
+
 ## 2026-08-17 — Student-hybrid Phase 5 calibrated policy
 
 - Added user-approved operating targets of 90% held-out precision for authoritative local decisions and 50% held-out top-label accuracy for Gemma escalation.

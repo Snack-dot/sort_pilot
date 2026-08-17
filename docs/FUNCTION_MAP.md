@@ -243,6 +243,14 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `PolicyRoute`, `RoutingThresholds`, `RoutingThresholds.__post_init__` | `classification/policy.py` | Define explicit per-axis authority routes and validate provisional raw-score/margin gates. |
 | `AxisRoutingDecision` | `classification/policy.py` | Preserve the local decision, routing reason, and policy version passed to the next stage. |
 | `route_axis` | `classification/policy.py` | Accept decisive local evidence, escalate only plausible ambiguity to Gemma, and abstain on weak evidence. |
+| `ClassificationAxis`, `GemmaFallbackCancelled` | `classification/gemma_fallback.py` | Define the exact subject/template fallback axes and explicit cancellation outcome. |
+| `BoundedExtractedEvidence`, `BoundedExtractedEvidence.__post_init__`, `BoundedExtractedEvidence.to_prompt_dict` | `classification/gemma_fallback.py` | Reject paths and cap filename, natural text, and structured evidence before local inference. |
+| `GemmaFallbackRequest`, `GemmaFallbackRequest.__post_init__`, `GemmaFallbackRequest.supplied_candidates` | `classification/gemma_fallback.py` | Require the saved student profile, admit only Phase 5 Gemma routes, bound subjects to that profile's catalog, and enforce exactly the five fixed templates for the template axis. |
+| `GemmaFallbackCache.__init__`, `GemmaFallbackCache.load`, `GemmaFallbackCache.save` | `classification/gemma_fallback.py` | Strictly load and atomically persist local input hashes and validated selections without paths or extracted evidence. |
+| `ConstrainedGemmaFallback.__init__`, `ConstrainedGemmaFallback.resolve_many`, `ConstrainedGemmaFallback.cancel` | `classification/gemma_fallback.py` | Resolve ordered ambiguous axes through one cancellable loopback server run with cache hits, bounded batches, per-item progress, and safe Needs Review outcomes. |
+| `ConstrainedGemmaFallback.cache_key`, `_request_payload`, `_parse_batch_response`, `_validate_selection` | `classification/gemma_fallback.py` | Hash every model-visible input/version, constrain each numeric position to its supplied labels or Needs Review, and reject invented output. |
+| `ConstrainedGemmaFallback._decision`, `_review_decision`, `_finish_as_review` | `classification/gemma_fallback.py` | Preserve ranked local evidence while recording Gemma/cache authority or unresolved review state in the complete axis representation. |
+| `ConstrainedGemmaFallback._start_process`, `_wait_until_ready`, `_post_json`, `_raise_if_cancelled`, `_stop_process`, `_free_port` | `classification/gemma_fallback.py` | Run CPU-only Gemma on a temporary loopback port, check cancellation at work boundaries, and always terminate or kill the server. |
 
 ## Student evaluation
 
