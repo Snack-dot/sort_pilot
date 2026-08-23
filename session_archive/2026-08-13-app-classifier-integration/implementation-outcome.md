@@ -1,0 +1,56 @@
+# Implementation Outcome
+
+Status: implemented and verified on `architecture-srs-implementation`.
+
+## Delivered
+
+- Live `origin/app` commit `42f92c1` behavior integrated into the architecture branch.
+- Manual Desktop, Downloads, and combined organization workflow.
+- `tidy` package renamed to `classifier_engine`, with legacy data location preserved.
+- Exact dictionary-based single and multi-file classifier interfaces.
+- Deduplicated, cancellable Qt queue capped at two workers.
+- One reusable classifier pipeline, SQLite connection, and RapidOCR engine per worker thread.
+- Editable destination preview, original filename preservation, collision handling, transactional moves, JSON history, and Undo cleanup.
+- Latest active legacy SQLite history migration without modifying the database.
+- Single-instance application lock.
+- Complete source docstrings and `docs/FUNCTION_MAP.md`.
+
+## Verification
+
+- Full automated suite: 19 passed.
+- Qt controller and single-instance offscreen smoke test: passed.
+- Python compilation: passed.
+- Documentation regression tests and AST audit: every class/function in `sort_pilot/` documented and mapped.
+- Git whitespace validation: passed.
+
+## Detailed records
+
+- Integration process: `docs/INTEGRATION_PROCESS.md`
+- Function ownership/call graph: `docs/FUNCTION_MAP.md`
+- Current usage and contracts: root `README.md`
+
+## Hierarchical topic follow-up
+
+The later hierarchy implementation added fixed Korean type roots, independent per-type topic profiles, learn-only user examples, dependency-free TF-IDF proposals, and a separately previewed migration from existing flat folders. See `docs/HIERARCHICAL_TOPICS.md` and the updated function map for the final behavior.
+
+Follow-up verification: 24 automated tests passed, including the hierarchical JSON contract, profile precedence/isolation, discovery thresholds, migration path preservation, and complete docstring/function-map coverage. Compilation, dependency checks, Qt offscreen UI smoke checks, and Git whitespace validation also passed.
+
+## Classifier integration correction
+
+A later audit found that the hierarchical adapter used only engine feature extraction and that its contract tests disabled the pipeline. The temporary rule/fallback implementation was removed from `classifier.py`, which is now a stable facade for `classifier_engine.analyzer.ClassifierEngine`. Every classification now runs and persists `Pipeline.safe_classify()` output before user-profile → engine-topic → built-in resolution. New tests use real Tier-1 and learned-model decisions and verify physical creation of the approved nested destination.
+
+Final correction verification: 30 automated tests (including the real engine through the Qt queue), compilation, dependency consistency, documentation coverage, and Git whitespace checks passed.
+
+The final policy correction subsequently removed `classifier.py` and all compatibility aliases entirely. It also removed automatic engine-category destinations and built-in semantic profiles. The engine remains mandatory for extraction/scoring/persistence, while topics now come only from user-created profiles or explicitly named and approved TF-IDF/migration groups.
+
+The subsequent assignment fix removed proposal minimums so even a single unmatched file receives a checked user-selection row. Existing topics can be selected or a generated name can be edited; rows sharing a topic learn into one profile. Final suite: 32 passed, plus an offscreen assignment-dialog smoke test.
+
+## Sample-first calibration and signed feedback
+
+The assignment-row follow-up has now been replaced by the intended onboarding workflow. A fresh user first reviews randomized, type-bounded sample clusters and creates the topic/tag vocabulary before the full Desktop/Downloads analysis. The calibration UI supports within-family reassignment, split, merge, rename, tag editing, existing-topic reuse, and explicit exclusion without moving samples.
+
+Optional labels come from a consent-gated, checksummed Google Gemma 3 1B Q4 model running through a pinned local llama.cpp CPU server. No cloud API or upload is involved, and TF-IDF fallback keeps onboarding operational when local generation is unavailable.
+
+Profile schema version 3 adds negative evidence. Confirming a successful move reinforces its topic; correcting A to B reinforces B and demotes A. Canceled, unchecked, failed, and `미분류` rows remain non-learning. The callable map, hierarchy guide, architecture notes, third-party register, README, changelog, and automated coverage were updated with the implementation.
+
+The calibration was subsequently made a true first move step. Once topic names and memberships are confirmed, the 1–3 non-excluded seed files create and populate their hierarchical folders immediately. Profiles contain a much broader base-word vocabulary and bounded weighted co-occurrence pairs to approximate context. The original roots are rescanned after this successful transaction, and only remaining top-level files are shown in the second, final review before movement.

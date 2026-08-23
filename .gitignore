@@ -2,7 +2,32 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-*.db
-history.json
-dist/
+.coverage
+htmlcov/
 build/
+dist/
+*.egg-info/
+
+# Local state and private user data
+*.db
+classifier_weights.json
+df_table.json
+eval/corpus/
+eval/labels.csv
+/eval/local/
+personal_examples.json
+gemma_fallback_cache.json
+
+# Downloaded/generated model artifacts
+*.pt
+# yolov8n.onnx is small enough (~13MB) to commit directly; word_vectors.npz
+# stays excluded and is built locally via embeddings_installer.py instead.
+data/models/*
+!data/models/yolov8n.onnx
+
+# Platform/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

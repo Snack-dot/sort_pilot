@@ -1,0 +1,104 @@
+{
+  "predictions": [
+    {
+      "subject": "수학",
+      "template": "과제",
+      "subject_source": "local_classifier",
+      "template_source": "local_classifier",
+      "subject_corrected": false,
+      "template_corrected": false,
+      "latency_ms": 18.0,
+      "memory_mb": 96.0
+    },
+    {
+      "subject": "영어",
+      "template": null,
+      "subject_source": "local_classifier",
+      "template_source": "needs_review",
+      "subject_corrected": false,
+      "template_corrected": true,
+      "latency_ms": 20.0,
+      "memory_mb": 97.0
+    },
+    {
+      "subject": "역사",
+      "template": "교내활동",
+      "subject_source": "gemma_fallback",
+      "template_source": "local_classifier",
+      "subject_corrected": true,
+      "template_corrected": false,
+      "latency_ms": 35.0,
+      "memory_mb": 101.0
+    },
+    {
+      "subject": "영어",
+      "template": "교외활동",
+      "subject_source": "gemma_fallback",
+      "template_source": "gemma_fallback",
+      "subject_corrected": false,
+      "template_corrected": false,
+      "latency_ms": 42.0,
+      "memory_mb": 104.0
+    },
+    {
+      "subject": null,
+      "template": null,
+      "subject_source": "needs_review",
+      "template_source": "needs_review",
+      "subject_corrected": true,
+      "template_corrected": true,
+      "latency_ms": 12.0,
+      "memory_mb": 93.0
+    },
+    {
+      "subject": "국어",
+      "template": "과제",
+      "subject_source": "local_classifier",
+      "template_source": "local_classifier",
+      "subject_corrected": false,
+      "template_corrected": true,
+      "latency_ms": 19.0,
+      "memory_mb": 95.0
+    },
+    {
+      "subject": "정보",
+      "template": "과제",
+      "subject_source": "local_classifier",
+      "template_source": "local_classifier",
+      "subject_corrected": false,
+      "template_corrected": false,
+      "latency_ms": 17.0,
+      "memory_mb": 96.0
+    },
+    {
+      "subject": "통합과학",
+      "template": "교내활동",
+      "subject_source": "gemma_fallback",
+      "template_source": "local_classifier",
+      "subject_corrected": false,
+      "template_corrected": false,
+      "latency_ms": 30.0,
+      "memory_mb": 102.0
+    },
+    {
+      "subject": "체육",
+      "template": "교내활동",
+      "subject_source": "local_classifier",
+      "template_source": "local_classifier",
+      "subject_corrected": true,
+      "template_corrected": true,
+      "latency_ms": 21.0,
+      "memory_mb": 98.0
+    },
+    {
+      "subject": "진로",
+      "template": "증빙서류",
+      "subject_source": "local_classifier",
+      "template_source": "local_classifier",
+      "subject_corrected": false,
+      "template_corrected": false,
+      "latency_ms": 16.0,
+      "memory_mb": 94.0
+    }
+  ]
+}

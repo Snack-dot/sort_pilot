@@ -1,0 +1,616 @@
+{
+  "cases": [
+    {
+      "file_name": "시조 표현 방식 복습.pdf",
+      "text": "시조의 초장 중장 종장 구조와 운율을 읽으며 작품의 표현 방식을 복습합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "설명문 쓰기 제출 과제.pdf",
+      "text": "관심 있는 현상을 조사한 뒤 설명 방법을 사용하여 한 편의 글을 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "과제"
+    },
+    {
+      "file_name": "시장 가격과 소비 정리.pdf",
+      "text": "수요와 공급의 변화가 시장 가격과 소비 선택에 미치는 영향을 정리한 자료입니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "사회",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "교내 모의 의회 참가 안내.pdf",
+      "text": "학교 사회과에서 운영하는 모의 의회에서 법안을 토론할 학생을 모집합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "사회",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "산업 혁명 비교 보고서 과제.pdf",
+      "text": "산업 혁명 전후의 도시와 노동 변화를 비교한 보고서를 작성하여 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "역사",
+      "template": "과제"
+    },
+    {
+      "file_name": "역사 탐구 발표 참가 확인서.pdf",
+      "text": "교내 역사 탐구 발표회에 참가하였음을 확인하는 학교 발급 문서입니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "역사",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "공정한 판단 개념 정리.pdf",
+      "text": "공정과 책임의 의미를 생활 속 갈등 사례와 함께 살펴보는 복습 자료입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "도덕",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "디지털 예절 실천 기록 과제.pdf",
+      "text": "온라인 대화에서 지켜야 할 예절을 일주일 동안 실천하고 기록지를 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "도덕",
+      "template": "과제"
+    },
+    {
+      "file_name": "삼각형 닮음 핵심 공식.pdf",
+      "text": "삼각형의 닮음 조건과 닮음비를 이용한 길이 계산 방법을 예제와 함께 설명합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "수학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "연립방정식 풀이 숙제.pdf",
+      "text": "가감법과 대입법으로 연립일차방정식을 풀고 풀이 과정을 적어 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "교내 생태 관찰 발표회.pdf",
+      "text": "학교 과학 동아리가 교정의 생물 다양성을 관찰하고 결과를 발표하는 행사입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "과학",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "전류와 전압 실험 보고서.pdf",
+      "text": "회로에서 전류와 전압을 측정한 표와 해석을 완성하여 실험 보고서를 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "과학",
+      "template": "과제"
+    },
+    {
+      "file_name": "식품 보관과 위생 요약.pdf",
+      "text": "안전한 식품 보관 온도와 조리 도구 위생 관리 방법을 정리한 학습 내용입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "기술·가정",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "친환경 주거 설계 활동지.pdf",
+      "text": "에너지 사용을 줄이는 주거 공간을 설계하고 선택한 재료의 이유를 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "기술·가정",
+      "template": "과제"
+    },
+    {
+      "file_name": "이진수와 자료 표현 복습.pdf",
+      "text": "컴퓨터가 숫자와 문자를 이진수로 표현하는 원리를 표와 예제로 설명합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "정보",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "조건문 프로그램 작성 과제.pdf",
+      "text": "입력한 점수에 따라 결과를 출력하도록 조건문을 사용한 프로그램을 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "정보",
+      "template": "과제"
+    },
+    {
+      "file_name": "교내 배드민턴 리그 일정.pdf",
+      "text": "학교 체육관에서 학급별로 진행하는 배드민턴 리그의 경기 일정과 규칙입니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "체육",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "지역 청소년 달리기 대회 안내.pdf",
+      "text": "구청 체육회가 학교 밖 시민공원에서 여는 청소년 달리기 대회의 신청 안내입니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "체육",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "장조와 단조 듣기 정리.pdf",
+      "text": "장조와 단조의 느낌을 음계와 화음의 차이로 구분하는 감상 자료입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "음악",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "청소년 오케스트라 단원 모집.pdf",
+      "text": "지역 문화재단이 운영하는 학교 밖 청소년 오케스트라의 연주 단원을 모집합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "음악",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "원근법 표현 참고 자료.pdf",
+      "text": "소실점과 눈높이를 이용하여 공간의 깊이를 표현하는 원근법 예시를 설명합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "미술",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "교내 포스터 전시회 안내.pdf",
+      "text": "학교 미술실에서 환경 보호 포스터를 전시하고 작품 설명을 발표하는 행사입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "미술",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "영어 여행 계획 발표 과제.pdf",
+      "text": "가고 싶은 도시의 여행 계획을 영어 문장으로 작성하고 발표 자료를 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "과제"
+    },
+    {
+      "file_name": "도서관 영어 독서 모임 모집.pdf",
+      "text": "지역 도서관이 진행하는 학교 밖 영어 원서 읽기 모임의 참가자를 모집합니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "영어",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "직업 가치관 탐색 자료.pdf",
+      "text": "자신이 중요하게 생각하는 직업 가치와 흥미를 살펴보는 진로 탐색 자료입니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "진로",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "진로 멘토링 참여 확인서.pdf",
+      "text": "직업인 멘토링 프로그램에 참여하고 상담을 완료하였음을 확인하는 문서입니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "진로",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "조선 후기 세도 정치 정리.pdf",
+      "text": "세도 정치의 전개와 농민 생활의 변화를 사건 흐름에 따라 정리한 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "한국사",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "독립운동가 자료 분석 과제.pdf",
+      "text": "서로 다른 독립운동 자료를 비교하여 활동 방식과 역사적 의미를 분석해 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "한국사",
+      "template": "과제"
+    },
+    {
+      "file_name": "문화 다양성과 세계화 요약.pdf",
+      "text": "세계화 속 문화 교류와 문화 다양성 보장의 관계를 사례로 설명한 학습 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "통합사회",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "교내 지속가능 도시 토론회.pdf",
+      "text": "학교 통합사회 수업에서 지속가능한 도시 정책을 토론하는 발표회 안내입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합사회",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "물질과 에너지 전환 개념.pdf",
+      "text": "화학 반응과 생명 활동에서 물질과 에너지가 전환되는 과정을 연결하여 설명합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합과학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "지구 환경 변화 탐구 과제.pdf",
+      "text": "기후 자료를 해석하여 지구 환경 변화의 원인과 영향을 탐구 보고서로 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "통합과학",
+      "template": "과제"
+    },
+    {
+      "file_name": "일본어 시간 표현 복습.pdf",
+      "text": "일본어로 시각과 요일을 묻고 답하는 표현과 기본 문형을 정리한 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "제2외국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "지역 중국어 문화 체험 모집.pdf",
+      "text": "청소년문화센터가 운영하는 학교 밖 중국어 회화와 문화 체험 프로그램 안내입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "제2외국어",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "한자 성어 의미 정리.pdf",
+      "text": "일상에서 쓰이는 한자 성어의 음과 뜻을 풀이하고 유래를 정리한 학습 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "한문",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "한문 문장 해석 과제.pdf",
+      "text": "짧은 한문 문장의 어순과 허사를 확인하고 우리말 풀이를 작성해 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "한문",
+      "template": "과제"
+    },
+    {
+      "file_name": "수학 경시대회 수상 확인서.pdf",
+      "text": "교내 수학 경시대회에서 우수상을 받았음을 학교가 확인하고 발급한 문서입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "영어 말하기 평가 성적 확인서.pdf",
+      "text": "영어 말하기 평가에 응시한 결과와 성적을 확인하는 발급 문서입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "지역사회 조사 봉사 확인서.pdf",
+      "text": "지역사회 생활환경 조사 봉사활동에 참여한 시간과 완료 사실을 증명합니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "사회",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "정보 보안 교육 이수증.pdf",
+      "text": "개인정보 보호와 비밀번호 보안 교육 과정을 이수하였음을 확인합니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "정보",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "자료.pdf",
+      "text": "중요한 내용을 읽고 확인하세요.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "활동 안내.pdf",
+      "text": "정해진 날짜에 모여 프로그램에 참여합니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "음악",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "작성 문서.pdf",
+      "text": "내용을 작성한 뒤 기한 안에 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "역사",
+      "template": "과제"
+    },
+    {
+      "file_name": "확인 문서.pdf",
+      "text": "해당 활동을 모두 마쳤음을 확인합니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "진로",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "정리.pdf",
+      "text": "수업에서 다룬 핵심 내용을 간단히 정리했습니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합사회",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "문제.pdf",
+      "text": "주어진 문제를 해결하고 답을 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "과학",
+      "template": "과제"
+    },
+    {
+      "file_name": "모집 안내.pdf",
+      "text": "학생 참가자를 모집하며 장소와 시간은 추후 알립니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "체육",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "참가 기록.pdf",
+      "text": "프로그램에 참가한 사실을 기록한 문서입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "제2외국어",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "학습 내용.pdf",
+      "text": "오늘 배운 내용을 다시 읽어 봅니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "도덕",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "제출물.pdf",
+      "text": "완성한 결과물을 제출합니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "한문",
+      "template": "과제"
+    },
+    {
+      "file_name": "언어와 매체 개념 정리.pdf",
+      "text": "매체 자료의 특성과 언어 규범을 분석하여 정확한 표현을 학습하는 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "독서 지문 문제.pdf",
+      "text": "비문학 지문을 읽고 주제와 서술 방식을 파악하는 문제를 풀어 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "과제"
+    },
+    {
+      "file_name": "문학 작품 감상 요약.pdf",
+      "text": "소설 속 인물의 심리 변화와 상징적 표현을 감상하여 정리한 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "화법과 작문 발표 과제.pdf",
+      "text": "설득하는 말하기 전략을 활용하여 발표 원고를 작성해 제출하세요.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "과제"
+    },
+    {
+      "file_name": "화법과작문 정답 해설.pdf",
+      "text": "지난 시간 화법과 작문 활동의 모범 답안과 풀이를 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "통합사회 지속가능발전 문제지.pdf",
+      "text": "환경과 경제 발전이 공존하는 지속가능한 사회를 만들기 위한 정책을 탐구합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합사회",
+      "template": "과제"
+    },
+    {
+      "file_name": "사회 규범과 일탈 요약.pdf",
+      "text": "사회 규범을 어긴 일탈 행동의 원인과 사회적 통제 방식을 정리한 자료입니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "사회",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "한국사 근대화 운동 정리.pdf",
+      "text": "갑신정변과 갑오개혁을 중심으로 근대화 운동의 전개 과정을 정리합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "한국사",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "통합과학 에너지 전환 수능특강.pdf",
+      "text": "역학적 에너지와 전기 에너지가 서로 전환되는 과정을 사례로 설명하는 심화 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "통합과학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "과학 실험 안전 수칙 요약.pdf",
+      "text": "실험실에서 지켜야 할 기본 안전 수칙과 사고 예방 방법을 정리했습니다.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "과학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "기말 대비 문제지.pdf",
+      "text": "학기말 평가에 대비하여 단원별 연습 문제를 풀고 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "수학 응용 문제 풀이.pdf",
+      "text": "실생활 상황을 활용한 응용 문제를 풀이 과정과 함께 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "영어 지문 정답 모음.pdf",
+      "text": "지난 모의고사 지문의 정답과 근거 문장을 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "영어 듣기대본 정리.pdf",
+      "text": "영어 듣기 평가에 나온 대화 내용을 문장으로 옮겨 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "수학 수능특강 개념정리.pdf",
+      "text": "수능에 자주 나오는 수열과 극한 개념을 예제와 함께 정리한 심화 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "영어 수능완성 요약.pdf",
+      "text": "빈칸 추론과 어법 유형을 중심으로 핵심 전략을 정리한 마무리 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "국어 문제 해설 모음.pdf",
+      "text": "지난 모의고사 국어 문제에 대한 정답과 상세한 해설을 정리한 참고 자료입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "환경 이슈 요약 문제지.pdf",
+      "text": "환경 문제를 다룬 지문을 읽고 핵심 내용을 요약하여 답안을 작성해 제출하세요.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "사회",
+      "template": "과제"
+    }
+  ]
+}

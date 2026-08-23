@@ -1,0 +1,11 @@
+{
+  "version": "phase-8-optional-evidence-v3",
+  "ocr_layout": true,
+  "subject_kiwi_lexical_weight": 0.05,
+  "subject_filename_weight": 0.15,
+  "subject_pmi_weight": 0.05,
+  "subject_language_weight": 0.12,
+  "pmi": true,
+  "yolo_lvis_visual": false,
+  "model_session_scheduling": false
+}

@@ -1,0 +1,215 @@
+{
+  "version": "1",
+  "cases": [
+    {
+      "file_name": "창문 그림자가 비친 종이.png",
+      "phase7_text": "두 열의 문장이 번갈아 이어져 원래 내용을 분명히 읽기 어렵습니다.",
+      "layout_text": "설화의 인물과 사건 전개를 살펴보고 서술자의 관점이 주제 형성에 미치는 영향을 설명합니다.",
+      "student_type": "중학생", "grade": 1, "semester": "1학기", "subject": "국어", "template": "학습자료",
+      "pmi_collocations": [], "ocr_layout_evidence": ["목차"], "visual_evidence": []
+    },
+    {
+      "file_name": "책받침 아래 놓인 인쇄물.png",
+      "phase7_text": "표와 설명이 섞인 순서로 인식되어 문단의 관계가 남아 있지 않습니다.",
+      "layout_text": "위도와 해발 고도에 따른 기후 차이가 주민의 생활과 산업에 어떤 영향을 주는지 비교합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "사회", "template": "학습자료",
+      "pmi_collocations": [], "ocr_layout_evidence": ["학습목표"], "visual_evidence": []
+    },
+    {
+      "file_name": "모서리가 말린 복사물.png",
+      "phase7_text": "왼쪽 본문과 오른쪽 설명이 한 줄씩 교차하여 읽기 흐름이 끊겼습니다.",
+      "layout_text": "고려의 대외 관계와 무역 활동을 사료로 확인하고 주변 국가와의 교류 양상을 정리합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "2학기", "subject": "역사", "template": "학습자료",
+      "pmi_collocations": ["개념 정리"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "스테이플러 자국 난 종이.png",
+      "phase7_text": "여러 칸의 숫자와 문장이 좌우 순서 없이 합쳐져 내용을 구분하기 어렵습니다.",
+      "layout_text": "연립방정식의 해를 대입법과 가감법으로 구하고 두 직선의 교점과 연결하여 이해합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "수학", "template": "학습자료",
+      "pmi_collocations": ["핵심 요약"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "형광등 빛이 번진 문서.png",
+      "phase7_text": "그림 설명과 본문이 다른 순서로 이어져 과정을 파악하기 어렵습니다.",
+      "layout_text": "전류와 전압의 관계를 측정하고 저항의 크기에 따라 회로에서 나타나는 변화를 관찰합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "1학기", "subject": "과학", "template": "학습자료",
+      "pmi_collocations": [], "ocr_layout_evidence": ["핵심정리"], "visual_evidence": []
+    },
+    {
+      "file_name": "투명 덮개 속 자료.png",
+      "phase7_text": "예문과 해설이 서로 다른 열에서 번갈아 인식되어 순서가 맞지 않습니다.",
+      "layout_text": "분사구문이 문장에서 나타내는 시간과 이유를 구별하고 영어 문장의 의미를 자연스럽게 해석합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "2학기", "subject": "영어", "template": "학습자료",
+      "pmi_collocations": [], "ocr_layout_evidence": ["예시"], "visual_evidence": []
+    },
+    {
+      "file_name": "연필심이 묻은 종이.png",
+      "phase7_text": "질문과 보기의 위치가 뒤섞여 무엇을 작성해야 하는지 알기 어렵습니다.",
+      "layout_text": "온라인 대화에서 지켜야 할 존중과 배려의 원칙을 실제 갈등 사례에 적용하여 판단 근거를 작성합니다.",
+      "student_type": "중학생", "grade": 1, "semester": "2학기", "subject": "도덕", "template": "과제",
+      "pmi_collocations": [], "ocr_layout_evidence": ["이름"], "visual_evidence": []
+    },
+    {
+      "file_name": "접힌 자국이 선명한 문서.png",
+      "phase7_text": "작성 칸과 설명 칸이 한 문장처럼 합쳐져 본래 배치를 알기 어렵습니다.",
+      "layout_text": "의복 소재의 특성을 비교하고 계절과 활동 목적에 맞는 옷차림 계획을 작성합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "기술·가정", "template": "과제",
+      "pmi_collocations": [], "ocr_layout_evidence": ["학번"], "visual_evidence": []
+    },
+    {
+      "file_name": "책상 모서리에 걸친 자료.png",
+      "phase7_text": "코드와 설명이 교대로 이어져 실행 순서를 확인하기 어렵습니다.",
+      "layout_text": "변수와 조건문을 이용해 점수에 따른 등급을 출력하는 프로그램을 설계하고 실행 결과를 기록합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "2학기", "subject": "정보", "template": "과제",
+      "pmi_collocations": ["과제 제출"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "체육복 위에 놓인 종이.png",
+      "phase7_text": "측정 표와 안내 문장이 엇갈려 기록 방법을 바로 알 수 없습니다.",
+      "layout_text": "윗몸 말아 올리기 기록을 측정하고 근지구력을 높이기 위한 주간 운동 계획과 실천 결과를 작성합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "체육", "template": "과제",
+      "pmi_collocations": ["보고서 작성"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "건반 옆에서 찍은 자료.png",
+      "phase7_text": "악보 기호와 질문이 좌우로 섞여 작성 순서를 확인하기 어렵습니다.",
+      "layout_text": "셋잇단음표의 리듬을 살려 짧은 선율을 만들고 연주에서 느껴지는 분위기를 글로 설명합니다.",
+      "student_type": "중학생", "grade": 1, "semester": "2학기", "subject": "음악", "template": "과제",
+      "pmi_collocations": [], "ocr_layout_evidence": ["제출일"], "visual_evidence": []
+    },
+    {
+      "file_name": "도화지 아래 깔린 문서.png",
+      "phase7_text": "작품 사진과 질문 문장이 교차하여 답을 쓸 위치가 분명하지 않습니다.",
+      "layout_text": "보색 대비를 활용한 포스터를 제작하고 색과 형태가 전달하는 시각적 효과를 분석합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "2학기", "subject": "미술", "template": "과제",
+      "pmi_collocations": [], "ocr_layout_evidence": ["답안란"], "visual_evidence": []
+    },
+    {
+      "file_name": "칠판 자석에 붙은 안내.png",
+      "phase7_text": "제목과 일정 표가 다른 열에서 번갈아 인식되어 전체 맥락이 흐려졌습니다.",
+      "layout_text": "관심 직업의 업무와 필요한 역량을 조사하고 고등학교 진학 뒤의 진로 경로를 탐색합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "1학기", "subject": "진로", "template": "교내활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["교내"], "visual_evidence": []
+    },
+    {
+      "file_name": "복도 게시판의 인쇄물.png",
+      "phase7_text": "행사 정보와 본문이 좌우 순서 없이 이어져 내용을 구분하기 어렵습니다.",
+      "layout_text": "개항 이후 근대 개혁의 흐름과 독립 협회의 활동을 당시 신문 자료를 통해 살펴봅니다.",
+      "student_type": "고등학생", "grade": 1, "semester": "2학기", "subject": "한국사", "template": "교내활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["학교장"], "visual_evidence": []
+    },
+    {
+      "file_name": "교실 뒤편에 붙은 자료.png",
+      "phase7_text": "여러 단의 글자가 한 줄로 합쳐져 문장 관계를 파악하기 어렵습니다.",
+      "layout_text": "도시화가 주거와 환경에 미치는 영향을 사회적 불평등과 지속 가능한 발전의 관점에서 분석합니다.",
+      "student_type": "고등학생", "grade": 1, "semester": "1학기", "subject": "통합사회", "template": "교내활동",
+      "pmi_collocations": ["학교 행사"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "방송실 문 앞 공지.png",
+      "phase7_text": "그림과 세부 일정이 뒤섞여 과학 내용의 전개를 알기 어렵습니다.",
+      "layout_text": "생명 시스템에서 효소가 물질대사에 미치는 영향과 세포막을 통한 물질 이동을 설명합니다.",
+      "student_type": "고등학생", "grade": 1, "semester": "2학기", "subject": "통합과학", "template": "교내활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["담당교사"], "visual_evidence": []
+    },
+    {
+      "file_name": "사물함 문에 끼운 안내.png",
+      "phase7_text": "예문과 모집 정보가 교차하여 문장의 앞뒤가 맞지 않습니다.",
+      "layout_text": "중국어 성조와 기본 어순을 익히고 식당에서 주문할 때 쓰는 회화 표현을 연습합니다.",
+      "student_type": "고등학생", "grade": 2, "semester": "1학기", "subject": "제2외국어", "template": "교내활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["교내일정"], "visual_evidence": []
+    },
+    {
+      "file_name": "도서실 출입문 안내.png",
+      "phase7_text": "한자 문장과 행사 설명이 서로 다른 순서로 이어져 의미가 끊겼습니다.",
+      "layout_text": "고사성어에 쓰인 한자의 음과 뜻을 확인하고 한문 문장의 구조에 맞게 풀이합니다.",
+      "student_type": "고등학생", "grade": 2, "semester": "2학기", "subject": "한문", "template": "교내활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["교내"], "visual_evidence": []
+    },
+    {
+      "file_name": "우산에 젖은 전단.png",
+      "phase7_text": "모집 영역과 설명 문단이 번갈아 인식되어 읽기 순서가 흐트러졌습니다.",
+      "layout_text": "논설문에서 주장과 근거의 타당성을 판단하고 같은 쟁점에 대한 서로 다른 관점을 비교합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "1학기", "subject": "국어", "template": "교외활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["주최기관"], "visual_evidence": []
+    },
+    {
+      "file_name": "계단 입구에서 받은 전단.png",
+      "phase7_text": "지도와 신청 정보가 좌우로 섞여 본문의 흐름이 자연스럽지 않습니다.",
+      "layout_text": "하천 주변 토지 이용의 변화를 조사하고 개발과 환경 보전 사이의 갈등을 지리적으로 분석합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "2학기", "subject": "사회", "template": "교외활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["외부장소"], "visual_evidence": []
+    },
+    {
+      "file_name": "버스 창가에서 찍은 종이.png",
+      "phase7_text": "수식과 참가 안내가 교차하여 문제의 순서를 알기 어렵습니다.",
+      "layout_text": "원의 중심각과 원주각의 관계를 이용해 각의 크기를 구하고 풀이 과정을 단계별로 설명합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "1학기", "subject": "수학", "template": "교외활동",
+      "pmi_collocations": ["외부 기관"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "공원 의자 위 전단.png",
+      "phase7_text": "관찰 그림과 일정 안내가 뒤섞여 과정을 연속해서 읽기 어렵습니다.",
+      "layout_text": "구름이 만들어지는 과정과 기압에 따른 바람의 이동을 관찰하여 날씨 변화를 설명합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "과학", "template": "교외활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["참가신청"], "visual_evidence": []
+    },
+    {
+      "file_name": "청소년관 앞 안내.png",
+      "phase7_text": "순서도와 모집 문장이 번갈아 이어져 알고리즘의 흐름이 끊겼습니다.",
+      "layout_text": "목록에서 최댓값을 찾는 알고리즘을 순서도로 표현하고 반복 횟수와 실행 결과를 비교합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "2학기", "subject": "정보", "template": "교외활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["모집기간"], "visual_evidence": []
+    },
+    {
+      "file_name": "문화센터에서 접은 전단.png",
+      "phase7_text": "영어 예문과 장소 정보가 서로 다른 열에서 합쳐져 문맥이 맞지 않습니다.",
+      "layout_text": "현재완료가 나타내는 경험과 계속의 의미를 구별하고 상황에 맞는 영어 대화를 완성합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "2학기", "subject": "영어", "template": "교외활동",
+      "pmi_collocations": [], "ocr_layout_evidence": ["주최기관"], "visual_evidence": []
+    },
+    {
+      "file_name": "도장 부분이 접힌 문서.png",
+      "phase7_text": "기록 표와 본문이 좌우로 섞여 원래 배치를 확인하기 어렵습니다.",
+      "layout_text": "조선의 붕당 정치가 전개된 과정과 탕평책의 목적을 주요 인물과 사건을 중심으로 정리합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "2학기", "subject": "역사", "template": "증빙서류",
+      "pmi_collocations": [], "ocr_layout_evidence": ["발급번호"], "visual_evidence": []
+    },
+    {
+      "file_name": "서명란이 흐린 종이.png",
+      "phase7_text": "확인 영역과 설명 문장이 번갈아 인식되어 글의 관계가 분명하지 않습니다.",
+      "layout_text": "생명의 가치와 동물 권리에 대한 여러 윤리적 입장을 비교하고 책임 있는 선택 기준을 제시합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "2학기", "subject": "도덕", "template": "증빙서류",
+      "pmi_collocations": [], "ocr_layout_evidence": ["직인"], "visual_evidence": []
+    },
+    {
+      "file_name": "파일 상자에서 나온 기록.png",
+      "phase7_text": "생활 기록과 발급 정보가 한 줄씩 교차하여 원래 순서가 남지 않았습니다.",
+      "layout_text": "가정의 수입과 지출을 구분해 예산을 세우고 합리적인 소비와 자원 관리 방법을 설명합니다.",
+      "student_type": "중학생", "grade": 3, "semester": "1학기", "subject": "기술·가정", "template": "증빙서류",
+      "pmi_collocations": ["수료 증명"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "기록판 옆에 놓인 문서.png",
+      "phase7_text": "운동 기록과 확인 문구가 섞여 항목의 순서를 알기 어렵습니다.",
+      "layout_text": "배드민턴 경기에서 하이클리어와 드롭을 상황에 맞게 사용하고 경기 운영 전략을 평가합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "체육", "template": "증빙서류",
+      "pmi_collocations": ["이수 확인"], "ocr_layout_evidence": [], "visual_evidence": []
+    },
+    {
+      "file_name": "액자 유리에 비친 종이.png",
+      "phase7_text": "곡 설명과 발급 영역이 서로 다른 순서로 이어져 문맥이 끊겼습니다.",
+      "layout_text": "관현악곡에서 현악기와 관악기의 음색을 구별하고 주제 선율이 변주되는 방식을 감상합니다.",
+      "student_type": "중학생", "grade": 1, "semester": "1학기", "subject": "음악", "template": "증빙서류",
+      "pmi_collocations": [], "ocr_layout_evidence": ["발급일"], "visual_evidence": []
+    },
+    {
+      "file_name": "작품 봉투 안의 문서.png",
+      "phase7_text": "작품 설명과 확인 항목이 교차하여 읽는 순서를 파악하기 어렵습니다.",
+      "layout_text": "수묵화의 농담과 여백이 만드는 공간감을 살펴보고 전통 회화의 표현 특징을 분석합니다.",
+      "student_type": "중학생", "grade": 2, "semester": "1학기", "subject": "미술", "template": "증빙서류",
+      "pmi_collocations": [], "ocr_layout_evidence": ["기관장"], "visual_evidence": []
+    }
+  ]
+}

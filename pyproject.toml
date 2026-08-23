@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sort-pilot"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "PyQt6==6.7.1", "kiwipiepy==0.23.2",
+  "PyMuPDF==1.28.0", "python-docx==1.2.0", "python-pptx==1.0.2",
+  "openpyxl==3.1.5", "Pillow==12.1.0", "onnxruntime==1.27.0",
+  "rapidocr==3.5.0", "psutil==7.0.0", "stop-words==2025.11.4",
+  "numpy==2.4.6", "fastembed==0.8.0"
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1", "ultralytics==8.4.56", "onnx==1.22.0"]
+
+[tool.setuptools.packages.find]
+include = ["sort_pilot*"]
+
+[tool.setuptools.package-data]
+"sort_pilot.curriculum" = ["data/*.json"]
+"sort_pilot.classification" = ["data/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

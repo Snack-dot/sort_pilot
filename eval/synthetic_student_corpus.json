@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "file_name": "일차함수 연습 과제.pdf",
+      "text": "일차함수의 그래프를 그리고 기울기와 절편을 구하는 문제를 풀어 제출하세요.",
+      "student_type": "중학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "수학",
+      "template": "과제"
+    },
+    {
+      "file_name": "영어 문법 핵심 정리.pdf",
+      "text": "현재완료의 형태와 쓰임을 예문으로 정리한 학습 자료입니다.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "영어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "교내 과학 탐구 발표 안내.pdf",
+      "text": "학교 과학 탐구 발표회 참가 주제와 교내 발표 일정을 안내합니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "과학",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "청소년 영어 말하기 대회 안내.pdf",
+      "text": "지역 문화원이 주최하는 교외 영어 말하기 대회 참가자를 모집합니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "1학기",
+      "subject": "영어",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "한국사 과정 이수 확인서.pdf",
+      "text": "한국사 학습 과정을 이수했음을 확인하는 문서입니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "1학기",
+      "subject": "한국사",
+      "template": "증빙서류"
+    },
+    {
+      "file_name": "현대시 표현법 정리.pdf",
+      "text": "현대시의 비유와 상징 표현을 작품 예시와 함께 정리했습니다.",
+      "student_type": "고등학생",
+      "grade": 3,
+      "semester": "2학기",
+      "subject": "국어",
+      "template": "학습자료"
+    },
+    {
+      "file_name": "정보 알고리즘 작성 과제.pdf",
+      "text": "순서도와 반복 구조를 사용해 주어진 문제의 알고리즘을 작성하세요.",
+      "student_type": "중학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "정보",
+      "template": "과제"
+    },
+    {
+      "file_name": "교내 통합과학 실험 발표회.pdf",
+      "text": "교내 실험 발표회에서 물질 변화 관찰 결과를 발표하는 활동 안내입니다.",
+      "student_type": "고등학생",
+      "grade": 1,
+      "semester": "2학기",
+      "subject": "통합과학",
+      "template": "교내활동"
+    },
+    {
+      "file_name": "지역 청소년 음악제 참가 안내.pdf",
+      "text": "지역 예술회관에서 열리는 청소년 음악제의 교외 참가 방법을 안내합니다.",
+      "student_type": "중학생",
+      "grade": 3,
+      "semester": "1학기",
+      "subject": "음악",
+      "template": "교외활동"
+    },
+    {
+      "file_name": "진로 체험 수료증.pdf",
+      "text": "직업 진로 체험 프로그램을 수료했음을 증명합니다.",
+      "student_type": "고등학생",
+      "grade": 2,
+      "semester": "2학기",
+      "subject": "진로",
+      "template": "증빙서류"
+    }
+  ]
+}

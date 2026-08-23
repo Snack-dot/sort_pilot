@@ -1,109 +1,133 @@
 # Sort Pilot
 
-Sort Pilot은 사용자가 원할 때 바탕화면과 Downloads 폴더를 분석하고, AI가 **저장할 폴더를 추천**하면 사용자 승인 후 파일을 정리하는 Windows 데스크톱 앱입니다.
+Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, classifies the independent subject and template axes locally, and moves only files whose exact destination paths the user approves.
 
-현재 버전은 실제 로컬 AI를 연결하기 전의 제품 기반입니다. 파일명·확장자 기반 경량 분석기가 AI 역할을 임시로 대신하며, 이후 분석기만 교체할 수 있도록 파일 조작 계층과 분리했습니다.
+## Current workflow
 
 ```text
-트레이에서 정리 메뉴 선택
-→ 대상 파일 수집
-→ AI에 의미 분석 요청
-→ 추천 저장 폴더 수신
-→ 사용자에게 추천 내용 표시
-→ 사용자 승인
-→ 프로그램이 원본 파일명을 유지한 채 이동
+Tray action (Desktop / Downloads / both)
+→ first-run student type / grade / semester setup
+→ safe top-level candidate collection
+→ deduplicated two-worker bounded extraction queue
+→ independent catalog-bounded subject and five-template ranking
+→ calibrated local acceptance / constrained Gemma fallback / Needs Review
+→ fixed-choice subject and template preview
+→ unresolved axes require user selection
+→ explicit final approval freezes exact source and destination paths
+→ exact original-name or collision-suffixed file moves
+→ corrected decisions stored locally as separate personal examples
+→ atomic JSON history and restart-safe Undo
 ```
 
-## 안전 원칙
+There is no real-time filesystem watcher. Manual organization avoids repeated background scans, and each extraction worker reuses one local RapidOCR engine. The active destination hierarchy is exactly `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`.
 
-- 사용자 승인 없이 파일을 이동하거나 이름을 바꾸지 않습니다.
-- 분석기는 파일을 직접 조작하지 않고 추천 결과만 반환합니다.
-- 삭제 기능을 제공하지 않습니다.
-- 실행한 이동은 JSON 작업 기록에 저장하며 프로그램 재실행 후에도 마지막 작업 묶음을 Undo할 수 있습니다.
-- 폴더, 바로가기, 실행 파일, 스크립트, 임시 파일은 정리 대상에서 제외합니다.
+## Lower-level extraction interface
 
-## 현재 기능
+`ClassifierEngine` remains the lower-level extraction and compatibility interface used by the queue. Its historical type/topic fields are not educational classification axes and are not used to build the active destination. The educational result is produced by `EducationalClassificationService` and contains only subject and template decisions.
 
-- 규칙 기반 폴더 및 파일명 추천
-- 바탕화면·다운로드 폴더 개별 또는 통합 일괄 정리
-- 변경 전 표 형태 미리보기
-- 파일별 현재 위치 표시
-- 파일별 기준 위치(바탕화면·다운로드 폴더) 선택
-- 추천 정리 폴더 수정 및 파일별 이동 승인
-- 승인된 파일만 이동
-- 파일명 충돌 시 `_1`, `_2` 자동 추가
-- 마지막 정리 작업 전체 실행 취소 및 작업 중 생성된 빈 폴더 제거
-- 트레이에서 수동 정리 및 완전 종료
+```python
+from pathlib import Path
+from sort_pilot.classifier_engine import ClassifierEngine
 
-분석 결과의 공용 형식은 다음과 같습니다. AI 영역과의 호환성을 위해 `suggested_name`은 유지하지만 현재 앱은 파일명 변경에 사용하지 않습니다. `confidence`는 사용하지 않습니다.
+classifier = ClassifierEngine()
+try:
+    result = classifier.analyze_json(Path("C:/Users/user/Downloads/운영체제과제.pdf"))
+finally:
+    classifier.close()
+```
+
+Single file:
 
 ```python
 {
-    "file_path": "C:/Users/user/Downloads/document(4).pdf",
-    "file_name": "document(4).pdf",
-    "suggested_name": "운영체제_과제안내서.pdf",
-    "folder": "학교",
-    "reason": "운영체제 과제 안내 문서입니다."
+    "filepath": "C:/Users/user/Downloads/운영체제과제.pdf",
+    "folder": "문서/미분류"
 }
 ```
 
-## 설치 및 실행
+Multiple files:
 
-Python 3.11.9를 권장합니다.
+```python
+{
+    "results": [
+        {"filepath": "C:/Users/user/Downloads/운영체제과제.pdf", "folder": "문서/내과제"},
+        {"filepath": "C:/Users/user/Downloads/쿠팡영수증.png", "folder": "이미지/구매기록"}
+    ]
+}
+```
+
+`analyze_json` and `analyze_many_json` are retained compatibility calls. The tray workflow consumes `AnalysisRecord` extraction evidence and disregards the historical type/topic destination returned by those calls.
+
+## Features and safety
+
+- First-run student setup stores only the fixed `학생` occupation, `중학생|고등학생`, grade 1–3, semester 1–2, and `KR_STUDENT_2026_MVP_V1` catalog version; it does not collect a school, institution, or timetable.
+- Phase 2 evaluation uses a tracked, made-up student corpus and reports subject accuracy, template accuracy, combined-path accuracy, coverage, review rate, fallback rate, corrections, latency, and memory. Unresolved results are incorrect for all applicable accuracy measures.
+- Phase 3 provides natural-language profiles for every catalog subject and a CPU-only `intfloat/multilingual-e5-small` ranker. It validates 384-dimensional vectors, compares only the selected student type's catalog subjects with NumPy cosine similarity, and retains raw similarity and top-two margin without calling either value confidence.
+- Phase 4 provides separate profiles and explicit evidence weights for exactly `학습자료`, `과제`, `교내활동`, `교외활동`, and `증빙서류`. It ranks all five with natural semantic intent plus separate filename, lexical, PMI-collocation, OCR/layout, optional visual, and personal-example evidence, retaining raw score and margin without calibrated confidence.
+- Phase 5 calibrates subject and template policy independently from 50 new made-up held-out cases. Authoritative local routes must achieve at least 90% held-out precision; the Gemma-escalation region must achieve at least 50% held-out top-label accuracy; weaker evidence remains Needs Review.
+- Phase 6 provides a constrained local Gemma fallback only for a subject or template axis that Phase 5 routed as plausible but ambiguous. Each request contains ranked supplied candidates and bounded extracted evidence; valid output is one exact supplied candidate or Needs Review. Invalid or unavailable results remain Needs Review, while retry, cancellation, and a local hash-keyed cache reuse the reliable `fix`-branch behavior without allowing Gemma to return a path.
+- Phase 7 connects those components to the tray workflow. It exposes unresolved subject/template axes for fixed-choice selection, freezes exact collision-resolved paths at final approval, executes those paths without reclassification, preserves transactional move and persistent Undo behavior, and stores only genuine corrections as separate local personal examples.
+- Phase 8 retains only the optional evidence justified by paired made-up development and held-out measurements: layout-aware OCR, a bounded `0.05` Kiwi lexical contribution for subject ranking, and PMI. The active template classifier keeps the original OCR order for semantic intent and receives separate layout indicators. YOLO/LVIS visual evidence and new model-session scheduling are disabled.
+- Personal examples contain a fingerprint, normalized embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions. They contain no source path or raw extracted text, do not fine-tune E5 or Gemma, and do not mutate global subject/template profiles.
+- Calibrated nearest-example evidence uses separate subject and template weights derived from made-up held-out data while retaining the Phase 5 routing thresholds and the approved 90%/50% operating targets.
+- Manual Desktop, Downloads, or combined organization.
+- Exactly two classification workers; duplicate paths are processed once per session.
+- One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
+- Cancellable extraction, local E5 classification, and Gemma fallback with no partial preview after cancellation.
+- Local document, archive, image metadata, and layout-aware OCR extraction. The active educational flow does not run YOLO/LVIS.
+- The preview allows only the selected student's catalog subjects, the five fixed templates, and Desktop or Downloads as the destination root.
+- Original filenames are preserved; collisions receive numeric suffixes.
+- No move plan exists while either axis is unresolved, and no move occurs before final approval.
+- Execution consumes the frozen `OrganizationPlan` and never recomputes classification.
+- Completed move batches are stored atomically in `history.json` and can be undone after restart.
+- The latest active legacy `history.db` batch is migrated once without modifying the database.
+- A Qt lock prevents two Sort Pilot instances from running simultaneously.
+- No cloud inference or file upload.
+
+## Setup and verification
+
+Python 3.11 is recommended.
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[test]"
+python -m pytest -q
 python main.py
 ```
 
-메인 창은 나타나지 않습니다. Windows 시스템 트레이에서 `SP` 아이콘을 우클릭해 사용합니다.
+The app has no main window. Right-click the `SP` system-tray icon to organize files, undo the latest batch, or quit.
 
-## 트레이 메뉴
-
-- `일괄 정리`: 바탕화면과 다운로드 폴더를 함께 분석합니다.
-- `바탕화면 정리`: 바탕화면의 안전한 일반 파일만 분석합니다.
-- `다운로드 폴더 정리`: 다운로드 폴더의 기존 파일을 분석합니다.
-- `마지막 정리 실행 취소`: 마지막 작업을 복원하고, 해당 작업이 만든 폴더가 비면 제거합니다.
-- `프로그램 종료`: 트레이를 정리한 뒤 프로세스를 종료합니다.
-
-승인된 파일은 AI가 반환한 상대 폴더를 원래 폴더 아래에 적용합니다. 예를 들어 AI가 `학교`를 추천하면 `Downloads/학교/<원본 파일명>`으로 이동합니다.
-
-## 구조
+## Repository layout
 
 ```text
-sort_pilot/
-├── main.py
-├── requirements.txt
-├── sort_pilot/
-│   ├── app.py          # 앱 흐름과 UI 연결
-│   ├── classifier.py   # 교체 가능한 분석기 인터페이스
-│   ├── filters.py      # 안전 제외 규칙
-│   ├── history.py      # JSON 작업 기록
-│   ├── models.py       # 팀 공용 데이터 모델
-│   ├── organizer.py    # 작업 계획, 이동, Undo
-│   ├── preview.py      # 승인 전 미리보기
-│   ├── scanner.py      # 폴더 스캔
-│   └── tray.py         # 시스템 트레이
-└── tests/
-    └── test_core.py
+main.py                            desktop entry point
+sort_pilot/app.py                  tray workflow and UI coordination
+sort_pilot/analysis_queue.py       deduplicated two-worker analysis sessions
+sort_pilot/onboarding.py           fixed-choice student setup dialog
+sort_pilot/classification/         two-axis contracts, classifiers, policy, and constrained Gemma fallback
+sort_pilot/educational_preview.py  fixed-axis review and immutable approved plans
+sort_pilot/evaluation/             strict made-up corpus loading and evaluation measures
+sort_pilot/local_tagger.py         pinned Gemma/llama.cpp installation support
+sort_pilot/classifier_engine/      bounded extraction and retained compatibility engine
+sort_pilot/history.py              atomic JSON move history and SQLite migration
+sort_pilot/organizer.py            frozen-path moves, rollback, and Undo
+tests/                             app, queue, contract, and engine tests
+eval/                              aggregate runners and tracked synthetic student examples
+docs/ARCHITECTURE.md               historical legacy-classifier architecture reference
+docs/FUNCTION_MAP.md               complete function ownership and call-flow map
+docs/INTEGRATION_PROCESS.md        app-branch integration record
+docs/HIERARCHICAL_TOPICS.md        type/topic model, TF-IDF, profiles, and migration
+docs/SRS.md                        historical legacy-classifier requirements
+docs/THIRD_PARTY.md                dependency and model-artifact inventory
 ```
 
-## 테스트
+The retained extraction engine keeps its compatibility state under `%APPDATA%\tidy`. Those historical decisions do not select the educational subject, template, or destination. Move history and the single-instance lock use Qt's Sort Pilot application-data directory.
 
-코어 테스트는 외부 패키지 없이 실행할 수 있습니다.
+The student onboarding profile is stored atomically as `student_profile.json` in Qt's Sort Pilot application-data directory. Preview corrections are stored separately as `personal_examples.json`; Gemma cache entries are stored as `gemma_fallback_cache.json`. Both are private local state and are also named in `.gitignore` as an additional guard.
 
-```powershell
-python -m unittest discover -s tests -v
-```
+Phases 3–8 are wired into the active organization workflow. Both classifiers reuse the local E5 encoder; FastEmbed loads `data/models/fastembed/` without network access and forces ONNX Runtime's `CPUExecutionProvider`. Phase 5 centralizes the independent routing thresholds, Phase 6 reuses the consent-gated Gemma and llama.cpp artifacts, Phase 7 adds the independently calibrated personal-example rule, and Phase 8 adds only the measured OCR-layout/Kiwi selection. Downloaded E5 and Gemma artifacts remain Git-ignored.
 
-테스트는 분석 결과 계약, 위험 파일 제외, 이동 및 Undo를 임시 폴더에서 검증합니다.
+Only made-up student evaluation cases and labels are tracked. Any evaluation using real local files, filenames, extracted text, labels, predictions, corrections, or results belongs under the Git-ignored `eval/local/` directory and must never be committed or uploaded to GitHub. The Phase 2 runner prints aggregate measures and writes no evaluation output.
 
-## 다음 개발 단계
-
-1. PDF·TXT·이미지 텍스트 추출기 추가
-2. 경량 로컬 AI 분석기 구현 및 `FileAnalyzer` 인터페이스에 연결
-3. 추천 폴더 수정 UI와 사용자 규칙 저장
-4. 작업 기록 조회 화면과 선택적 Undo
-5. Windows 설치 파일 패키징
+The retained legacy vision model (`data/models/yolov8n.onnx`, ~13MB) is not invoked by the active educational flow after the Phase 8 ablation. Larger binaries are not committed. After consent, the app downloads the pinned 806MB Gemma GGUF and llama.cpp Windows CPU runtime, verifies their SHA-256 digests, and runs inference only on `127.0.0.1`. If installation or a given cluster's naming request fails, that cluster's deterministic collocation-aware name keeps calibration usable. The optional semantic-rescue word vectors (`data/models/word_vectors.npz`, ~112MB) are built locally after a separate consent prompt, streaming only the most frequent words from Meta's official fastText releases rather than downloading them in full; matching skips this step gracefully when it's absent. Provenance requirements are in `docs/THIRD_PARTY.md`.
