@@ -62,7 +62,7 @@ def test_dry_run_and_collision(tmp_path):
     source = tmp_path / "invoice.pdf"
     source.write_text("invoice")
     store = Store(tmp_path / "state.db")
-    executor = Executor(store, dry_run=True)
+    executor = Executor(store, dry_run=True, sandbox_root=tmp_path)
     destination = executor.execute(source, tmp_path / "sorted", "UserChosen")
     assert source.exists() and not destination.exists()
     destination.parent.mkdir(parents=True)
@@ -146,16 +146,28 @@ def test_rapidocr_engine_is_reused_within_worker_thread():
     created = []
 
     class FakeRapidOCR:
-        def __init__(self):
+        def __init__(self, *, params):
+            self.params = params
             created.append(self)
 
+    class FakeAssets:
+        def rapidocr_params(self):
+            return {"Rec.model_path": "local-korean.onnx", "Rec.rec_keys_path": "local.txt"}
+
     extract_module._OCR_LOCAL = __import__("threading").local()
-    with patch("rapidocr.RapidOCR", FakeRapidOCR):
+    with (
+        patch("rapidocr.RapidOCR", FakeRapidOCR),
+        patch(
+            "sort_pilot.classifier_engine.ocr.KoreanOCRAssets.load",
+            return_value=FakeAssets(),
+        ),
+    ):
         first = extract_module._ocr_engine()
         second = extract_module._ocr_engine()
 
     assert first is second
     assert len(created) == 1
+    assert created[0].params["Rec.model_path"] == "local-korean.onnx"
 
 
 def test_layout_aware_ocr_orders_columns_and_keeps_transient_line_evidence():

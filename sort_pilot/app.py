@@ -61,6 +61,7 @@ from .organizer import (
 )
 from .preview import PreviewDialog
 from .scanner import collect_candidates
+from .sandbox import default_sandbox_root, require_in_sandbox, require_sandbox_file
 from .topic_dialogs import ProfileEditRequest, TopicManagerDialog
 from .tray import TrayIcon
 
@@ -89,7 +90,8 @@ class AppController(QObject):
         self.e5_cache_dir = Path(__file__).resolve().parents[1] / "data" / "models" / "fastembed"
         self.local_tagger = LocalTagger(self.model_installer)
         self.embeddings_installer = EmbeddingsInstaller(data_dir() / "local_ai")
-        self.downloads_folder = Path.home() / "Downloads"
+        self.sandbox_folder = default_sandbox_root().resolve()
+        self.downloads_folder = self.sandbox_folder
         self.analysis = BatchAnalysisController(self)
         self.analysis.progress.connect(self._update_progress)
         self.analysis.completed.connect(self._analysis_completed)
@@ -157,8 +159,8 @@ class AppController(QObject):
             return
         if self._pending_organize is None:
             self._pending_organize = (
-                [self._desktop_folder(), self.downloads_folder],
-                "바탕화면과 다운로드 폴더",
+                [self.sandbox_folder],
+                "Sandbox",
             )
         try:
             roots = self._pending_organize[0]
@@ -172,19 +174,16 @@ class AppController(QObject):
         self._start_analysis(paths, "calibration", "주제 보정 표본 분석")
 
     def organize_desktop(self) -> None:
-        """Analyze safe top-level files on the Desktop."""
-        self._organize_existing_files([self._desktop_folder()], "바탕화면")
+        """Compatibility action that analyzes only the sandbox."""
+        self._organize_existing_files([self.sandbox_folder], "Sandbox")
 
     def organize_downloads(self) -> None:
-        """Analyze safe top-level files in Downloads."""
-        self._organize_existing_files([self.downloads_folder], "다운로드 폴더")
+        """Compatibility action that analyzes only the sandbox."""
+        self._organize_existing_files([self.sandbox_folder], "Sandbox")
 
     def organize_all(self) -> None:
-        """Analyze Desktop and Downloads together in one deduplicated session."""
-        self._organize_existing_files(
-            [self._desktop_folder(), self.downloads_folder],
-            "바탕화면과 다운로드 폴더",
-        )
+        """Analyze only the sandbox in one deduplicated session."""
+        self._organize_existing_files([self.sandbox_folder], "Sandbox")
 
     def manage_topics(self) -> None:
         """Open profile management and asynchronously learn any selected examples."""
@@ -205,8 +204,7 @@ class AppController(QObject):
             return
         candidates: list[MigrationCandidate] = []
         try:
-            for root in (self._desktop_folder(), self.downloads_folder):
-                candidates.extend(collect_migration_candidates(root))
+            candidates.extend(collect_migration_candidates(self.sandbox_folder))
         except (OSError, NotADirectoryError) as exc:
             QMessageBox.critical(None, "기존 폴더 읽기 실패", str(exc))
             return
@@ -216,10 +214,9 @@ class AppController(QObject):
         self._migration_candidates = {self._path_key(item.source): item for item in candidates}
         self._start_analysis((item.source for item in candidates), "migration", "기존 폴더 분석")
 
-    @staticmethod
-    def _desktop_folder() -> Path:
-        """Resolve the platform Desktop folder through Qt."""
-        return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation))
+    def _desktop_folder(self) -> Path:
+        """Return the sandbox for compatibility with older preview code."""
+        return self.sandbox_folder
 
     def _organize_existing_files(self, folders: list[Path], label: str) -> None:
         """Collect candidates and start the educational subject/template analysis."""
@@ -228,8 +225,13 @@ class AppController(QObject):
         paths: list[Path] = []
         try:
             for folder in folders:
-                paths.extend(collect_candidates(folder))
-        except (OSError, NotADirectoryError) as exc:
+                safe_folder = require_in_sandbox(
+                    folder,
+                    self.sandbox_folder,
+                    label="scan root",
+                )
+                paths.extend(collect_candidates(safe_folder))
+        except (OSError, NotADirectoryError, PermissionError) as exc:
             QMessageBox.critical(None, "폴더 읽기 실패", str(exc))
             return
         if not paths:
@@ -241,8 +243,16 @@ class AppController(QObject):
         """Start one queue session with an explicit completion mode and progress label."""
         if not self._require_student_profile():
             return
+        try:
+            safe_paths = [
+                require_sandbox_file(Path(path), self.sandbox_folder)
+                for path in paths
+            ]
+        except (OSError, PermissionError) as exc:
+            QMessageBox.critical(None, "Sandbox path blocked", str(exc))
+            return
         self._analysis_mode = mode
-        total = self.analysis.start(paths)
+        total = self.analysis.start(safe_paths)
         if total:
             self._show_progress(total, label)
 
@@ -300,8 +310,8 @@ class AppController(QObject):
             return
         dialog = EducationalPreviewDialog(
             outputs,
-            self._desktop_folder(),
-            self.downloads_folder,
+            self.sandbox_folder,
+            self.sandbox_folder,
         )
         if dialog.exec() != EducationalPreviewDialog.DialogCode.Accepted:
             return
@@ -317,11 +327,12 @@ class AppController(QObject):
             completed = execute_organization_plans(
                 [item.plan for item in approved],
                 self.history,
+                self.sandbox_folder,
             )
             self.personal_examples.add(examples)
         except (OSError, ValueError, RuntimeError) as exc:
             if completed:
-                undo_latest(self.history)
+                undo_latest(self.history, self.sandbox_folder)
                 detail = "\n이동한 파일은 원래 위치로 되돌렸습니다."
             else:
                 detail = ""
@@ -342,6 +353,9 @@ class AppController(QObject):
             pmi_collocations=record.pmi_collocations,
             ocr_layout_evidence=record.ocr_layout_evidence,
             visual_evidence=record.visual_evidence,
+            numeric_features=record.numeric_features,
+            extraction_quality=record.extraction_quality,
+            ocr_confidence=record.ocr_confidence,
         )
 
     def _classify_educational_records(
@@ -465,16 +479,17 @@ class AppController(QObject):
             ]
             profiles = self.calibration.profiles_from_draft(draft)
             changes = self.calibration.seed_changes(
-                draft, self._desktop_folder(), self.downloads_folder
+                draft, self.sandbox_folder, self.sandbox_folder
             )
             operations = [
                 build_operation(
                     change,
                     self._destination_root(change.destination_root, change.suggestion.source),
+                    self.sandbox_folder,
                 )
                 for change in changes
             ]
-            completed = execute_batch(operations, self.history)
+            completed = execute_batch(operations, self.history, self.sandbox_folder)
         except (OSError, ValueError, RuntimeError) as exc:
             QMessageBox.critical(None, "보정 시드 이동 실패", str(exc))
             self._pending_organize = None
@@ -483,7 +498,7 @@ class AppController(QObject):
             self.profile_store.save(profiles)
         except (OSError, ValueError, RuntimeError) as exc:
             if completed:
-                undo_latest(self.history)
+                undo_latest(self.history, self.sandbox_folder)
             QMessageBox.critical(
                 None,
                 "주제 보정 저장 실패",
@@ -582,7 +597,7 @@ class AppController(QObject):
         """Ask for confirmation and restore the latest recorded move batch."""
         if QMessageBox.question(None, "실행 취소", "마지막 정리 작업을 원래 위치로 되돌릴까요?") != QMessageBox.StandardButton.Yes:
             return
-        restored = undo_latest(self.history)
+        restored = undo_latest(self.history, self.sandbox_folder)
         message = f"{len(restored)}개 파일을 원래 위치로 되돌렸습니다." if restored else "실행 취소할 작업이 없습니다."
         QMessageBox.information(None, "Sort Pilot", message)
 
@@ -608,19 +623,23 @@ class AppController(QObject):
             return
         dialog = PreviewDialog(
             suggestions,
-            self._desktop_folder(),
-            self.downloads_folder,
+            self.sandbox_folder,
+            self.sandbox_folder,
             self.profile_store.load(),
         )
         if dialog.exec() != PreviewDialog.DialogCode.Accepted:
             return
         changes = dialog.approved_changes()
         operations = [
-            build_operation(item, self._destination_root(item.destination_root, item.suggestion.source))
+            build_operation(
+                item,
+                self._destination_root(item.destination_root, item.suggestion.source),
+                self.sandbox_folder,
+            )
             for item in changes
         ]
         try:
-            completed = execute_batch(operations, self.history)
+            completed = execute_batch(operations, self.history, self.sandbox_folder)
         except (OSError, ValueError, RuntimeError) as exc:
             QMessageBox.critical(None, "정리 실패", str(exc))
             return
@@ -669,12 +688,9 @@ class AppController(QObject):
 
     def _destination_root(self, choice: str, source: Path) -> Path:
         """Resolve a preview destination identifier to an allowed root path."""
-        roots = {
-            "current": source.parent,
-            "desktop": self._desktop_folder(),
-            "downloads": self.downloads_folder,
-        }
-        return roots.get(choice, source.parent)
+        safe_source = require_sandbox_file(source, self.sandbox_folder)
+        root = safe_source.parent if choice == "current" else self.sandbox_folder
+        return require_in_sandbox(root, self.sandbox_folder, label="destination root")
 
     @staticmethod
     def _path_key(path: Path) -> str:

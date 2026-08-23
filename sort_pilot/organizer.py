@@ -7,23 +7,35 @@ from pathlib import Path
 from .history import HistoryStore
 from .models import ApprovedFileMove, FileOperation
 from .classification import OrganizationPlan
+from .sandbox import require_in_sandbox, require_sandbox_file
 
 
-def build_operation(change: ApprovedFileMove, root: Path) -> FileOperation:
+def build_operation(
+    change: ApprovedFileMove,
+    root: Path,
+    sandbox_root: Path,
+) -> FileOperation:
     """Build a collision-free move while preserving the original filename."""
-    source = change.suggestion.source.resolve()
-    parent = root.resolve() / _safe_folder(change.folder) if change.move_approved else source.parent
+    source = require_sandbox_file(change.suggestion.source, sandbox_root)
+    safe_root = require_in_sandbox(root, sandbox_root, label="destination root")
+    parent = safe_root / _safe_folder(change.folder) if change.move_approved else source.parent
     destination = _available_path(parent / change.suggestion.file_name, source)
-    return FileOperation(str(source), str(destination))
+    safe_destination = require_in_sandbox(destination, sandbox_root, label="destination")
+    return FileOperation(str(source), str(safe_destination))
 
 
-def execute_batch(operations: list[FileOperation], history: HistoryStore) -> list[FileOperation]:
+def execute_batch(
+    operations: list[FileOperation],
+    history: HistoryStore,
+    sandbox_root: Path,
+) -> list[FileOperation]:
     """Execute moves transactionally and roll back completed moves on failure."""
+    safe_operations = _validated_operations(operations, sandbox_root)
     batch_id = uuid.uuid4().hex
     completed: list[FileOperation] = []
     created_directories: list[Path] = []
     try:
-        for operation in operations:
+        for operation in safe_operations:
             source = operation.source_path
             destination = operation.destination_path
             if not source.is_file():
@@ -42,7 +54,7 @@ def execute_batch(operations: list[FileOperation], history: HistoryStore) -> lis
             if operation.destination_path.exists() and not operation.source_path.exists():
                 operation.source_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(operation.destination_path), str(operation.source_path))
-        _remove_empty_directories(created_directories)
+        _remove_empty_directories(created_directories, sandbox_root)
         history.mark_undone(batch_id)
         raise
     return completed
@@ -51,6 +63,7 @@ def execute_batch(operations: list[FileOperation], history: HistoryStore) -> lis
 def execute_organization_plans(
     plans: list[OrganizationPlan],
     history: HistoryStore,
+    sandbox_root: Path,
 ) -> list[FileOperation]:
     """Execute exact approved educational paths without recomputing classification."""
     if not all(isinstance(plan, OrganizationPlan) for plan in plans):
@@ -59,22 +72,27 @@ def execute_organization_plans(
         FileOperation(str(plan.source.resolve()), str(plan.destination.resolve()))
         for plan in plans
     ]
-    return execute_batch(operations, history)
+    return execute_batch(operations, history, sandbox_root)
 
 
-def undo_latest(history: HistoryStore) -> list[FileOperation]:
+def undo_latest(history: HistoryStore, sandbox_root: Path) -> list[FileOperation]:
     """Restore the newest active batch and remove folders it created if empty."""
     latest = history.latest_batch()
     if latest is None:
         return []
     batch_id, operations, created_directories = latest
+    safe_operations = _validated_operations(operations, sandbox_root)
+    safe_directories = [
+        require_in_sandbox(path, sandbox_root, label="recorded directory")
+        for path in created_directories
+    ]
     restored: list[FileOperation] = []
-    for operation in operations:
+    for operation in safe_operations:
         if operation.destination_path.exists() and not operation.source_path.exists():
             operation.source_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(operation.destination_path), str(operation.source_path))
             restored.append(operation)
-    _remove_empty_directories(created_directories)
+    _remove_empty_directories(safe_directories, sandbox_root)
     history.mark_undone(batch_id)
     return restored
 
@@ -113,11 +131,37 @@ def _missing_directories(directory: Path) -> list[Path]:
     return missing
 
 
-def _remove_empty_directories(directories: list[Path]) -> None:
+def _validated_operations(
+    operations: list[FileOperation],
+    sandbox_root: Path,
+) -> list[FileOperation]:
+    """Validate a complete batch before any user file is changed."""
+    validated: list[FileOperation] = []
+    for operation in operations:
+        source = require_in_sandbox(
+            operation.source_path,
+            sandbox_root,
+            label="operation source",
+        )
+        destination = require_in_sandbox(
+            operation.destination_path,
+            sandbox_root,
+            label="operation destination",
+        )
+        validated.append(FileOperation(str(source), str(destination)))
+    return validated
+
+
+def _remove_empty_directories(directories: list[Path], sandbox_root: Path) -> None:
     """Remove recorded directories deepest-first, ignoring non-empty paths."""
     for directory in sorted(set(directories), key=lambda path: len(path.parts), reverse=True):
+        safe_directory = require_in_sandbox(
+            directory,
+            sandbox_root,
+            label="directory cleanup",
+        )
         try:
-            directory.rmdir()
+            safe_directory.rmdir()
         except (FileNotFoundError, OSError):
             continue
 

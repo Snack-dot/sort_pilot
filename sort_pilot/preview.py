@@ -23,10 +23,7 @@ from .classifier_engine.topics import TopicProfile, validate_topic_name
 class PreviewDialog(QDialog):
     """Review and edit classifier destinations before any file is moved."""
 
-    DESTINATION_OPTIONS = (
-        ("바탕화면", "desktop"),
-        ("다운로드 폴더", "downloads"),
-    )
+    DESTINATION_OPTIONS = (("Sandbox", "sandbox"),)
 
     def __init__(
         self,
@@ -69,11 +66,7 @@ class PreviewDialog(QDialog):
             destination_selector = QComboBox()
             for label, value in self.DESTINATION_OPTIONS:
                 destination_selector.addItem(label, value)
-            default_destination = (
-                "desktop"
-                if suggestion.source.resolve().is_relative_to(desktop_folder.resolve())
-                else "downloads"
-            )
+            default_destination = "sandbox"
             destination_selector.setCurrentIndex(destination_selector.findData(default_destination))
             self.table.setCellWidget(row, 2, destination_selector)
             parts = Path(suggestion.folder).parts

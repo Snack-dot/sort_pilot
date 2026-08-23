@@ -184,6 +184,30 @@ def test_service_turns_both_weak_axes_into_needs_review_without_gemma(tmp_path: 
         _ = output.classification.folder
 
 
+def test_failed_extraction_forces_both_axes_to_needs_review(tmp_path: Path):
+    service = _service(tmp_path, "accept")
+    item = EducationalClassificationInput(
+        source=tmp_path / "unreadable.png",
+        fingerprint="d" * 40,
+        file_name="unreadable.png",
+        natural_text="희미한 OCR 결과",
+        extraction_quality="low_confidence",
+        ocr_confidence=0.31,
+        numeric_features={"pdf_scan_ratio": 1.0},
+    )
+
+    output = service.classify_many(
+        (item,),
+        default_profile(StudentType.MIDDLE, 1, Semester.FIRST),
+    )[0]
+
+    assert output.classification.needs_review
+    assert output.classification.subject.source is DecisionSource.REVIEW
+    assert output.classification.template.source is DecisionSource.REVIEW
+    assert output.classification.subject.evidence[0].name == "extraction_quality"
+    assert "0.310" in output.classification.subject.evidence[0].detail
+
+
 def test_nearest_personal_example_contributes_before_routing(tmp_path: Path):
     store = PersonalExampleStore(tmp_path / "personal_examples.json")
     store.save(

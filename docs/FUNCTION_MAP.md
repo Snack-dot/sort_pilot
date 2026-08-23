@@ -7,12 +7,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | Symbol | Location | Responsibility / caller |
 | --- | --- | --- |
 | `run` | `sort_pilot/app.py` | Creates Qt, acquires the single-instance lock, validates the tray, and enters the event loop; called by `main.py`. |
-| `AppController.__init__` | `sort_pilot/app.py` | Wires history, student/profile stores, queue signals, paths, and tray actions. |
+| `AppController.__init__` | `sort_pilot/app.py` | Wires history, student/profile stores, queue signals, tray actions, and the single `~/Downloads/sandbox` user-file root. |
 | `start`, `_start_initial_workflow`, `_require_student_profile` | `sort_pilot/app.py` | Show the tray and require persisted student onboarding before every relevant classification or organization flow. |
 | `manage_student_profile` | `sort_pilot/app.py` | Edit the atomic fixed-choice student settings. |
-| `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Tray callbacks selecting one or both source roots. |
+| `organize_desktop`, `organize_downloads`, `organize_all` | `sort_pilot/app.py` | Compatibility callbacks that all route to the sandbox-only organization flow. |
 | `manage_topics`, `migrate_folders` | `sort_pilot/app.py` | Open profile management or start the separately previewed flat-folder migration. |
-| `_desktop_folder` | `sort_pilot/app.py` | Resolves Desktop through `QStandardPaths`. |
+| `_desktop_folder` | `sort_pilot/app.py` | Compatibility accessor that resolves to the configured sandbox root. |
 | `_organize_existing_files` | `sort_pilot/app.py` | Collects safe paths and starts one queue session. |
 | `_start_analysis` | `sort_pilot/app.py` | Records the organize/profile/migration mode and starts a shared queue session. |
 | `_show_progress`, `_update_progress`, `_close_progress` | `sort_pilot/app.py` | Own the cancellable analysis progress dialog. |
@@ -63,10 +63,11 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `scan_folder` | `sort_pilot/scanner.py` | Compatibility synchronous analyzer used by scripts/tests. |
 | `PreviewDialog.__init__` | `sort_pilot/preview.py` | Builds current/root/folder/move controls for completed suggestions. |
 | `_checked_item`, `approved_changes`, `_hierarchical_folder`, `_confirm` | `sort_pilot/preview.py` | Keep the type root immutable, translate editable topic paths to `ApprovedFileMove`, and require confirmation. |
-| `build_operation` | `sort_pilot/organizer.py` | Preserves original filename, validates folder, and selects collision-free destination. |
-| `execute_batch` | `sort_pilot/organizer.py` | Moves atomically at batch level; reverses completed moves on failure. |
-| `execute_organization_plans` | `sort_pilot/organizer.py` | Converts exact approved educational paths directly into the transactional move executor without reclassification. |
-| `undo_latest` | `sort_pilot/organizer.py` | Restores newest active batch and removes only recorded empty directories. |
+| `default_sandbox_root`, `require_in_sandbox`, `require_sandbox_file` | `sort_pilot/sandbox.py` | Define and enforce the only allowed user-file boundary, including resolved symlink targets. |
+| `build_operation` | `sort_pilot/organizer.py` | Preserves original filename, validates source/root/destination against the sandbox, and selects a collision-free destination. |
+| `execute_batch` | `sort_pilot/organizer.py` | Validates the complete batch against the sandbox before any move, then executes transactionally and rolls back on failure. |
+| `execute_organization_plans` | `sort_pilot/organizer.py` | Converts exact approved educational paths into the sandbox-validated transactional move executor without reclassification. |
+| `undo_latest` | `sort_pilot/organizer.py` | Rejects history outside the sandbox, restores the newest safe batch, and removes only recorded safe empty directories. |
 | `_safe_folder`, `_available_path` | `sort_pilot/organizer.py` | Sanitize untrusted folder text and choose a safe destination. |
 | `_missing_directories`, `_remove_empty_directories` | `sort_pilot/organizer.py` | Track and safely clean directories created by a batch. |
 
@@ -105,9 +106,12 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `supports_content_analysis` | `classifier_engine/extract.py` | Gate calibration candidates to formats with a bundled semantic-content extractor. |
 | `normalize_filename`, `tokenize` | `classifier_engine/extract.py` | Normalize names and produce Korean/Latin lexical features. |
 | `collocations` | `classifier_engine/extract.py` | Extract adjacent bigrams/trigrams whose pointwise mutual information exceeds chance, as additional body terms. |
-| `_read_text`, `_docx`, `_odt`, `_archive`, `_pdf`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type. |
+| `_read_text`, `_docx`, `_odt`, `_archive`, `_hwp`, `_hwp5`, `_hwpx`, `_pptx`, `_xlsx` | `classifier_engine/extract.py` | Bounded local text extraction by file type, including local HWP 5.0 and HWPX parsing. |
+| `_pdf`, `_extract_pdf_pages`, `_pdf_page_indices` | `classifier_engine/extract.py` | Cache by path/size/mtime and load at most first-three/middle/last PDF pages without full-document iteration. |
+| `_PDFOCRWorker`, `_pdf_ocr_worker`, `_ocr_pdf_page` | `classifier_engine/extract.py` | Reuse one child OCR worker per caller thread and hard-stop the one permitted 150-DPI PDF OCR page after three seconds. |
+| `_normal_character_ratio`, `_pdf_image_ratio`, `_pdf_metadata_features`, `_deduplicate_text` | `classifier_engine/extract.py` | Gate native/OCR PDF evidence, retain weak metadata and separate numeric values, deduplicate text, and bound it to 20,000 characters. |
 | `_image_features` | `classifier_engine/extract.py` | Route photo/screenshot/ambiguous images and create metadata features. |
-| `_ocr_engine`, `_layout_aware_ocr`, `_ocr`, `_ocr_evidence` | `classifier_engine/extract.py` | Lazily create one RapidOCR instance per worker thread, order detected lines by page columns, and retain bounded tokens plus transient subject/template OCR text and layout evidence. |
+| `_ocr_engine`, `_ocr_image_input`, `_layout_aware_ocr`, `_ocr`, `_ocr_evidence` | `classifier_engine/extract.py` | Reuse explicit local Korean RapidOCR per worker thread, apply EXIF orientation, order columns, and retain bounded transient OCR evidence. |
 | `extract` | `classifier_engine/extract.py` | Orchestrate filename, text, image metadata, and layout-aware OCR into `FeatureVector`; the active educational flow does not invoke rejected YOLO/LVIS evidence. |
 | `is_processable`, `is_stable` | `classifier_engine/extract.py` | Engine-level exclusions and file-settle checks. |
 | `_iou`, `postprocess`, `derived`, `infer` | `classifier_engine/vision.py` | ONNX object inference, NMS, and derived object/count/pair features. |
@@ -197,6 +201,20 @@ This map covers every class and function under `sort_pilot/`. Source docstrings 
 | `FeatureVector.to_dict` | `classifier_engine/types.py` | Serialize bounded file features for storage/evaluation. |
 | `Decision` | `classifier_engine/types.py` | Category, scores, action gate, tier, and explanation. |
 | `Classifier.classify` | `classifier_engine/types.py` | Protocol for optional higher-tier local classifiers. |
+
+## Offline OCR assets and academic logistic training
+
+| Symbol | Location | Responsibility / caller |
+| --- | --- | --- |
+| `KoreanOCRAssets.load`, `rapidocr_params` | `classifier_engine/ocr.py` | Verify explicit sandbox-local OCR paths and hashes without network fallback. |
+| `install_korean_ocr_assets` | `classifier_engine/ocr.py` | One-time official Korean recognizer download, SHA-256 verification, local dictionary extraction, and atomic sandbox installation. |
+| `HashedWordCharacterTfidf.fit`, `transform`, `save`, `load` | `classification/tfidf.py` | Produce separate word/character TF-IDF channels while persisting no raw vocabulary. |
+| `MultinomialLogisticModel`, `fit_multinomial_logistic` | `classification/logistic.py` | Fit, save, load, and apply deterministic class-balanced multinomial logistic models. |
+| `AcademicFeatureBuilder`, `personal_similarity_features` | `classification/academic_training.py` | Build E5, lexical, PMI, OCR-layout, TF-IDF, PDF numeric, weighted-policy, and leakage-controlled personal-example features. |
+| `train`, `main` | `eval/train_academic_logistic.py` | Read human-approved labels and files from the sandbox only, run grouped validation, calibrate review thresholds, and atomically save local models/reports. |
+| `install_korean_ocr.py` | `eval/install_korean_ocr.py` | Explicit one-time OCR installation command; normal runtime never invokes it. |
+| `audit_ocr_pipeline.py` | `eval/audit_ocr_pipeline.py` | Print aggregate-only real sandbox OCR/PDF evidence without file names or raw text. |
+| `resume_academic_training.ps1` | `eval/resume_academic_training.ps1` | Verify branch/worktree/assets/tests, resume v2 training, and validate its privacy/report contract after restart. |
 | `Tier3Stub.classify` | `classifier_engine/types.py` | Current no-op Tier 3 extension point. |
 | `path_id` | `classifier_engine/types.py` | Derives versioned SHA-1 identity from resolved path metadata. |
 

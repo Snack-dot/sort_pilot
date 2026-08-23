@@ -29,6 +29,9 @@ class FeatureVector:
     natural_text: str = field(default="", repr=False)
     template_natural_text: str = field(default="", repr=False)
     ocr_layout_evidence: tuple[str, ...] = field(default=(), repr=False)
+    numeric_features: dict[str, float] = field(default_factory=dict)
+    extraction_quality: str = "ok"
+    ocr_confidence: float | None = None
 
     def to_dict(self) -> dict:
         """Serialize classifier features without persisting raw extracted text."""
@@ -69,7 +72,7 @@ class Tier3Stub:
 
 
 def path_id(path: Path) -> str:
-    """Create a stable content-version identifier from path metadata."""
+    """Hash only resolved path, size, and mtime metadata; never read the file body."""
     import hashlib
 
     stat = path.stat()

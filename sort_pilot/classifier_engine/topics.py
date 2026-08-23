@@ -100,6 +100,9 @@ class AnalysisRecord:
     pmi_collocations: tuple[str, ...] = ()
     ocr_layout_evidence: tuple[str, ...] = ()
     visual_evidence: tuple[str, ...] = ()
+    numeric_features: dict[str, float] = field(default_factory=dict)
+    extraction_quality: str = "ok"
+    ocr_confidence: float | None = None
     topic: str | None = None
     score: float = 0.0
     reason: str = ""

@@ -242,12 +242,12 @@ def test_exact_approved_plan_executes_and_existing_undo_restores(tmp_path: Path)
     )
     history = HistoryStore(tmp_path / "history.json")
 
-    completed = execute_organization_plans([approved.plan], history)
+    completed = execute_organization_plans([approved.plan], history, tmp_path)
 
     assert completed[0].destination_path == approved.plan.destination.resolve()
     assert approved.plan.destination.is_file()
     assert not source.exists()
-    restored = undo_latest(history)
+    restored = undo_latest(history, tmp_path)
     assert len(restored) == 1
     assert source.is_file()
     assert not approved.plan.destination.exists()

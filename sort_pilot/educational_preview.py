@@ -189,10 +189,7 @@ def _confirmation_message(approved: tuple[ApprovedEducationalPlan, ...]) -> str:
 class EducationalPreviewDialog(QDialog):
     """Edit subject/template axes and freeze exact approved educational paths."""
 
-    DESTINATION_OPTIONS = (
-        ("바탕화면", "desktop"),
-        ("다운로드 폴더", "downloads"),
-    )
+    DESTINATION_OPTIONS = (("Sandbox", "sandbox"),)
 
     def __init__(
         self,
@@ -232,11 +229,7 @@ class EducationalPreviewDialog(QDialog):
             destination = QComboBox()
             for label, value in self.DESTINATION_OPTIONS:
                 destination.addItem(label, value)
-            default = (
-                "desktop"
-                if output.source.resolve().is_relative_to(desktop_folder.resolve())
-                else "downloads"
-            )
+            default = "sandbox"
             destination.setCurrentIndex(destination.findData(default))
             destination.currentIndexChanged.connect(self._refresh_destinations)
             self.table.setCellWidget(row, 2, destination)

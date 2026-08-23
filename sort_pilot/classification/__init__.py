@@ -1,5 +1,18 @@
 """Contracts shared by local classification, fallback policy, and preview."""
 
+from .academic_training import (
+    ACADEMIC_TOP_CATEGORY,
+    ACADEMIC_TYPES,
+    ACADEMIC_TYPE_PROFILE_VERSION,
+    DEFAULT_ACADEMIC_TYPE_PROFILES_PATH,
+    AcademicBaseFeatures,
+    AcademicFeatureBuilder,
+    AcademicTrainingEvidence,
+    AcademicTypeProfile,
+    load_academic_type_profiles,
+    personal_similarity_features,
+)
+
 from .calibrated_policy import (
     CALIBRATED_POLICY_VERSION,
     DEFAULT_CALIBRATED_POLICY_PATH,
@@ -32,6 +45,13 @@ from .gemma_fallback import (
     GemmaFallbackCache,
     GemmaFallbackCancelled,
     GemmaFallbackRequest,
+)
+from .logistic import (
+    LOGISTIC_MODEL_VERSION,
+    LogisticFitConfig,
+    LogisticFitReport,
+    MultinomialLogisticModel,
+    fit_multinomial_logistic,
 )
 from .optional_evidence import (
     DEFAULT_PHASE8_OPTIONAL_EVIDENCE_PATH,
@@ -95,8 +115,21 @@ from .template import (
     load_template_profiles,
     ordered_template_profiles,
 )
+from .tfidf import (
+    CHARACTER_BINS,
+    HASHED_TFIDF_VERSION,
+    WORD_BINS,
+    HashedWordCharacterTfidf,
+)
 
 __all__ = [
+    "ACADEMIC_TOP_CATEGORY",
+    "ACADEMIC_TYPES",
+    "ACADEMIC_TYPE_PROFILE_VERSION",
+    "AcademicBaseFeatures",
+    "AcademicFeatureBuilder",
+    "AcademicTrainingEvidence",
+    "AcademicTypeProfile",
     "AxisRoutingDecision",
     "AxisCalibrationReport",
     "AxisDecision",
@@ -110,6 +143,7 @@ __all__ = [
     "DecisionSource",
     "DEFAULT_SUBJECT_PROFILES_PATH",
     "DEFAULT_CALIBRATED_POLICY_PATH",
+    "DEFAULT_ACADEMIC_TYPE_PROFILES_PATH",
     "DEFAULT_PERSONAL_EXAMPLE_POLICY_PATH",
     "DEFAULT_PHASE8_OPTIONAL_EVIDENCE_PATH",
     "DEFAULT_TEMPLATE_PROFILES_PATH",
@@ -126,12 +160,18 @@ __all__ = [
     "GEMMA_FALLBACK_MODEL_ID",
     "GEMMA_FALLBACK_POLICY_VERSION",
     "GEMMA_ACCURACY_TARGET",
+    "HASHED_TFIDF_VERSION",
+    "HashedWordCharacterTfidf",
     "GemmaFallbackCache",
     "GemmaFallbackCancelled",
     "GemmaFallbackRequest",
     "HeldOutAxisResult",
     "LOCAL_PRECISION_TARGET",
+    "LOGISTIC_MODEL_VERSION",
     "NEEDS_REVIEW_OUTPUT",
+    "LogisticFitConfig",
+    "LogisticFitReport",
+    "MultinomialLogisticModel",
     "OrganizationPlan",
     "OriginalPrediction",
     "PERSONAL_EXAMPLE_DOCUMENT_VERSION",
@@ -146,6 +186,8 @@ __all__ = [
     "PersonalExampleStore",
     "PersonalExampleVersions",
     "PolicyRoute",
+    "WORD_BINS",
+    "CHARACTER_BINS",
     "Phase8OptionalEvidence",
     "PolicyCalibrationReport",
     "RoutingThresholds",
@@ -164,15 +206,18 @@ __all__ = [
     "TemplateTextEncoder",
     "BoundedExtractedEvidence",
     "eligible_subject_profiles",
+    "fit_multinomial_logistic",
     "calibrate_axis",
     "calibrate_policy",
     "calibrate_personal_axis",
     "calibrate_personal_examples",
     "load_calibrated_policy",
+    "load_academic_type_profiles",
     "load_personal_example_policy",
     "load_phase8_optional_evidence",
     "load_subject_profiles",
     "load_template_profiles",
     "ordered_template_profiles",
+    "personal_similarity_features",
     "route_axis",
 ]

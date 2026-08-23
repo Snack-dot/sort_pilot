@@ -6,13 +6,15 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from ..sandbox import default_sandbox_root
+
 
 @dataclass
 class Config:
     """Serializable thresholds, paths, exclusions, and engine safety settings."""
 
-    watched_paths: list[str] = field(default_factory=lambda: [str(Path.home() / "Downloads")])
-    destination_root: str = str(Path.home() / "Documents" / "Sorted")
+    watched_paths: list[str] = field(default_factory=lambda: [str(default_sandbox_root())])
+    destination_root: str = field(default_factory=lambda: str(default_sandbox_root()))
     exclusions: list[str] = field(default_factory=list)
     no_ocr_paths: list[str] = field(default_factory=list)
     settle_seconds: float = 5.0
@@ -26,7 +28,8 @@ class Config:
     tier3_enabled: bool = False
     source_weights: dict[str, float] = field(default_factory=lambda: {
         "filename": 3.0, "meta": 2.0, "pair": 1.5,
-        "body": 1.0, "obj": 0.8, "ocr": 0.6, "ext": 2.0,
+        "body": 1.0, "obj": 0.8, "ocr": 0.6, "ocr_char": 0.35,
+        "pdf_meta": 0.15, "ext": 2.0,
     })
 
     @classmethod

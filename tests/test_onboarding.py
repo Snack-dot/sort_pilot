@@ -62,6 +62,15 @@ class _BlockedFlowStub:
         return False
 
 
+class _SandboxActionStub:
+    def __init__(self) -> None:
+        self.sandbox_folder = Path("Downloads") / "sandbox"
+        self.calls: list[tuple[list[Path], str]] = []
+
+    def _organize_existing_files(self, folders: list[Path], label: str) -> None:
+        self.calls.append((folders, label))
+
+
 def test_dialog_selection_builds_only_the_fixed_student_profile() -> None:
     form = type(
         "Form",
@@ -126,3 +135,17 @@ def test_every_classification_and_organization_entry_stops_without_saved_profile
     AppController._show_preview(controller, [])
 
     assert controller.require_calls == 6
+
+
+def test_all_legacy_organization_actions_route_only_to_sandbox() -> None:
+    controller = _SandboxActionStub()
+
+    AppController.organize_desktop(controller)
+    AppController.organize_downloads(controller)
+    AppController.organize_all(controller)
+
+    assert controller.calls == [
+        ([controller.sandbox_folder], "Sandbox"),
+        ([controller.sandbox_folder], "Sandbox"),
+        ([controller.sandbox_folder], "Sandbox"),
+    ]

@@ -87,6 +87,7 @@ class AnalysisQueueTests(unittest.TestCase):
             analyzer = ClassifierEngine(
                 Pipeline(Config(destination_root=str(root / "sorted")), root / "engine"),
                 TopicProfileStore(root / "profiles.json"),
+                sandbox_root=root,
             )
             factory = lambda: analyzer
             controller = BatchAnalysisController(analyzer_factory=factory, worker_count=1)

@@ -53,6 +53,9 @@ class EducationalClassificationInput:
     pmi_collocations: tuple[str, ...] = ()
     ocr_layout_evidence: tuple[str, ...] = ()
     visual_evidence: tuple[str, ...] = ()
+    numeric_features: dict[str, float] | None = None
+    extraction_quality: str = "ok"
+    ocr_confidence: float | None = None
 
     def __post_init__(self) -> None:
         """Validate source identity and bound every classification evidence channel."""
@@ -105,6 +108,31 @@ class EducationalClassificationInput:
                     )
                 ),
             )
+        if self.numeric_features is None:
+            object.__setattr__(self, "numeric_features", {})
+        elif not isinstance(self.numeric_features, dict) or any(
+            not isinstance(key, str)
+            or isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            for key, value in self.numeric_features.items()
+        ):
+            raise ValueError("Numeric extraction features must be finite named values.")
+        else:
+            object.__setattr__(
+                self,
+                "numeric_features",
+                {key: float(value) for key, value in self.numeric_features.items()},
+            )
+        if self.extraction_quality not in {"ok", "low_confidence", "failed"}:
+            raise ValueError("Unsupported extraction quality state.")
+        if self.ocr_confidence is not None and (
+            isinstance(self.ocr_confidence, bool)
+            or not isinstance(self.ocr_confidence, (int, float))
+            or not math.isfinite(self.ocr_confidence)
+            or not 0.0 <= self.ocr_confidence <= 1.0
+        ):
+            raise ValueError("OCR confidence must be between zero and one.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,6 +323,17 @@ class EducationalClassificationService:
         fallback_requests: list[GemmaFallbackRequest] = []
         fallback_owners: list[tuple[int, int]] = []
         for index, (item, routes) in enumerate(zip(ordered, local, strict=True)):
+            if item.extraction_quality != "ok":
+                final[index] = [
+                    _extraction_review_decision(
+                        axis,
+                        item.extraction_quality,
+                        item.ocr_confidence,
+                        self.calibrated_policy.version,
+                    )
+                    for axis in ClassificationAxis
+                ]
+                continue
             for axis_index, (axis, routing) in enumerate(
                 zip(ClassificationAxis, routes, strict=True)
             ):
@@ -355,3 +394,32 @@ class EducationalClassificationService:
         """Raise the Phase 6 cancellation result before each bounded local stage."""
         if cancelled is not None and cancelled():
             raise GemmaFallbackCancelled("교육 분류가 취소되었습니다.")
+
+
+def _extraction_review_decision(
+    axis: ClassificationAxis,
+    quality: str,
+    confidence: float | None,
+    policy_version: str,
+) -> AxisDecision:
+    """Force failed or low-confidence extraction to a non-moving review state."""
+    confidence_detail = "unknown" if confidence is None else f"{confidence:.3f}"
+    return AxisDecision(
+        label=None,
+        raw_score=0.0,
+        calibrated_confidence=None,
+        margin=0.0,
+        candidates=(),
+        evidence=(
+            EvidenceContribution(
+                "extraction_quality",
+                0.0,
+                f"{quality}; OCR confidence={confidence_detail}",
+            ),
+        ),
+        source=DecisionSource.REVIEW,
+        model_version=f"extraction-gate-{axis.value}-v1",
+        profile_version="extraction-gate-v1",
+        policy_version=f"{policy_version}+extraction-quality-v1",
+        needs_review=True,
+    )

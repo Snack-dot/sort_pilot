@@ -5,6 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
+from ..sandbox import default_sandbox_root, require_in_sandbox, require_sandbox_file
 from .store import Store
 
 
@@ -29,15 +30,28 @@ def _hash(path: Path) -> str:
 class Executor:
     """Execute and journal dry-run-safe classifier-engine move actions."""
 
-    def __init__(self, store: Store, dry_run=True, allow_cloud=False):
+    def __init__(
+        self,
+        store: Store,
+        dry_run=True,
+        allow_cloud=False,
+        sandbox_root: Path | None = None,
+    ):
         """Configure action persistence and safety policy."""
         self.store, self.dry_run, self.allow_cloud = store, dry_run, allow_cloud
+        self.sandbox_root = (sandbox_root or default_sandbox_root()).resolve()
 
     def execute(self, source: Path, root: Path, category: str, decision_id=None) -> Path:
         """Move one file safely or journal the planned destination in dry-run mode."""
+        source = require_sandbox_file(source, self.sandbox_root)
+        root = require_in_sandbox(root, self.sandbox_root, label="destination root")
         if not self.allow_cloud and any(x in {p.lower() for p in source.parts} for x in ("onedrive", "dropbox", "google drive")):
             raise PermissionError("Cloud-sync moves are disabled")
-        destination = collision_free(root / category / source.name)
+        destination = require_in_sandbox(
+            collision_free(root / category / source.name),
+            self.sandbox_root,
+            label="destination",
+        )
         if self.dry_run:
             self.store.journal("dryrun", source, destination, decision_id); return destination
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -52,7 +66,13 @@ class Executor:
         """Reverse one eligible engine journal entry."""
         row = self.store.db.execute("SELECT * FROM journal WHERE id=? AND reversible=1", (journal_id,)).fetchone()
         if not row or row["op"] != "move": raise ValueError("Journal entry is not reversible")
-        src, dst = collision_free(Path(row["src"])), Path(row["dst"])
+        original_source = require_in_sandbox(
+            Path(row["src"]), self.sandbox_root, label="journal source"
+        )
+        dst = require_sandbox_file(Path(row["dst"]), self.sandbox_root)
+        src = require_in_sandbox(
+            collision_free(original_source), self.sandbox_root, label="undo destination"
+        )
         src.parent.mkdir(parents=True, exist_ok=True); os.replace(dst, src)
         self.store.db.execute("UPDATE journal SET reversible=0 WHERE id=?", (journal_id,)); self.store.journal("undo", dst, src)
         return src

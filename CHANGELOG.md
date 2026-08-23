@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-23 — Offline Korean OCR, bounded PDF extraction, and academic LR v2 pipeline
+
+- Replaced RapidOCR's implicit default recognition selection with explicit, SHA-256-verified local `korean_PP-OCRv5_mobile_rec` and dictionary paths; runtime fails closed without downloading.
+- Added EXIF-aware JPG/JPEG, PNG, BMP, WEBP, and TIFF OCR while preserving worker-owned OCR engine reuse.
+- Bounded every PDF to at most the first three, middle, and last pages through `page_count`/`load_page`, and bounded scan OCR to one 150-DPI page with a three-second hard worker timeout.
+- Added transient `(path, size, mtime)` PDF caching, native/OCR deduplication, a 20,000-character bound, weak PDF metadata, and separate numeric page/scan/image/text-density features.
+- Added extraction-quality Needs Review gating and privacy-preserving hashed word plus character TF-IDF for the grouped academic logistic-training pipeline.
+- Added HWP/HWPX extraction and local-only aggregate audit/install/resume utilities.
+- The final v2 retraining remains intentionally pending; run `eval/resume_academic_training.ps1` to reproduce it from the 319 local human-approved labels.
+
+## 2026-08-23 — Sandbox-only user-file boundary
+
+- Restricted every active organization, calibration, migration, preview, and background-analysis entry point to `~/Downloads/sandbox`.
+- Replaced Desktop/Downloads destination choices with one Sandbox choice and exposed one Sandbox organization tray action.
+- Added a shared resolved-path policy and required all transactional moves, rollbacks, legacy-engine actions, and Undo operations to validate every source and destination before changing files.
+- Made the default classifier engine reject reads outside the sandbox and override older persisted watch/destination settings in memory.
+- Added focused tests for sibling/prefix escapes, outside source/destination batches, unsafe legacy history, lower-level executor access, and compatibility-action routing.
+- Kept application-owned settings, caches, model artifacts, and history in their existing local application-data locations.
+
 ## 2026-08-17 — Subject axis: PMI collocation and language-detection evidence
 
 Follow-up to the same-day filename-evidence remediation. Real-pipeline validation found 17 real files where template resolved locally but subject didn't; 12 were genuine English exam content with no literal "영어" filename token.

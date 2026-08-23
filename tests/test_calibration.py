@@ -76,7 +76,11 @@ def test_sampler_uses_only_formats_with_bundled_content_extraction(tmp_path):
         tmp_path / "state.json", rng=random.Random(1)
     ).select([root])
 
-    assert [path.name for path in selected] == ["readable.txt"]
+    assert {path.name for path in selected} == {
+        "readable.txt",
+        "korean.hwp",
+        "korean.hwpx",
+    }
 
 
 def test_calibration_draft_persists_only_user_confirmed_topics(tmp_path):
@@ -138,6 +142,7 @@ def test_actual_file_body_reaches_the_calibration_profile(tmp_path):
     engine = ClassifierEngine(
         Pipeline(Config(destination_root=str(tmp_path / "sorted")), tmp_path / "engine"),
         store,
+        sandbox_root=tmp_path,
     )
     try:
         record = engine.analyze_record(path)
@@ -176,6 +181,7 @@ def test_content_calibration_groups_three_and_classifies_remaining_body(tmp_path
     engine = ClassifierEngine(
         Pipeline(Config(destination_root=str(tmp_path / "sorted")), tmp_path / "engine"),
         store,
+        sandbox_root=tmp_path,
     )
     try:
         seed_records = [engine.analyze_record(path) for path in seed_paths]
@@ -216,8 +222,9 @@ def test_calibration_seed_changes_move_seeds_before_remaining_review(tmp_path):
     changes = service.seed_changes(draft, desktop, downloads)
 
     completed = execute_batch(
-        [build_operation(change, downloads) for change in changes],
+        [build_operation(change, downloads, downloads) for change in changes],
         HistoryStore(tmp_path / "history.json"),
+        downloads,
     )
 
     assert len(completed) == 2

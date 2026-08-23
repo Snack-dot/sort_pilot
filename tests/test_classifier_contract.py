@@ -13,12 +13,20 @@ from sort_pilot.classifier_engine.topics import TopicProfileStore
 from sort_pilot.classifier_engine.types import Feature, FeatureVector
 
 
-def engine(tmp_path: Path, **config_values) -> ClassifierEngine:
+def engine(
+    tmp_path: Path,
+    sandbox_root: Path | None = None,
+    **config_values,
+) -> ClassifierEngine:
     """Create an isolated real pipeline and empty user profile store."""
     config = Config(destination_root=str(tmp_path / "sorted"), **config_values)
     pipeline = Pipeline(config=config, root=tmp_path / "engine")
     profiles = TopicProfileStore(tmp_path / "profiles.json")
-    return ClassifierEngine(pipeline=pipeline, profile_store=profiles)
+    return ClassifierEngine(
+        pipeline=pipeline,
+        profile_store=profiles,
+        sandbox_root=sandbox_root or tmp_path,
+    )
 
 
 def test_real_engine_decision_is_persisted_without_automatic_topic(tmp_path: Path) -> None:

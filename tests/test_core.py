@@ -24,6 +24,7 @@ class CoreTests(unittest.TestCase):
             analyzer = ClassifierEngine(
                 Pipeline(Config(destination_root=str(root / "organized")), root / "engine"),
                 TopicProfileStore(root / "profiles.json"),
+                sandbox_root=root,
             )
             try:
                 analyzer.profile_store.upsert(
@@ -36,8 +37,8 @@ class CoreTests(unittest.TestCase):
                     {"file_path", "file_name", "suggested_name", "folder", "reason"},
                 )
                 change = ApprovedFileMove(result, "current", result.folder, True)
-                operation = build_operation(change, root / "organized")
-                execute_batch([operation], HistoryStore(root / "history.json"))
+                operation = build_operation(change, root / "organized", root)
+                execute_batch([operation], HistoryStore(root / "history.json"), root)
                 self.assertTrue((root / "organized" / "문서" / "과제모음" / path.name).is_file())
                 self.assertFalse(path.exists())
             finally:
@@ -55,8 +56,8 @@ class CoreTests(unittest.TestCase):
                 path.touch()
             self.assertFalse(is_safe_candidate(shortcut))
             self.assertFalse(is_safe_candidate(partial))
-            self.assertFalse(is_safe_candidate(hwp))
-            self.assertFalse(is_safe_candidate(hwpx))
+            self.assertTrue(is_safe_candidate(hwp))
+            self.assertTrue(is_safe_candidate(hwpx))
             self.assertTrue(is_safe_candidate(document))
 
     def test_execute_and_undo_batch(self) -> None:
@@ -70,12 +71,12 @@ class CoreTests(unittest.TestCase):
             destination_root.mkdir()
             suggestion = FileSuggestion(str(source), source.name, "과제안내서.pdf", "프로젝트", "test")
             change = ApprovedFileMove(suggestion, "current", "프로젝트", True)
-            operation = build_operation(change, destination_root)
-            execute_batch([operation], history)
+            operation = build_operation(change, destination_root, root)
+            execute_batch([operation], history, root)
             self.assertFalse(source.exists())
             self.assertTrue(operation.destination_path.exists())
 
-            restored = undo_latest(history)
+            restored = undo_latest(history, root)
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())
             self.assertFalse(operation.destination_path.exists())
@@ -92,7 +93,7 @@ class CoreTests(unittest.TestCase):
             source.write_text("move", encoding="utf-8")
             suggestion = FileSuggestion(str(source), source.name, "renamed.txt", "프로젝트", "test")
             change = ApprovedFileMove(suggestion, "current", "프로젝트", True)
-            operation = build_operation(change, destination_root)
+            operation = build_operation(change, destination_root, root)
             self.assertEqual(
                 operation.destination_path.resolve(),
                 (destination_root / "프로젝트" / "original.txt").resolve(),
@@ -110,8 +111,12 @@ class CoreTests(unittest.TestCase):
             suggestion = FileSuggestion(str(source), source.name, source.name, "구매기록", "test")
             change = ApprovedFileMove(suggestion, "current", "구매기록", True)
 
-            execute_batch([build_operation(change, destination_root)], HistoryStore(history_path))
-            restored = undo_latest(HistoryStore(history_path))
+            execute_batch(
+                [build_operation(change, destination_root, root)],
+                HistoryStore(history_path),
+                root,
+            )
+            restored = undo_latest(HistoryStore(history_path), root)
 
             self.assertEqual(len(restored), 1)
             self.assertTrue(source.exists())

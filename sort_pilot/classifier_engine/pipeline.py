@@ -53,7 +53,13 @@ class Pipeline:
         except Exception:
             from .types import FeatureVector, path_id
             stat = path.stat()
-            vector = FeatureVector(path_id(path), str(path), stat.st_size, partial=True)
+            vector = FeatureVector(
+                path_id(path),
+                str(path),
+                stat.st_size,
+                partial=True,
+                extraction_quality="failed",
+            )
             decision = Decision(None, 0, 0, 0, "unsorted", "error")
             return vector, decision, self.store.record_decision(vector, decision)
 

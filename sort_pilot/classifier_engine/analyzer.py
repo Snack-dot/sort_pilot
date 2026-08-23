@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable, Protocol
 
 from ..models import FileSuggestion
+from ..sandbox import default_sandbox_root, require_sandbox_file
 from .config import data_dir
 from .hierarchy import UNSORTED_TOPIC, route_type
 from .pipeline import Pipeline
@@ -32,14 +33,19 @@ class ClassifierEngine:
         self,
         pipeline: Pipeline | None = None,
         profile_store: TopicProfileStore | None = None,
+        sandbox_root: Path | None = None,
     ) -> None:
         """Own a real pipeline and the family-specific topic services."""
         self.pipeline = pipeline or Pipeline()
         self.profile_store = profile_store or TopicProfileStore(data_dir() / "topic_profiles.json")
         self.topic_classifier = TopicClassifier()
+        self.sandbox_root = (sandbox_root or default_sandbox_root()).resolve()
+        self.pipeline.config.watched_paths = [str(self.sandbox_root)]
+        self.pipeline.config.destination_root = str(self.sandbox_root)
 
     def analyze_record(self, file_path: Path) -> AnalysisRecord:
         """Run the complete pipeline and retain its persisted decision in one record."""
+        file_path = require_sandbox_file(file_path, self.sandbox_root)
         vector, decision, decision_id = self.pipeline.safe_classify(file_path)
         family = route_type(file_path)
         reason = self._decision_reason(decision)
@@ -80,6 +86,9 @@ class ClassifierEngine:
             pmi_collocations=pmi_collocations,
             ocr_layout_evidence=vector.ocr_layout_evidence,
             visual_evidence=visual_evidence,
+            numeric_features=dict(vector.numeric_features),
+            extraction_quality=vector.extraction_quality,
+            ocr_confidence=vector.ocr_confidence,
             topic=None,
             score=float(decision.margin),
             reason=reason,

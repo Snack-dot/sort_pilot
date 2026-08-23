@@ -1,11 +1,11 @@
 # Sort Pilot
 
-Sort Pilot is a Windows system-tray application that analyzes safe files on the Desktop and in Downloads, classifies the independent subject and template axes locally, and moves only files whose exact destination paths the user approves.
+Sort Pilot is a Windows system-tray application that analyzes safe files only inside `~/Downloads/sandbox`, classifies the independent subject and template axes locally, and moves only files whose exact sandbox-contained destination paths the user approves.
 
 ## Current workflow
 
 ```text
-Tray action (Desktop / Downloads / both)
+Tray action (Sandbox only)
 → first-run student type / grade / semester setup
 → safe top-level candidate collection
 → deduplicated two-worker bounded extraction queue
@@ -20,6 +20,22 @@ Tray action (Desktop / Downloads / both)
 ```
 
 There is no real-time filesystem watcher. Manual organization avoids repeated background scans, and each extraction worker reuses one local RapidOCR engine. The active destination hierarchy is exactly `학생/<학생 유형>/<학년>/<학기>/<과목>/<템플릿>`.
+
+## Local Korean OCR and bounded PDFs
+
+RapidOCR uses explicit verified local detector, orientation, `korean_PP-OCRv5_mobile_rec`, and Korean dictionary paths under the sandbox state directory. Runtime never downloads an OCR model or falls back to the default Chinese recognizer. JPG/JPEG, PNG, BMP, WEBP, TIFF, and EXIF-oriented photos are OCR candidates.
+
+PDF extraction never materializes or walks the complete document. It loads at most the first three, middle, and last pages, extracts native text from those pages, and OCRs at most one scan-like page at 150 DPI with a hard three-second inference timeout. Extracted/OCR text remains transient; only bounded derived features, quality state, confidence, and separate numeric PDF features can be serialized.
+
+## Resume local academic training
+
+The sandbox-only academic trainer uses human-approved `학업/{과목}/{교재|문제지|정답지}` labels, grouped validation, E5 evidence, hashed word/character TF-IDF, and separate PDF numeric features. To verify local assets/tests and resume the pending v2 training after a restart:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\eval\resume_academic_training.ps1
+```
+
+Local training documents, labels, OCR text, E5 cache, RapidOCR assets, and trained artifacts are never committed.
 
 ## Lower-level extraction interface
 
@@ -70,12 +86,12 @@ Multiple files:
 - Phase 8 retains only the optional evidence justified by paired made-up development and held-out measurements: layout-aware OCR, a bounded `0.05` Kiwi lexical contribution for subject ranking, and PMI. The active template classifier keeps the original OCR order for semantic intent and receives separate layout indicators. YOLO/LVIS visual evidence and new model-session scheduling are disabled.
 - Personal examples contain a fingerprint, normalized embedding, approved subject/template, original prediction, bounded lexical evidence, and relevant versions. They contain no source path or raw extracted text, do not fine-tune E5 or Gemma, and do not mutate global subject/template profiles.
 - Calibrated nearest-example evidence uses separate subject and template weights derived from made-up held-out data while retaining the Phase 5 routing thresholds and the approved 90%/50% operating targets.
-- Manual Desktop, Downloads, or combined organization.
+- Manual organization of `~/Downloads/sandbox` only; legacy Desktop/Downloads callbacks are retained as sandbox-only compatibility aliases.
 - Exactly two classification workers; duplicate paths are processed once per session.
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable extraction, local E5 classification, and Gemma fallback with no partial preview after cancellation.
 - Local document, archive, image metadata, and layout-aware OCR extraction. The active educational flow does not run YOLO/LVIS.
-- The preview allows only the selected student's catalog subjects, the five fixed templates, and Desktop or Downloads as the destination root.
+- The preview allows only the selected student's catalog subjects, the five fixed templates, and Sandbox as the destination root.
 - Original filenames are preserved; collisions receive numeric suffixes.
 - No move plan exists while either axis is unresolved, and no move occurs before final approval.
 - Execution consumes the frozen `OrganizationPlan` and never recomputes classification.
@@ -96,7 +112,9 @@ python -m pytest -q
 python main.py
 ```
 
-The app has no main window. Right-click the `SP` system-tray icon to organize files, undo the latest batch, or quit.
+The app has no main window. Right-click the `SP` system-tray icon to organize the Sandbox, undo the latest sandbox-contained batch, or quit.
+
+The user-file safety boundary is `~/Downloads/sandbox`. Analysis entry points reject files outside that root, and both move executors validate every source and destination before changing any file. Undo also rejects older or forged history entries that reference paths outside the sandbox. Application-owned settings, caches, model artifacts, and move history remain in the existing local application-data locations; they are not user documents and are never uploaded.
 
 ## Repository layout
 
