@@ -1,0 +1,1409 @@
+{
+  "version": "academic-logistic-training-v2",
+  "scope": {
+    "sandbox": "C:\\Users\\nobody haha\\Downloads\\sandbox",
+    "top_category": "학업",
+    "path_contract": "학업/{과목}/{교재|문제지|정답지}",
+    "labels": 319,
+    "labels_available": 319,
+    "extraction_quality": {
+      "ok": 260,
+      "low_confidence": 40,
+      "failed": 19
+    },
+    "labels_excluded_for_review": 0,
+    "source_groups": 2,
+    "family_groups": 229,
+    "subject_distribution": {
+      "영어": 120,
+      "국어": 84,
+      "수학": 44,
+      "사회": 29,
+      "한국사": 23,
+      "과학": 19
+    },
+    "academic_type_distribution": {
+      "문제지": 143,
+      "교재": 120,
+      "정답지": 56
+    }
+  },
+  "validation": {
+    "method": "5x repeated 2-fold family-group CV plus strict leave-source-out CV",
+    "subject": {
+      "l2_selection": {
+        "selected_l2": 0.01,
+        "candidates": {
+          "0.01": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.91875,
+                "macro_f1": 0.8819645732689211,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 871,
+                "converged": true
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.8616352201257862,
+                "macro_f1": 0.7908152217917596,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 919,
+                "converged": true
+              },
+              {
+                "fold": 3,
+                "count": 160,
+                "accuracy": 0.93125,
+                "macro_f1": 0.8929757004111455,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 669,
+                "converged": true
+              },
+              {
+                "fold": 4,
+                "count": 159,
+                "accuracy": 0.8553459119496856,
+                "macro_f1": 0.8418072169706157,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 950,
+                "converged": true
+              },
+              {
+                "fold": 5,
+                "count": 159,
+                "accuracy": 0.8742138364779874,
+                "macro_f1": 0.8331582922010948,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 605,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 160,
+                "accuracy": 0.8875,
+                "macro_f1": 0.8125191021417437,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 1087,
+                "converged": true
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.8875,
+                "macro_f1": 0.8288677248677249,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 636,
+                "converged": true
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.8805031446540881,
+                "macro_f1": 0.8750748000748001,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 722,
+                "converged": true
+              },
+              {
+                "fold": 9,
+                "count": 159,
+                "accuracy": 0.8742138364779874,
+                "macro_f1": 0.7938804251304251,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 642,
+                "converged": true
+              },
+              {
+                "fold": 10,
+                "count": 160,
+                "accuracy": 0.81875,
+                "macro_f1": 0.7815053607407431,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 957,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.8789661949685534,
+            "accuracy_std": 0.02998966772096753,
+            "macro_f1_mean": 0.8332568417598973,
+            "macro_f1_std": 0.03773588838835842
+          },
+          "0.1": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.90625,
+                "macro_f1": 0.8739067380633645,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 307,
+                "converged": true
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.8301886792452831,
+                "macro_f1": 0.732630284035802,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 602,
+                "converged": true
+              },
+              {
+                "fold": 3,
+                "count": 160,
+                "accuracy": 0.925,
+                "macro_f1": 0.8740922849760059,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 264,
+                "converged": true
+              },
+              {
+                "fold": 4,
+                "count": 159,
+                "accuracy": 0.8553459119496856,
+                "macro_f1": 0.8348585570807793,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 296,
+                "converged": true
+              },
+              {
+                "fold": 5,
+                "count": 159,
+                "accuracy": 0.8616352201257862,
+                "macro_f1": 0.8192990867307359,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 249,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 160,
+                "accuracy": 0.89375,
+                "macro_f1": 0.8171596660297226,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 722,
+                "converged": true
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.86875,
+                "macro_f1": 0.816157470309369,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 715,
+                "converged": true
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.8805031446540881,
+                "macro_f1": 0.8732008286356112,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 259,
+                "converged": true
+              },
+              {
+                "fold": 9,
+                "count": 159,
+                "accuracy": 0.8867924528301887,
+                "macro_f1": 0.8177425241434902,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 257,
+                "converged": true
+              },
+              {
+                "fold": 10,
+                "count": 160,
+                "accuracy": 0.83125,
+                "macro_f1": 0.7939871002481622,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 257,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.8739465408805032,
+            "accuracy_std": 0.02917610969548436,
+            "macro_f1_mean": 0.8253034540253043,
+            "macro_f1_std": 0.041158606113320395
+          },
+          "1.0": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.875,
+                "macro_f1": 0.8390029253447799,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 715,
+                "converged": true
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.8050314465408805,
+                "macro_f1": 0.714024714024714,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 547,
+                "converged": true
+              },
+              {
+                "fold": 3,
+                "count": 160,
+                "accuracy": 0.89375,
+                "macro_f1": 0.8567998205628077,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 816,
+                "converged": true
+              },
+              {
+                "fold": 4,
+                "count": 159,
+                "accuracy": 0.8238993710691824,
+                "macro_f1": 0.8115160543620434,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 5,
+                "count": 159,
+                "accuracy": 0.8490566037735849,
+                "macro_f1": 0.8027730004864151,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 295,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 160,
+                "accuracy": 0.85625,
+                "macro_f1": 0.7800400129458492,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 296,
+                "converged": true
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.83125,
+                "macro_f1": 0.7850231131695662,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 566,
+                "converged": true
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.8867924528301887,
+                "macro_f1": 0.8725051204040812,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 806,
+                "converged": true
+              },
+              {
+                "fold": 9,
+                "count": 159,
+                "accuracy": 0.8742138364779874,
+                "macro_f1": 0.8132692777167461,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 702,
+                "converged": true
+              },
+              {
+                "fold": 10,
+                "count": 160,
+                "accuracy": 0.81875,
+                "macro_f1": 0.7666887125220458,
+                "train_labels": [
+                  "국어",
+                  "수학",
+                  "영어",
+                  "한국사",
+                  "사회",
+                  "과학"
+                ],
+                "epochs": 653,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.8513993710691824,
+            "accuracy_std": 0.029207816925579465,
+            "macro_f1_mean": 0.8041642751539049,
+            "macro_f1_std": 0.04389932923844006
+          }
+        }
+      },
+      "family_group_cv": {
+        "folds": [
+          {
+            "fold": 1,
+            "count": 160,
+            "accuracy": 0.91875,
+            "macro_f1": 0.8819645732689211,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 871,
+            "converged": true
+          },
+          {
+            "fold": 2,
+            "count": 159,
+            "accuracy": 0.8616352201257862,
+            "macro_f1": 0.7908152217917596,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 919,
+            "converged": true
+          },
+          {
+            "fold": 3,
+            "count": 160,
+            "accuracy": 0.93125,
+            "macro_f1": 0.8929757004111455,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 669,
+            "converged": true
+          },
+          {
+            "fold": 4,
+            "count": 159,
+            "accuracy": 0.8553459119496856,
+            "macro_f1": 0.8418072169706157,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 950,
+            "converged": true
+          },
+          {
+            "fold": 5,
+            "count": 159,
+            "accuracy": 0.8742138364779874,
+            "macro_f1": 0.8331582922010948,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 605,
+            "converged": true
+          },
+          {
+            "fold": 6,
+            "count": 160,
+            "accuracy": 0.8875,
+            "macro_f1": 0.8125191021417437,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 1087,
+            "converged": true
+          },
+          {
+            "fold": 7,
+            "count": 160,
+            "accuracy": 0.8875,
+            "macro_f1": 0.8288677248677249,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 636,
+            "converged": true
+          },
+          {
+            "fold": 8,
+            "count": 159,
+            "accuracy": 0.8805031446540881,
+            "macro_f1": 0.8750748000748001,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 722,
+            "converged": true
+          },
+          {
+            "fold": 9,
+            "count": 159,
+            "accuracy": 0.8742138364779874,
+            "macro_f1": 0.7938804251304251,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 642,
+            "converged": true
+          },
+          {
+            "fold": 10,
+            "count": 160,
+            "accuracy": 0.81875,
+            "macro_f1": 0.7815053607407431,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 957,
+            "converged": true
+          }
+        ],
+        "accuracy_mean": 0.8789661949685534,
+        "accuracy_std": 0.02998966772096753,
+        "macro_f1_mean": 0.8332568417598973,
+        "macro_f1_std": 0.03773588838835842
+      },
+      "strict_source_cv": {
+        "folds": [
+          {
+            "fold": 1,
+            "count": 99,
+            "accuracy": 0.9595959595959596,
+            "macro_f1": 0.8951343500363108,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 670,
+            "converged": true
+          },
+          {
+            "fold": 2,
+            "count": 220,
+            "accuracy": 0.6545454545454545,
+            "macro_f1": 0.45692431561996777,
+            "train_labels": [
+              "국어",
+              "수학",
+              "영어",
+              "한국사",
+              "사회",
+              "과학"
+            ],
+            "epochs": 828,
+            "converged": true
+          }
+        ],
+        "accuracy_mean": 0.807070707070707,
+        "accuracy_std": 0.1525252525252525,
+        "macro_f1_mean": 0.6760293328281393,
+        "macro_f1_std": 0.21910501720817152
+      },
+      "threshold": {
+        "threshold": 0.39604676398744626,
+        "precision": 0.900455432661028,
+        "coverage": 0.9636363636363636,
+        "review_rate": 0.036363636363636376,
+        "accepted": 1537,
+        "target": 0.9,
+        "target_met": true
+      },
+      "weighted_policy_baseline_accuracy": 0.7335423197492164
+    },
+    "academic_type": {
+      "l2_selection": {
+        "selected_l2": 0.01,
+        "candidates": {
+          "0.01": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.83125,
+                "macro_f1": 0.8355612230222725,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.8176100628930818,
+                "macro_f1": 0.8017673736161132,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 555,
+                "converged": true
+              },
+              {
+                "fold": 3,
+                "count": 159,
+                "accuracy": 0.8930817610062893,
+                "macro_f1": 0.9001127851374859,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1033,
+                "converged": true
+              },
+              {
+                "fold": 4,
+                "count": 160,
+                "accuracy": 0.81875,
+                "macro_f1": 0.790370411133123,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 493,
+                "converged": true
+              },
+              {
+                "fold": 5,
+                "count": 160,
+                "accuracy": 0.86875,
+                "macro_f1": 0.8699098446200595,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 683,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 159,
+                "accuracy": 0.8364779874213837,
+                "macro_f1": 0.8246275342503436,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 894,
+                "converged": true
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.8625,
+                "macro_f1": 0.8636389411955644,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.7987421383647799,
+                "macro_f1": 0.7736965934250155,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 9,
+                "count": 160,
+                "accuracy": 0.825,
+                "macro_f1": 0.8272518806492107,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 681,
+                "converged": true
+              },
+              {
+                "fold": 10,
+                "count": 159,
+                "accuracy": 0.8364779874213837,
+                "macro_f1": 0.7999080740288794,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 883,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.8388639937106919,
+            "accuracy_std": 0.026681520429326974,
+            "macro_f1_mean": 0.8286844661078068,
+            "macro_f1_std": 0.037594409510545886
+          },
+          "0.1": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.85,
+                "macro_f1": 0.8566015778291993,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 871,
+                "converged": true
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.8238993710691824,
+                "macro_f1": 0.8091875746714456,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 244,
+                "converged": true
+              },
+              {
+                "fold": 3,
+                "count": 159,
+                "accuracy": 0.8867924528301887,
+                "macro_f1": 0.8892312630396405,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 398,
+                "converged": true
+              },
+              {
+                "fold": 4,
+                "count": 160,
+                "accuracy": 0.825,
+                "macro_f1": 0.7977211082049792,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 568,
+                "converged": true
+              },
+              {
+                "fold": 5,
+                "count": 160,
+                "accuracy": 0.8125,
+                "macro_f1": 0.8162317296881473,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 240,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 159,
+                "accuracy": 0.8238993710691824,
+                "macro_f1": 0.8178182567792958,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 237,
+                "converged": true
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.85,
+                "macro_f1": 0.8536468805548271,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 440,
+                "converged": true
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.8050314465408805,
+                "macro_f1": 0.7683935492801772,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 550,
+                "converged": true
+              },
+              {
+                "fold": 9,
+                "count": 160,
+                "accuracy": 0.84375,
+                "macro_f1": 0.8564645736721319,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 241,
+                "converged": true
+              },
+              {
+                "fold": 10,
+                "count": 159,
+                "accuracy": 0.8490566037735849,
+                "macro_f1": 0.8144019966533367,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 240,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.8369929245283019,
+            "accuracy_std": 0.022622341655565453,
+            "macro_f1_mean": 0.827969851037318,
+            "macro_f1_std": 0.03359466706686108
+          },
+          "1.0": {
+            "folds": [
+              {
+                "fold": 1,
+                "count": 160,
+                "accuracy": 0.85,
+                "macro_f1": 0.8568197423159255,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 2,
+                "count": 159,
+                "accuracy": 0.7924528301886793,
+                "macro_f1": 0.7749364791288567,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 3,
+                "count": 159,
+                "accuracy": 0.8301886792452831,
+                "macro_f1": 0.8306031636114157,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 4,
+                "count": 160,
+                "accuracy": 0.79375,
+                "macro_f1": 0.7535737299614681,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 5,
+                "count": 160,
+                "accuracy": 0.775,
+                "macro_f1": 0.7828245207581845,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 929,
+                "converged": true
+              },
+              {
+                "fold": 6,
+                "count": 159,
+                "accuracy": 0.7672955974842768,
+                "macro_f1": 0.7448472613590164,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 7,
+                "count": 160,
+                "accuracy": 0.8,
+                "macro_f1": 0.812213577332906,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 8,
+                "count": 159,
+                "accuracy": 0.6855345911949685,
+                "macro_f1": 0.6847180242320907,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 9,
+                "count": 160,
+                "accuracy": 0.8125,
+                "macro_f1": 0.8222537822750853,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 1200,
+                "converged": false
+              },
+              {
+                "fold": 10,
+                "count": 159,
+                "accuracy": 0.8238993710691824,
+                "macro_f1": 0.801061289881406,
+                "train_labels": [
+                  "교재",
+                  "문제지",
+                  "정답지"
+                ],
+                "epochs": 757,
+                "converged": true
+              }
+            ],
+            "accuracy_mean": 0.793062106918239,
+            "accuracy_std": 0.04307014362282986,
+            "macro_f1_mean": 0.7863851570856355,
+            "macro_f1_std": 0.04729403781552345
+          }
+        }
+      },
+      "family_group_cv": {
+        "folds": [
+          {
+            "fold": 1,
+            "count": 160,
+            "accuracy": 0.83125,
+            "macro_f1": 0.8355612230222725,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 1200,
+            "converged": false
+          },
+          {
+            "fold": 2,
+            "count": 159,
+            "accuracy": 0.8176100628930818,
+            "macro_f1": 0.8017673736161132,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 555,
+            "converged": true
+          },
+          {
+            "fold": 3,
+            "count": 159,
+            "accuracy": 0.8930817610062893,
+            "macro_f1": 0.9001127851374859,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 1033,
+            "converged": true
+          },
+          {
+            "fold": 4,
+            "count": 160,
+            "accuracy": 0.81875,
+            "macro_f1": 0.790370411133123,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 493,
+            "converged": true
+          },
+          {
+            "fold": 5,
+            "count": 160,
+            "accuracy": 0.86875,
+            "macro_f1": 0.8699098446200595,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 683,
+            "converged": true
+          },
+          {
+            "fold": 6,
+            "count": 159,
+            "accuracy": 0.8364779874213837,
+            "macro_f1": 0.8246275342503436,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 894,
+            "converged": true
+          },
+          {
+            "fold": 7,
+            "count": 160,
+            "accuracy": 0.8625,
+            "macro_f1": 0.8636389411955644,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 1200,
+            "converged": false
+          },
+          {
+            "fold": 8,
+            "count": 159,
+            "accuracy": 0.7987421383647799,
+            "macro_f1": 0.7736965934250155,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 1200,
+            "converged": false
+          },
+          {
+            "fold": 9,
+            "count": 160,
+            "accuracy": 0.825,
+            "macro_f1": 0.8272518806492107,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 681,
+            "converged": true
+          },
+          {
+            "fold": 10,
+            "count": 159,
+            "accuracy": 0.8364779874213837,
+            "macro_f1": 0.7999080740288794,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 883,
+            "converged": true
+          }
+        ],
+        "accuracy_mean": 0.8388639937106919,
+        "accuracy_std": 0.026681520429326974,
+        "macro_f1_mean": 0.8286844661078068,
+        "macro_f1_std": 0.037594409510545886
+      },
+      "strict_source_cv": {
+        "folds": [
+          {
+            "fold": 1,
+            "count": 99,
+            "accuracy": 0.8787878787878788,
+            "macro_f1": 0.8607965652300628,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 651,
+            "converged": true
+          },
+          {
+            "fold": 2,
+            "count": 220,
+            "accuracy": 0.5727272727272728,
+            "macro_f1": 0.5579722299878855,
+            "train_labels": [
+              "교재",
+              "문제지",
+              "정답지"
+            ],
+            "epochs": 506,
+            "converged": true
+          }
+        ],
+        "accuracy_mean": 0.7257575757575758,
+        "accuracy_std": 0.15303030303030302,
+        "macro_f1_mean": 0.7093843976089742,
+        "macro_f1_std": 0.1514121676210886
+      },
+      "threshold": {
+        "threshold": 0.7107341157854545,
+        "precision": 0.9,
+        "coverage": 0.8463949843260188,
+        "review_rate": 0.15360501567398122,
+        "accepted": 1350,
+        "target": 0.9,
+        "target_met": true
+      },
+      "weighted_policy_baseline_accuracy": 0.7429467084639498
+    }
+  },
+  "final_fit": {
+    "text_features": {
+      "word_tfidf": true,
+      "character_tfidf": true,
+      "raw_vocabulary_persisted": false,
+      "pdf_numeric_features": true
+    },
+    "subject": {
+      "labels": [
+        "국어",
+        "수학",
+        "영어",
+        "한국사",
+        "사회",
+        "과학"
+      ],
+      "features": 493,
+      "l2": 0.01,
+      "epochs": 666,
+      "loss": 0.07248428515062905,
+      "converged": true
+    },
+    "academic_type": {
+      "labels": [
+        "교재",
+        "문제지",
+        "정답지"
+      ],
+      "features": 412,
+      "l2": 0.01,
+      "epochs": 591,
+      "loss": 0.14462672677499727,
+      "converged": true
+    }
+  },
+  "warnings": [],
+  "privacy": {
+    "raw_text_persisted": false,
+    "ocr_text_persisted": false,
+    "tfidf_raw_vocabulary_persisted": false,
+    "filenames_in_report": false,
+    "network_used": false
+  }
+}

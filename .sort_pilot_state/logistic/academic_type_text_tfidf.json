@@ -1,0 +1,6 @@
+{
+  "version": "hashed-word-char-tfidf-v1",
+  "word_bins": 128,
+  "character_bins": 256,
+  "raw_vocabulary_persisted": false
+}
