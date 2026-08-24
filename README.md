@@ -75,7 +75,7 @@ Multiple files:
 - One reusable classifier pipeline, SQLite connection, and RapidOCR instance per worker thread.
 - Cancellable extraction, local E5 classification, and Gemma fallback with no partial preview after cancellation.
 - Local document, archive, image metadata, and layout-aware OCR extraction. The active educational flow does not run YOLO/LVIS.
-- The preview allows only the selected student's catalog subjects, the five fixed templates, and Desktop or Downloads as the destination root.
+- The preview allows only the selected student's catalog subjects, the five fixed templates, and Desktop or Downloads as the destination root. One top-level destination choice applies to every path group, while each group remains available for exceptions.
 - Original filenames are preserved; collisions receive numeric suffixes.
 - No move plan exists while either axis is unresolved, and no move occurs before final approval.
 - Execution consumes the frozen `OrganizationPlan` and never recomputes classification.
@@ -97,6 +97,12 @@ python main.py
 ```
 
 The app has no main window. Right-click the `SP` system-tray icon to organize files, undo the latest batch, or quit.
+
+### UI-only test mode
+
+Set `SORT_PILOT_SIMPLE_CLASSIFIER=1` to bypass E5/Gemma classification with deterministic extension rules while testing the preview. This explicit mode labels itself in the preview and never moves files or stores personal correction examples after approval. The checked-in code keeps normal AI classification as the default; the local VS Code launch configuration may set this variable for UI work.
+
+For a completely standalone preview with no scan, E5, Gemma, history, or file move services, run `python ui_demo.py`. The VS Code `Sort Pilot UI Preview (No AI)` launch configuration points directly to this sample-data window.
 
 ## Repository layout
 

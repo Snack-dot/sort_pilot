@@ -1,10 +1,28 @@
 # Changelog
 
+- Added one bulk Desktop/Downloads destination selector to the grouped educational preview, with per-group overrides for exceptions.
+- Refined the educational preview with a destination card, styled path list, consistent combo-box states, and a distinct primary move action.
+- Replaced colored preview accents with a clean black, white, and neutral-gray palette.
+- Styled grouped destination paths in bold with representative-file summaries in smaller light-gray text.
+- Removed the hidden native tree text beneath custom path labels and increased row height to prevent overlapping text.
+- Marked Needs Review text in red and excluded that group from bulk destination assignment.
+- Sorted detail-popup files alphabetically and fixed row, selector-column, text, and checkbox alignment.
+- Made preview combo boxes click-only by blocking drag selection, drops, and wheel-based value changes.
+
+## 2026-08-23 — Non-mutating simple classifier for UI testing
+
+- Added an explicit `SORT_PILOT_SIMPLE_CLASSIFIER=1` mode that groups documents, images, and archives using deterministic extension rules and sends unknown extensions to review.
+- Kept the production E5/Gemma classifier as the default when the environment switch is absent.
+- Kept the standalone/demo execution non-mutating while rendering the same product-facing `N개 파일 이동` labels and confirmation copy as the real preview.
+- Added `ui_demo.py`, a fake-data preview entry point that imports no app controller and performs no file scan, model inference, history access, or move operation.
+- Added focused tests for extension routing, unknown-file review, and the non-mutating preview labels.
+
 ## 2026-08-23 — Path-grouped organization preview
 
 - Integrated the current educational AI workflow into the `ui` branch while preserving immutable exact-path approval, correction learning, transactional moves, history, and Undo.
 - Replaced the active preview's flat all-file presentation with destination summary rows showing `파일 N개` and one representative filename plus `외 N개`.
-- Added a distinct warning-styled `확인이 필요한 파일` group; selecting any summary row filters the existing editable per-file details.
+- Added a distinct warning-styled `확인이 필요한 파일` group; the flat file table is absent from the main preview and per-file controls open in a separate dialog only when a summary row is clicked.
+- Added an explicit per-group `바탕화면`/`다운로드 폴더` selector in the main summary and block approval until every included group has a destination root.
 - Made the primary action show the approved file count and grouped the final confirmation by exact destination folder.
 - Added deterministic grouping and live Qt filtering tests. See `session_archive/2026-08-23-ui-path-grouped-preview/` for decisions and verification details.
 

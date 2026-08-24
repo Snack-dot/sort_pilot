@@ -4,7 +4,15 @@ from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QComboBox,
+    QDialog,
+    QLabel,
+    QTableWidget,
+)
 
 from sort_pilot.classification import (
     AxisDecision,
@@ -19,6 +27,7 @@ from sort_pilot.classification import (
 )
 from sort_pilot.curriculum import Semester, StudentType, default_profile
 from sort_pilot.educational_preview import (
+    ClickOnlyComboBox,
     EducationalPreviewDialog,
     REVIEW_GROUP_KEY,
     _confirmation_message,
@@ -56,21 +65,29 @@ def _decision(
     )
 
 
-def _classification(*, unresolved_subject: bool = False):
+def _classification(*, unresolved_subject: bool = False, subject: str = "수학"):
     subject_labels = ("수학", "과학", "국어")
     template_labels = tuple(item.value for item in Template)
     return EducationalClassificationResult(
         default_profile(StudentType.MIDDLE, 1, Semester.FIRST),
-        _decision(subject_labels, label=None if unresolved_subject else "수학"),
+        _decision(subject_labels, label=None if unresolved_subject else subject),
         _decision(template_labels, label=Template.ASSIGNMENT.value),
     )
 
 
-def _output(source: Path, *, unresolved_subject: bool = False):
+def _output(
+    source: Path,
+    *,
+    unresolved_subject: bool = False,
+    subject: str = "수학",
+):
     return EducationalClassificationOutput(
         source=source,
         fingerprint="a" * 40,
-        classification=_classification(unresolved_subject=unresolved_subject),
+        classification=_classification(
+            unresolved_subject=unresolved_subject,
+            subject=subject,
+        ),
         embedding=(1.0, *(0.0 for _ in range(E5_VECTOR_SIZE - 1))),
         lexical_evidence=("함수", "문제"),
     )
@@ -113,7 +130,7 @@ def test_preview_groups_paths_with_representative_file_and_review_last(
     assert groups[1].file_preview == "검토.pdf"
 
 
-def test_dialog_filters_details_to_the_selected_path_group(tmp_path: Path) -> None:
+def test_dialog_keeps_flat_file_table_out_of_the_main_preview(tmp_path: Path) -> None:
     app = QApplication.instance() or QApplication([])
     outputs = (
         _output(tmp_path / "desktop" / "zeta.pdf"),
@@ -127,19 +144,151 @@ def test_dialog_filters_details_to_the_selected_path_group(tmp_path: Path) -> No
     )
     try:
         assert dialog.summary.topLevelItemCount() == 2
-        assert dialog.summary.topLevelItem(0).text(0).endswith("alpha.pdf 외 1개")
-        assert sum(
-            not dialog.table.isRowHidden(row)
-            for row in range(dialog.table.rowCount())
-        ) == 2
-        dialog.summary.setCurrentItem(dialog.summary.topLevelItem(1))
+        assert dialog.summary.topLevelItem(0).text(0) == ""
+        assert dialog.table.isHidden()
+        destination = dialog.summary.itemWidget(dialog.summary.topLevelItem(0), 1)
+        assert isinstance(destination, QComboBox)
+        assert isinstance(destination, ClickOnlyComboBox)
+        assert not destination.view().dragEnabled()
+        assert (
+            destination.view().dragDropMode()
+            is QAbstractItemView.DragDropMode.NoDragDrop
+        )
+        assert destination.currentData() is None
+        destination.setCurrentIndex(destination.findData("desktop"))
         app.processEvents()
-        assert dialog.detail_label.text() == "확인이 필요한 파일 · 파일 1개"
-        assert sum(
-            not dialog.table.isRowHidden(row)
-            for row in range(dialog.table.rowCount())
-        ) == 1
-        assert dialog.organize_button.text() == "3개 파일 정리 승인"
+        for row in dialog.groups[0].row_indexes:
+            row_destination = dialog.table.cellWidget(row, 2)
+            assert isinstance(row_destination, QComboBox)
+            assert row_destination.currentData() == "desktop"
+        assert destination.minimumWidth() == 240
+        assert dialog.summary.columnWidth(1) == 240
+        assert dialog.summary.columnWidth(2) == 180
+        assert dialog.summary.objectName() == "destinationSummary"
+        assert dialog.organize_button.objectName() == "primaryAction"
+        assert "bulkDestinationCard" in dialog.styleSheet()
+        path_labels = dialog.summary.findChildren(QLabel, "summaryPath")
+        preview_labels = dialog.summary.findChildren(QLabel, "summaryFilePreview")
+        assert path_labels[0].text().endswith("/수학/과제")
+        assert path_labels[1].text() == "확인이 필요한 파일"
+        assert preview_labels[0].text() == "alpha.pdf 외 1개"
+        assert path_labels[1].property("review") is True
+        assert preview_labels[1].property("review") is True
+        assert "#dc2626" in dialog.styleSheet()
+        assert dialog.summary.topLevelItem(0).sizeHint(0).height() == 64
+        assert "QLabel#summaryPath" in dialog.styleSheet()
+        assert "QLabel#summaryFilePreview { color: #8a8a8a" in dialog.styleSheet()
+        assert "#4f7cff" not in dialog.styleSheet()
+        assert "#b45309" not in dialog.styleSheet()
+        assert "QPushButton#primaryAction { background: #000000" in dialog.styleSheet()
+        count_alignment = dialog.summary.topLevelItem(0).textAlignment(2)
+        assert count_alignment & Qt.AlignmentFlag.AlignRight
+        assert dialog.organize_button.text() == "3개 파일 이동"
+    finally:
+        dialog.close()
+
+
+def test_dialog_applies_one_destination_to_every_group(tmp_path: Path) -> None:
+    app = QApplication.instance() or QApplication([])
+    outputs = (
+        _output(tmp_path / "desktop" / "자료.pdf"),
+        _output(tmp_path / "downloads" / "과학.pdf", subject="과학"),
+        _output(
+            tmp_path / "desktop" / "검토.pdf",
+            unresolved_subject=True,
+        ),
+    )
+    dialog = EducationalPreviewDialog(
+        outputs,
+        tmp_path / "desktop",
+        tmp_path / "downloads",
+    )
+    try:
+        selector = dialog.bulk_destination_selector
+        assert selector.currentData() is None
+        selector.setCurrentIndex(selector.findData("downloads"))
+        app.processEvents()
+
+        resolved_groups = [group for group in dialog.groups if not group.needs_review]
+        review_group = next(group for group in dialog.groups if group.needs_review)
+        assert all(
+            dialog._group_destination_selectors[group.key].currentData()
+            == "downloads"
+            for group in resolved_groups
+        )
+        assert dialog._group_destination_selectors[review_group.key].currentData() is None
+        review_row_selector = dialog.table.cellWidget(review_group.row_indexes[0], 2)
+        assert isinstance(review_row_selector, QComboBox)
+        assert review_row_selector.currentData() == "desktop"
+
+        first_group = resolved_groups[0]
+        group_selector = dialog._group_destination_selectors[first_group.key]
+        group_selector.setCurrentIndex(group_selector.findData("desktop"))
+        app.processEvents()
+        assert selector.currentData() is None
+    finally:
+        dialog.close()
+
+
+def test_group_details_are_alphabetical_and_column_aligned(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = QApplication.instance() or QApplication([])
+    dialog = EducationalPreviewDialog(
+        (
+            _output(tmp_path / "zeta.pdf"),
+            _output(tmp_path / "alpha.pdf"),
+        ),
+        tmp_path / "desktop",
+        tmp_path / "downloads",
+    )
+    captured: list[QDialog] = []
+
+    def reject_details(detail_dialog: QDialog) -> QDialog.DialogCode:
+        captured.append(detail_dialog)
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", reject_details)
+    try:
+        dialog._open_group_details(dialog.summary.topLevelItem(0), 0)
+        app.processEvents()
+        details = captured[0].findChild(QTableWidget, "groupDetailTable")
+        assert details is not None
+        assert details.item(0, 0).text() == "alpha.pdf"
+        assert details.item(1, 0).text() == "zeta.pdf"
+        assert details.verticalHeader().defaultSectionSize() == 46
+        subject_selector = details.cellWidget(0, 2)
+        assert isinstance(subject_selector, ClickOnlyComboBox)
+        assert not subject_selector.view().dragEnabled()
+        assert (
+            subject_selector.view().dragDropMode()
+            is QAbstractItemView.DragDropMode.NoDragDrop
+        )
+        assert details.columnWidth(2) == 150
+        assert details.columnWidth(3) == 150
+        assert details.columnWidth(4) == 72
+        assert details.item(0, 4).textAlignment() & Qt.AlignmentFlag.AlignCenter
+    finally:
+        dialog.close()
+
+
+def test_dialog_uses_product_labels_in_non_mutating_demo_mode(tmp_path: Path) -> None:
+    app = QApplication.instance() or QApplication([])
+    dialog = EducationalPreviewDialog(
+        (_output(tmp_path / "desktop" / "자료.pdf"),),
+        tmp_path / "desktop",
+        tmp_path / "downloads",
+        test_mode=True,
+    )
+    try:
+        app.processEvents()
+        assert dialog.test_mode
+        assert dialog.organize_button.text() == "1개 파일 이동"
+        approved = dialog.approved_plans()
+        message = _confirmation_message(approved, test_mode=True)
+        assert "1개 파일을 이동할까요?" in message
+        assert "테스트" not in message
     finally:
         dialog.close()
 

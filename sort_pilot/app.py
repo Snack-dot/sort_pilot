@@ -61,6 +61,7 @@ from .organizer import (
 )
 from .preview import PreviewDialog
 from .scanner import collect_candidates
+from .simple_classifier import classify_for_ui_test, simple_classifier_enabled
 from .topic_dialogs import ProfileEditRequest, TopicManagerDialog
 from .tray import TrayIcon
 
@@ -302,10 +303,18 @@ class AppController(QObject):
             outputs,
             self._desktop_folder(),
             self.downloads_folder,
+            test_mode=simple_classifier_enabled(),
         )
         if dialog.exec() != EducationalPreviewDialog.DialogCode.Accepted:
             return
         approved = dialog.frozen_plans
+        if simple_classifier_enabled():
+            QMessageBox.information(
+                None,
+                "UI 테스트 완료",
+                f"{len(approved)}개 파일의 승인 흐름을 확인했습니다. 실제 파일은 이동하지 않았습니다.",
+            )
+            return
         examples = tuple(
             example
             for item in approved
@@ -355,6 +364,8 @@ class AppController(QObject):
         except ValueError as exc:
             QMessageBox.critical(None, "교육 분류 입력 실패", str(exc))
             return None
+        if simple_classifier_enabled():
+            return classify_for_ui_test(inputs, student)
         cancel_event = threading.Event()
         self._classification_cancel_event = cancel_event
         completed_count = [0]
