@@ -1,0 +1,35 @@
+Timezone: Asia/Seoul (UTC+09:00)
+Trainer: eval/train_academic_logistic.py
+Output: Downloads/sandbox/.sort_pilot_state/logistic
+
+2026-08-23 20:48:36 START
+  Command: python eval/train_academic_logistic.py
+  Input labels: 320
+  Observed progress: EXTRACT_PROGRESS=1/320 through at least 260/320
+  Result: no retained completed artifact identified from this launch
+
+2026-08-23 21:08:33 START
+  Command: python eval/train_academic_logistic.py
+  Input labels: 319
+  Observed progress: EXTRACT_PROGRESS=1/319 through 319/319
+2026-08-23 21:14:07 COMPLETE
+  Report version: academic-logistic-training-v1
+  Report labels: 319
+  Artifact report modification time: 2026-08-23 21:14:26
+  Result: v1 model bundle saved successfully
+
+2026-08-23 21:46:38 START
+  Command: python eval/train_academic_logistic.py
+  Target report version: academic-logistic-training-v2
+  Input labels: 319
+  Observed progress: EXTRACT_PROGRESS=1/319 through at least 120/319
+2026-08-23 22:04:55 INTERRUPTED
+  Result: training processes stopped before a v2 artifact was saved; v1 remained intact
+
+2026-08-23 22:11:33 START
+  Command: python eval/train_academic_logistic.py
+  Target report version: academic-logistic-training-v2
+  Input labels: 319
+  Observed progress: EXTRACT_PROGRESS=1/319 through 319/319; cross-validation continued
+2026-08-23 22:46:59 INTERRUPTED
+  Result: training processes stopped before a v2 artifact was saved; v1 remained intact

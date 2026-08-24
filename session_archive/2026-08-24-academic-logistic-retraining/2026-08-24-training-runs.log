@@ -1,0 +1,32 @@
+Timezone: Asia/Seoul (UTC+09:00)
+Resume command: powershell -ExecutionPolicy Bypass -File .\eval\resume_academic_training.ps1
+Output: Downloads/sandbox/.sort_pilot_state/logistic
+
+2026-08-24 12:58:13 START
+  Preflight: local OCR assets verified; 51 focused tests passed
+  Input labels: 319
+  Observed progress: EXTRACT_PROGRESS=1/319 through 319/319
+2026-08-24 14:20:56 COMPLETE
+  Process exit code: 0
+  Report version: academic-logistic-training-v2
+  Report labels: 319
+  Verification: TRAINING_REPORT=verified; RESUME_RESULT=complete
+  Result: v2 model bundle saved, replacing v1
+
+2026-08-24 16:06:12 START
+  Preflight: local OCR assets verified; 51 focused tests passed
+2026-08-24 16:06:37 FAILED
+  Process exit code: 1
+  Failure: one training-label filename did not resolve to a sandbox file
+  Result: training stopped before artifact generation; the preceding v2 bundle remained intact
+
+2026-08-24 16:17:41 START
+  Preflight: local OCR assets verified; 51 focused tests passed
+  Input labels: 319
+  Observed progress: EXTRACT_PROGRESS=1/319 through 319/319
+2026-08-24 17:10:58 COMPLETE
+  Process exit code: 0
+  Report version: academic-logistic-training-v2
+  Report labels: 319
+  Verification: TRAINING_REPORT=verified; RESUME_RESULT=complete
+  Result: final v2 bundle saved and currently present in .sort_pilot_state/logistic
